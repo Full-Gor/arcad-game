@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choisis ton aéronef</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: black;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #04fbac;
+            text-align: center;
+        }
+
+        .vaisseaux {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .vaisseau-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .vaisseau {
+            height: 120px;
+            width: 120px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .vaisseau:hover {
+            border: 2px solid #04fbac;
+            border-radius: 15px;
+            transform: scale(1.05);
+        }
+
+        .vaisseau-titre {
+            color: #04fbac;
+            margin-top: 10px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .clignote {
+            animation: clignoter 0.2s infinite;
+        }
+
+        @keyframes clignoter {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .vaisseaux {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            
+            .vaisseau {
+                height: 100px;
+                width: 100px;
+            }
+
+            .vaisseau-titre {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Choisis ton aéronef !</h1>
+    <div class="vaisseaux">
+        <div class="vaisseau-container">
+            <img src="img/starship6.jpg" alt="Vaisseau 1" class="vaisseau" onclick="choisirVaisseau(this, 'Intercepteur', 'audio/select1.mp3')">
+            <h2 class="vaisseau-titre">Intercepteur</h2>
+        </div>
+        <div class="vaisseau-container">
+            <img src="img/starship1.jpg" alt="Vaisseau 2" class="vaisseau" onclick="choisirVaisseau(this, 'Croiseur', 'audio/select2.mp3')">
+            <h2 class="vaisseau-titre">Croiseur</h2>
+        </div>
+        <div class="vaisseau-container">
+            <img src="img/starship2.jpg" alt="Vaisseau 3" class="vaisseau" onclick="choisirVaisseau(this, 'Destroyer', 'audio/select3.mp3')">
+            <h2 class="vaisseau-titre">Destroyer</h2>
+        </div>
+        <div class="vaisseau-container">
+            <img src="img/starship4.jpg" alt="Vaisseau 4" class="vaisseau" onclick="choisirVaisseau(this, 'Éclaireur', 'audio/select4.mp3')">
+            <h2 class="vaisseau-titre">Éclaireur</h2>
+        </div>
+        <div class="vaisseau-container">
+            <img src="img/starship3.jpg" alt="Vaisseau 5" class="vaisseau" onclick="choisirVaisseau(this, 'Chasseur', 'audio/select5.mp3')">
+            <h2 class="vaisseau-titre">Chasseur</h2>
+        </div>
+        <div class="vaisseau-container">
+            <img src="img/starship5.jpg" alt="Vaisseau 6" class="vaisseau" onclick="choisirVaisseau(this, 'Bombardier', 'audio/select6.mp3')">
+            <h2 class="vaisseau-titre">Bombardier</h2>
+        </div>
+        <div class="vaisseau-container">
+            <img src="img/starship7.png" alt="Vaisseau 6" class="vaisseau" onclick="choisirVaisseau(this, 'Bombardier', 'audio/select6.mp3')">
+            <h2 class="vaisseau-titre">Bombardier</h2>
+        </div>
+    </div>
+
+    <script>
+        function choisirVaisseau(element, nom, audioSrc) {
+            // Ajouter l'effet de clignotement
+            element.classList.add('clignote');
+            
+            // Créer et jouer l'audio
+            const audio = new Audio(audioSrc);
+            audio.play();
+            
+            // Stocker le vaisseau sélectionné dans le localStorage
+            localStorage.setItem('vaisseauChoisi', nom);
+            
+            // Attendre que l'audio soit joué avant la redirection
+            setTimeout(function() {
+                window.location.href = 'index.html';
+            }, 2000);
+        }
+
+        // Empêcher le glisser-déposer des images
+        document.querySelectorAll('img').forEach(img => {
+            img.addEventListener('dragstart', (e) => e.preventDefault());
+        });
+    </script>
+</body>
+</html>
