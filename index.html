@@ -179,30 +179,30 @@
       // =============== CHARGEMENT DES IMAGES ===============
       // Images principales
       const starshipImg = new Image();
-      starshipImg.src = "img/starship1.jpg";
+      starshipImg.src = "img/starship7.jpg";
  
       const bulletImg = new Image();
-      bulletImg.src = "img/bullets1.png";
+      bulletImg.src = "img/bullets1.jpg";
  
       // Images des ennemis (6 types)
       const enemyImgs = Array(6).fill().map(() => new Image());
       enemyImgs.forEach((img, i) => {
-          img.src = `img/enemy${i ? i + 1 : ""}.png`;
+          img.src = `img/enemy${i ? i + 1 : ""}.jpg`;
       });
  
       // Images des projectiles ennemis (3 types)
       const enemyBulletImgs = Array(3).fill().map(() => new Image());
       enemyBulletImgs.forEach((img, i) => {
-          img.src = `img/bullets${i + 2}.png`;
+          img.src = `img/bullets${i + 2}.jpg`;
       });
  
       // Images des bonus
       const livesImg = new Image();
-      livesImg.src = "img/lives.png";
+      livesImg.src = "img/lives.jpg";
  
       const powerUpImgs = Array(3).fill().map(() => new Image());
       powerUpImgs.forEach((img, i) => {
-          img.src = `img/powerUp${i ? i : ""}.png`;
+          img.src = `img/powerUp${i ? i : ""}.jpg`;
       });
  
       // =============== CONFIGURATION VIDÉO ===============
