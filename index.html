@@ -728,17 +728,67 @@ function checkCollisions() {
         }
  
         function gameOver() {
-            if (enemiesKilled < 5) {
-                playSound(soundEffects.humiliation);
-                setTimeout(() => {
-                    alert("GAME OVER");
-                    location.reload();
-                }, 2000);
-            } else {
-                alert("GAME OVER");
-                location.reload();
-            }
+    // Arrêter tous les sons en cours
+    Object.values(soundEffects).forEach(sound => {
+        sound.pause();
+        sound.currentTime = 0;
+    });
+    
+    // Afficher l'écran de game over
+    const gameOverContainer = document.getElementById("gameOverContainer");
+    const gameOverMessage = document.getElementById("gameOverMessage");
+    const continueCounter = document.getElementById("continueCounter");
+    
+    gameOverContainer.style.display = "block";
+    
+    // Compte à rebours pour redémarrer
+    let countdown = 5;
+    continueCounter.textContent = countdown;
+    
+    const countInterval = setInterval(() => {
+        countdown--;
+        continueCounter.textContent = countdown;
+        
+        if (countdown <= 0) {
+            clearInterval(countInterval);
+            continueCounter.style.display = "none";
+            gameOverMessage.style.display = "block";
+            
+            setTimeout(() => {
+                // Réinitialiser tous les états du jeu au lieu de recharger la page
+                gameOverContainer.style.display = "none";
+                gameOverMessage.style.display = "none";
+                continueCounter.style.display = "block";
+                
+                // Réinitialiser les variables
+                enemies = [];
+                enemyBullets = [];
+                starship.bullets = [];
+                redPoints = [];
+                enemiesKilled = 0;
+                playerLives = 3;
+                simultaneousKills = 0;
+                killsWithoutDeath = 0;
+                coins = 0;
+                starship.powerUpLevel = 0;
+                
+                // Mettre à jour l'interface
+                document.getElementById("livesCount").innerText = playerLives;
+                document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
+                document.getElementById("coinsCount").textContent = coins.toFixed(1);
+                
+                // Replacer le vaisseau
+                starship.x = canvas.width / 2;
+                starship.y = canvas.height - 50;
+                
+                // Jouer un son au redémarrage
+                if (enemiesKilled < 5) {
+                    playSound(soundEffects.humiliation);
+                }
+            }, 2000);
         }
+    }, 1000);
+}
  
 // =============== BOUCLE PRINCIPALE ===============
 function update() {
