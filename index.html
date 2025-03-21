@@ -391,8 +391,8 @@ const bonusManager = new BonusManager();
 const starship = {
     x: canvas.width / 2,
     y: canvas.height - 50,
-    width: 100,
-    height: 100,
+    width: 50,
+    height: 50,
     bullets: [],
     powerUpLevel: 0,
 };
@@ -594,8 +594,8 @@ function generateEnemies() {
         enemies.push({
             x: Math.random() * canvas.width,
             y: (Math.random() * canvas.height) / 2,
-            width: 100,
-            height: 100,
+            width: 50,
+            height: 50,
             vx: Math.random() * 4 - 2,
             vy: Math.random() * 4 - 2,
             type: Math.floor(Math.random() * 6)
