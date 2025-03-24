@@ -2,928 +2,201 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guerre-galactique</title>
-  <style>
-    /* Styles de base */
-body {
-    margin: 0;
-    overflow: hidden;
-    background: #000;
-    color: white;
-    font-family: Arial, sans-serif;
-}
+    <title>Space Shooter</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
 
-/* Canvas du jeu */
-#gameCanvas {
-    width: 100vw;
-    height: 100vh;
-    position: relative;
-}
+        .container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
 
-/* Interface utilisateur */
-.stats {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    font-size: 20px;
-    z-index: 10;
-}
+        .splash-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+            opacity: 0;
+            animation: fadeIn 1s ease-in forwards;
+            z-index: 1;
+        }
 
-#coinsCount {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    font-size: 20px;
-    z-index: 10;
-}
+        .menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+            color: #fff;
+            z-index: 2;
+        }
 
-/* Conteneur vidéo */
-#videoContainer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: none;
-    z-index: 1000;
-    background: rgba(0, 0, 0, 0.8);
-    overflow: hidden;
-}
+        .menu-option {
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 24px;
+            color: #fcfcfc;
+            background: none;
+            border: 2px solid #04fbac;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
 
-#powerUpVideo {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+        .menu-option:hover {
+            background: #04fbac;
+            color: #000;
+            transform: scale(1.1);
+        }
 
-/* Écrans de fin de jeu */
-#gameOverContainer {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2000;
-    background: rgba(0, 0, 0, 0.9);
-    color: red;
-    font-family: Arial, sans-serif;
-}
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
 
-#continueCounter {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 100px;
-    text-align: center;
-}
+        #splash-logo {
+            width: 300px;
+            height: 220px;
+            object-fit: contain;
+        }
 
-#gameOverMessage {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #000;
-    color: red;
-    padding: 50px;
-    font-size: 100px;
-    border: 5px solid red;
-    z-index: 2001;
-    text-align: center;
-}
-  </style>
+        #splash-logo {
+            width: 300%;
+            height: auto;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .blinking {
+            animation: blink 0.2s linear 8;
+        }
+
+        .video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            display: none;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
 </head>
 <body>
-    <!-- Interface utilisateur -->
-    <span id="coinsCount">0</span>
-    <div class="stats">
-        Vies: <span id="livesCount">3</span><br>
-        Ennemis tués: <span id="enemiesKilledCount">0</span>
+    <div class="container">
+        <div class="splash-screen">
+            <img id="splash-logo" src="/img/alien.jpg" alt="Space Shooter Logo">
+        </div>
+
+        <div class="menu-screen">
+            <a href="game.html?players=1" class="menu-option">1 JOUEUR</a>
+            <a href="game.html?players=2" class="menu-option">2 JOUEURS</a>
+            <a href="game.html?players=3" class="menu-option">3 JOUEURS</a>
+            <button class="menu-option" onclick="location.href='/pages/option.html'">OPTIONS</button>
+            <button class="menu-option" onclick="location.href='/pages/garage.html'">GARAGE</button>
+        </div>
+
+        <div class="video-container">
+            <video id="intro-video" src="/img/video1.mp4"></video>
+        </div>
     </div>
 
-    <!-- Canvas du jeu -->
-    <canvas id="gameCanvas"></canvas>
+    <script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const players = urlParams.get('players');
 
-    <!-- Conteneur vidéo pour les power-ups -->
-    <div id="videoContainer">
-        <video id="powerUpVideo" src="video/tirePlasma.mp4"></video>
-    </div>
+            if (players) {
+                const menuScreen = document.querySelector('.menu-screen');
+                menuScreen.style.display = 'none';
+            } else {
+                setTimeout(showMenu, 3000);
+            }
 
-    <!-- Conteneurs pour le game over -->
-    <div id="gameOverContainer">
-        <div id="continueCounter"></div>
-    </div>
-    <div id="gameOverMessage">GAME OVER</div>
-
-   <script>
-
-    // =============== INITIALISATION DU CANVAS ===============
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-// Gestion du redimensionnement du canvas
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
-
-// =============== CHARGEMENT DES SONS ===============
-// Création et configuration des sons du jeu
-const soundEffects = {
-    shoot: new Audio("audio/tire1.mp3"),
-    hit: new Audio("audio/hit.mp3"),
-    coin: new Audio("audio/coin.mp3"),
-    king: new Audio("audio/king.mp3"),
-    perfect: new Audio("audio/perfect.mp3"),
-    doubleKill: new Audio("audio/doubleKill.mp3"),
-    tripleKill: new Audio("audio/tripleKill.mp3"),
-    humiliation: new Audio("audio/humiliation.mp3"),
-    brutal: new Audio("audio/brutal.mp3"),
-    super: new Audio("audio/super.mp3"),
-    master: new Audio("audio/master.mp3"),
-    awesome: new Audio("audio/awesome.mp3")
-};
-
-// Configuration du son de tir en continu
-soundEffects.shoot.loop = true;
-
-// Configuration des volumes
-const volumes = {
-    shoot: 0.3,
-    hit: 1.0,
-    coin: 0.4,
-    king: 0.7,
-    perfect: 1.0,
-    doubleKill: 0.7,
-    tripleKill: 0.5,
-    humiliation: 1.0,
-    brutal: 1.0,
-    super: 1.0,
-    master: 1.0,
-    awesome: 1.0
-};
-
-// Application des volumes
-Object.keys(soundEffects).forEach(key => {
-    soundEffects[key].volume = volumes[key] || 1.0;
-});
-
-// =============== CHARGEMENT DES IMAGES ===============
-// Images principales
-const starshipImg = new Image();
-starshipImg.src = "img/starship7.jpg";
-
-const bulletImg = new Image();
-bulletImg.src = "img/bullets1.jpg";
-
-// Images des ennemis (6 types)
-const enemyImgs = Array(6).fill().map(() => new Image());
-enemyImgs.forEach((img, i) => {
-    img.src = `img/enemy${i ? i + 1 : ""}.jpg`;
-});
-
-// Images des projectiles ennemis (3 types)
-const enemyBulletImgs = Array(3).fill().map(() => new Image());
-enemyBulletImgs.forEach((img, i) => {
-    img.src = `img/bullets${i + 2}.jpg`;
-});
-
-// Images des bonus
-const livesImg = new Image();
-livesImg.src = "img/lives.jpg";
-
-const powerUpImgs = Array(3).fill().map(() => new Image());
-powerUpImgs.forEach((img, i) => {
-    img.src = `img/powerUp${i ? i : ""}.jpg`;
-});
-
-// =============== CONFIGURATION VIDÉO ===============
-const videoContainer = document.getElementById("videoContainer");
-const powerUpVideo = document.getElementById("powerUpVideo");
-
-// Points de synchronisation vidéo
-const timecodes = {
-    firstPause: 7,
-    firstResume: 9.06
-};
-
-// Gestion de la vidéo du power-up
-powerUpVideo.addEventListener("timeupdate", () => {
-    if (powerUpVideo.currentTime >= timecodes.firstPause &&
-        powerUpVideo.currentTime < timecodes.firstResume) {
-        powerUpVideo.currentTime = timecodes.firstResume;
-    }
-});
-
-// =============== CLASSES DU JEU ===============
-class GameObject {
-    constructor(x, y, speed = 1.5) {
-        this.x = x;
-        this.y = y;
-        this.speed = speed;
-        this.width = 30;
-        this.height = 30;
-        this.direction = {
-            x: (Math.random() * 2 - 1) * speed,
-            y: (Math.random() * 2 - 1) * speed
+            const menuOptions = document.querySelectorAll('.menu-option');
+            menuOptions.forEach(option => {
+                option.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    startGameSequence(this);
+                });
+            });
         };
-    }
 
-    moveRandomly(canvas) {
-        this.x += this.direction.x;
-        this.y += this.direction.y;
-
-        // Gestion des rebonds sur les bords
-        if (this.x <= 0 || this.x >= canvas.width - this.width) {
-            this.direction.x *= -1;
-        }
-        if (this.y <= 0 || this.y >= canvas.height - this.height) {
-            this.direction.y *= -1;
-        }
-
-        // Changement aléatoire de direction
-        if (Math.random() < 0.005) {
-            this.direction.x = (Math.random() * 2 - 1) * this.speed;
-            this.direction.y = (Math.random() * 2 - 1) * this.speed;
-        }
-    }
-}
-
-class BonusManager {
-    constructor() {
-        this.powerUps = [];
-        this.lives = [];
-    }
-
-    addPowerUp(type) {
-        this.powerUps.push({
-            x: Math.random() * canvas.width,
-            y: -50,
-            width: 40,
-            height: 40,
-            speed: 1,
-            type: type !== undefined ? type : Math.floor(Math.random() * 2)
-        });
-    }
-
-    addLife() {
-        this.lives.push({
-            x: Math.random() * canvas.width,
-            y: -50,
-            width: 40,
-            height: 40,
-            speed: 2
-        });
-    }
-
-    update() {
-        if (gameManager.isPaused) return;
-
-        // Mise à jour des power-ups
-        this.powerUps.forEach(powerUp => {
-            powerUp.y += powerUp.speed;
-            powerUp.x += Math.sin(Date.now() * 0.002) * 2;
-            powerUp.x = Math.max(0, Math.min(canvas.width - powerUp.width, powerUp.x));
-        });
-
-        // Mise à jour des vies
-        this.lives.forEach(life => {
-            life.y += life.speed;
-            life.x += Math.sin(Date.now() * 0.001) * 1.5;
-            life.x = Math.max(0, Math.min(canvas.width - life.width, life.x));
-        });
-
-        // Nettoyage des bonus hors écran
-        this.powerUps = this.powerUps.filter(powerUp => powerUp.y < canvas.height);
-        this.lives = this.lives.filter(life => life.y < canvas.height);
-    }
-
-    draw(ctx) {
-        // Dessin des power-ups
-        this.powerUps.forEach(powerUp => {
-            ctx.drawImage(
-                powerUpImgs[powerUp.type],
-                powerUp.x, powerUp.y,
-                powerUp.width, powerUp.height
-            );
-        });
-
-        // Dessin des vies
-        this.lives.forEach(life => {
-            ctx.drawImage(
-                livesImg,
-                life.x, life.y,
-                life.width, life.height
-            );
-        });
-    }
-
-    checkCollisions(starship, handlePowerUp, handleLife) {
-        // Vérification des collisions avec les power-ups
-        this.powerUps = this.powerUps.filter(powerUp => {
-            if (checkCollision(starship, powerUp)) {
-                handlePowerUp(powerUp.type);
-                return false;
-            }
-            return true;
-        });
-
-        // Vérification des collisions avec les vies
-        this.lives = this.lives.filter(life => {
-            if (checkCollision(starship, life)) {
-                handleLife();
-                return false;
-            }
-            return true;
-        });
-    }
-}
-
-class GameManager {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.isPaused = false;
-        this.setupPauseControl();
-    }
-
-    setupPauseControl() {
-        window.addEventListener("mousedown", (e) => {
-            if (e.button === 1) { // Clic milieu
-                e.preventDefault();
-                this.togglePause();
-            }
-        });
-    }
-
-    togglePause() {
-        this.isPaused = !this.isPaused;
-        if (this.isPaused) {
-            soundEffects.shoot.pause();
-        } else if (shooting) {
-            soundEffects.shoot.play();
-        }
-    }
-
-    draw(ctx) {
-        if (this.isPaused) {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "white";
-            ctx.font = "48px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText("PAUSE", canvas.width / 2, canvas.height / 2);
-        }
-    }
-}
-
-// =============== VARIABLES GLOBALES DU JEU ===============
-const gameManager = new GameManager(canvas);
-const bonusManager = new BonusManager();
-
-const starship = {
-    x: canvas.width / 2,
-    y: canvas.height - 50,
-    width: 100,
-    height: 100,
-    bullets: [],
-    powerUpLevel: 0,
-};
-
-let shooting = false;
-let enemies = [];
-let enemyBullets = [];
-let enemiesKilled = 0;
-let playerLives = 3;
-let simultaneousKills = 0;
-let killTimer = null;
-let redPoints = [];
-let coins = 0;
-let killsWithoutDeath = 0;
-
-// =============== FONCTIONS UTILITAIRES ===============
-function playSound(sound) {
-    sound.currentTime = 0;
-    sound.play();
-}
-
-function checkCollision(rect1, rect2) {
-    return (
-        rect1.x < rect2.x + rect2.width &&
-        rect1.x + rect1.width > rect2.x &&
-        rect1.y < rect2.y + rect2.height &&
-        rect1.y + rect1.height > rect2.y
-    );
-}
-
-// =============== GESTION DES ACHIEVEMENTS ===============
-function handleKill() {
-    simultaneousKills++;
-    enemiesKilled++;
-    killsWithoutDeath++;
-    document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
-
-    // Sons d'achievements
-    if (killsWithoutDeath === 20) {
-        playSound(soundEffects.brutal);
-    } else if (killsWithoutDeath === 30) {
-        playSound(soundEffects.super);
-    } else if (killsWithoutDeath === 40) {
-        playSound(soundEffects.master);
-    } else if (killsWithoutDeath === 60) {
-        playSound(soundEffects.awesome);
-    }
-
-    // Gestion des bonus
-    if (enemiesKilled % 30 === 0) {
-        bonusManager.addPowerUp(2);
-        playSound(soundEffects.king);
-    } else if (enemiesKilled % 5 === 0) {
-        if (Math.random() < 0.5) {
-            bonusManager.addPowerUp();
-        } else {
-            bonusManager.addLife();
-        }
-    }
-
-    // Gestion des kills multiples
-    clearTimeout(killTimer);
-    killTimer = setTimeout(() => {
-        if (simultaneousKills === 2) {
-            playSound(soundEffects.doubleKill);
-        } else if (simultaneousKills >= 3) {
-            playSound(soundEffects.tripleKill);
-        }
-        simultaneousKills = 0;
-    }, 200);
-}
-
-// =============== GESTION DES POWER-UPS ===============
-function activatePowerUp(powerUpType) {
-    if (powerUpType === 2) {
-        gameManager.isPaused = true;
-        videoContainer.style.display = "block";
-        powerUpVideo.currentTime = 0;
-
-        powerUpVideo.play().catch((error) => {
-            console.error("Erreur de lecture vidéo:", error);
-            endPowerUpVideo();
-        });
-
-        powerUpVideo.onended = endPowerUpVideo;
-    } else {
-        starship.powerUpLevel = powerUpType + 1;
-        setTimeout(() => {
-            if (starship.powerUpLevel === powerUpType + 1) {
-                starship.powerUpLevel = 0;
-            }
-        }, 10000);
-    }
-}
-
-function endPowerUpVideo() {
-    videoContainer.style.display = "none";
-    gameManager.isPaused = false;
-    enemies = [];
-    enemyBullets = [];
-    starship.powerUpLevel = 3;
-    setTimeout(() => {
-        if (starship.powerUpLevel === 3) {
-            starship.powerUpLevel = 0;
-        }
-    }, 10000);
-}
-
-// =============== FONCTIONS DE COMBAT ===============
-function shootBullet() {
-    if (!shooting || gameManager.isPaused) return;
-
-    switch (starship.powerUpLevel) {
-        case 0: // Tir normal
-            starship.bullets.push({
-                x: starship.x + starship.width / 2 - 2.5,
-                y: starship.y,
-                width: 5,
-                height: 10,
-                speed: 20
-            });
-            break;
-        case 1: // Tir triple
-            [-15, -2.5, 10].forEach((xOffset) => {
-                starship.bullets.push({
-                    x: starship.x + starship.width / 2 + xOffset,
-                    y: starship.y,
-                    width: 10,
-                    height: 15,
-                    speed: 7
-                });
-            });
-            break;
-        case 2: // Tir spécial
-        case 3:
-            const bulletConfigs = [
-                { vx: 0, vy: 0 },
-                { vx: 5, vy: 0 },
-                { vx: -5, vy: 0 },
-                { vx: 5, vy: 5 },
-                { vx: -5, vy: 5 }
-            ];
-            bulletConfigs.forEach((config) => {
-                starship.bullets.push({
-                    x: starship.x + starship.width / 2 - 2.5,
-                    y: starship.y,
-                    width: 10,
-                    height: 15,
-                    speed: 7,
-                    ...config
-                });
-            });
-            break;
-    }
-}
-
-function shootEnemyBullets() {
-    if (gameManager.isPaused) return;
-
-    enemies.forEach((enemy) => {
-        if (enemy.type === 1) { // Tir latéral pour type 1
-            enemyBullets.push(
-                {
-                    x: enemy.x,
-                    y: enemy.y + enemy.height / 2,
-                    width: 10,
-                    height: 15,
-                    speed: 0,
-                    vx: -5,
-                    type: 1
-                },
-                {
-                    x: enemy.x + enemy.width,
-                    y: enemy.y + enemy.height / 2,
-                    width: 10,
-                    height: 15,
-                    speed: 0,
-                    vx: 5,
-                    type: 1
-                }
-            );
-        } else { // Tir normal
-            enemyBullets.push({
-                x: enemy.x + enemy.width / 2 - 2.5,
-                y: enemy.y + enemy.height,
-                width: 10,
-                height: 15,
-                speed: 3,
-                type: Math.floor(Math.random() * 3)
-            });
-        }
-    });
-}
-
-function generateEnemies() {
-    if (gameManager.isPaused) return;
-
-    for (let i = 0; i < 7; i++) {
-        enemies.push({
-            x: Math.random() * canvas.width,
-            y: (Math.random() * canvas.height) / 2,
-            width: 100,
-            height: 100,
-            vx: Math.random() * 4 - 2,
-            vy: Math.random() * 4 - 2,
-            type: Math.floor(Math.random() * 6)
-        });
-    }
-}
-
-// =============== FONCTIONS DE DESSIN ===============
-function drawStarship() {
-    ctx.drawImage(starshipImg, starship.x, starship.y, starship.width, starship.height);
-}
-
-function drawBullets() {
-    starship.bullets = starship.bullets.filter((bullet) => bullet.y > 0);
-    starship.bullets.forEach((bullet) => {
-        ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
-        bullet.y -= bullet.speed;
-        if (bullet.vx) bullet.x += bullet.vx;
-        if (bullet.vy) bullet.y += bullet.vy;
-    });
-}
-
-function drawEnemies() {
-    enemies.forEach((enemy, index) => {
-        ctx.drawImage(enemyImgs[enemy.type], enemy.x, enemy.y, enemy.width, enemy.height);
-        enemy.x += enemy.vx;
-        enemy.y += enemy.vy;
-
-        if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) enemy.vx *= -1;
-        if (enemy.y <= 0) enemy.vy *= -1;
-        if (enemy.y + enemy.height >= canvas.height) enemies.splice(index, 1);
-    });
-}
-
-function drawEnemyBullets() {
-    enemyBullets = enemyBullets.filter(
-        (bullet) => bullet.y < canvas.height && bullet.x > 0 && bullet.x < canvas.width
-    );
-    enemyBullets.forEach((bullet) => {
-        ctx.drawImage(enemyBulletImgs[bullet.type], bullet.x, bullet.y, bullet.width, bullet.height);
-        if (bullet.vx) bullet.x += bullet.vx;
-        else bullet.y += bullet.speed;
-    });
-}
-
-// =============== GESTION DES COLLISIONS ===============
-function checkCollisions() {
-    // Collisions avec les ennemis et les balles
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i];
-        let enemyHit = false;
-
-        // Vérification des collisions balles-ennemis
-        for (let j = starship.bullets.length - 1; j >= 0; j--) {
-            const bullet = starship.bullets[j];
-            if (checkCollision(bullet, enemy)) {
-                playSound(soundEffects.hit);
-                starship.bullets.splice(j, 1);
-                enemyHit = true;
-
-                // Génération des points rouges
-                for (let k = 0; k < 30; k++) {
-                    redPoints.push({
-                        x: enemy.x + Math.random() * enemy.width,
-                        y: enemy.y + Math.random() * enemy.height
-                    });
-                }
-
-                handleKill();
-                break;
-            }
-        }
-
-        if (enemyHit) {
-            enemies.splice(i, 1);
-            continue;
-        }
-
-        // Collision vaisseau-ennemi
-        if (checkCollision(starship, enemy)) {
-            playSound(soundEffects.hit);
-            playerLives--;
-            killsWithoutDeath = 0;
-            document.getElementById("livesCount").innerText = playerLives;
-            enemies.splice(i, 1);
-            if (playerLives <= 0) gameOver();
-        }
-    }
-
-    // Collisions avec les balles ennemies
-    enemyBullets = enemyBullets.filter((bullet) => {
-        if (checkCollision(starship, bullet)) {
-            playSound(soundEffects.hit);
-            playerLives--;
-            killsWithoutDeath = 0;
-            document.getElementById("livesCount").innerText = playerLives;
-            if (playerLives <= 0) gameOver();
-            return false;
-        }
-        return true;
-    });
-
-    // Vérification des collisions avec les bonus via BonusManager
-    bonusManager.checkCollisions(
-        starship,
-        (type) => activatePowerUp(type),
-        () => {
-            playerLives++;
-            document.getElementById("livesCount").innerText = playerLives;
-        }
-    );
-}
-
-function drawRedPoints() {
-    redPoints.forEach((point, index) => {
-        ctx.fillStyle = "red";
-        ctx.fillRect(point.x, point.y, 2, 2);
-
-        point.y += 1; // Vitesse de chute
-
-        const dx = starship.x - point.x;
-        const dy = starship.y - point.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        // Attraction vers le vaisseau
-        if (distance < 100) {
-            point.x += (dx / distance) * 3;
-            point.y += (dy / distance) * 3;
-        }
-
-        // Collection des points
-        if (Math.abs(point.x - starship.x) < 30 && Math.abs(point.y - starship.y) < 30) {
-            coins += 0.5;
-            document.getElementById("coinsCount").textContent = coins.toFixed(1);
-            playSound(soundEffects.coin);
-            redPoints.splice(index, 1);
-        }
-
-        // Suppression des points hors écran
-        if (point.y > canvas.height) {
-            redPoints.splice(index, 1);
-        }
-    });
-}
-
-function gameOver() {
-    // Arrêter tous les sons en cours
-    Object.values(soundEffects).forEach(sound => {
-        sound.pause();
-        sound.currentTime = 0;
-    });
-    
-    // Afficher l'écran de game over
-    const gameOverContainer = document.getElementById("gameOverContainer");
-    const gameOverMessage = document.getElementById("gameOverMessage");
-    const continueCounter = document.getElementById("continueCounter");
-    
-    gameOverContainer.style.display = "block";
-    
-    // Compte à rebours pour redémarrer
-    let countdown = 5;
-    continueCounter.textContent = countdown;
-    
-    const countInterval = setInterval(() => {
-        countdown--;
-        continueCounter.textContent = countdown;
-        
-        if (countdown <= 0) {
-            clearInterval(countInterval);
-            continueCounter.style.display = "none";
-            gameOverMessage.style.display = "block";
+        function showMenu() {
+            const menuScreen = document.querySelector('.menu-screen');
+            menuScreen.style.display = 'flex';
+            menuScreen.style.opacity = '0';
+            menuScreen.style.transition = 'opacity 1s ease-in';
             
             setTimeout(() => {
-                // Réinitialiser tous les états du jeu
-                gameOverContainer.style.display = "none";
-                gameOverMessage.style.display = "none";
-                continueCounter.style.display = "block";
-                
-                // Réinitialiser les variables
-                enemies = [];
-                enemyBullets = [];
-                starship.bullets = [];
-                redPoints = [];
-                enemiesKilled = 0;
-                playerLives = 3;
-                simultaneousKills = 0;
-                killsWithoutDeath = 0;
-                coins = 0;
-                starship.powerUpLevel = 0;
-                
-                // Mettre à jour l'interface
-                document.getElementById("livesCount").innerText = playerLives;
-                document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
-                document.getElementById("coinsCount").textContent = coins.toFixed(1);
-                
-                // Replacer le vaisseau
-                starship.x = canvas.width / 2;
-                starship.y = canvas.height - 50;
-                
-                // Jouer un son au redémarrage
-                if (enemiesKilled < 5) {
-                    playSound(soundEffects.humiliation);
-                }
-            }, 2000);
+                menuScreen.style.opacity = '1';
+            }, 100);
         }
-    }, 1000);
-}
 
-// =============== BOUCLE PRINCIPALE ===============
-function update() {
-    if (gameManager.isPaused) {
-        requestAnimationFrame(update);
-        return;
-    }
+        function startGameSequence(button) {
+            button.classList.add('blinking');
+            
+            setTimeout(() => {
+                document.querySelector('.menu-screen').style.display = 'none';
+                const videoContainer = document.querySelector('.video-container');
+                const video = document.getElementById('intro-video');
 
-    try {
-        // Nettoyage du canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Dessin des éléments du jeu
-        drawStarship();
-        drawBullets();
-        drawEnemies();
-        drawEnemyBullets();
-        drawRedPoints();
-
-        // Mise à jour et dessin des bonus
-        bonusManager.update();
-        bonusManager.draw(ctx);
-
-        // Gestion de la pause
-        gameManager.draw(ctx);
-
-        // Vérification des collisions
-        checkCollisions();
-
-    } catch (error) {
-        console.error("Erreur dans la boucle de jeu:", error);
-    }
-
-    requestAnimationFrame(update);
-}
-
-
-// =============== ÉVÉNEMENTS DU JEU ===============
-// Gestion du mouvement du vaisseau
-window.addEventListener("mousemove", (event) => {
-    if (!gameManager.isPaused) {
-        starship.x = Math.max(
-            0,
-            Math.min(
-                canvas.width - starship.width,
-                event.clientX - starship.width / 2
-            )
-        );
-        starship.y = Math.max(
-            0,
-            Math.min(
-                canvas.height - starship.height,
-                event.clientY - starship.height / 2 + 20
-            )
-        );
-    }
-});
-
-// Gestion des tirs
-window.addEventListener("mousedown", (e) => {
-    if (e.button === 0) { // Clic gauche
-        shooting = true;
-        soundEffects.shoot.play();
-    }
-});
-
-window.addEventListener("mouseup", (e) => {
-    if (e.button === 0) { // Clic gauche
-        shooting = false;
-        soundEffects.shoot.pause();
-        soundEffects.shoot.currentTime = 0;
-    }
-});
-
-// =============== DÉMARRAGE DU JEU ===============
-// Attendre que toutes les images soient chargées
-Promise.all([
-    ...enemyImgs,
-    ...enemyBulletImgs,
-    ...powerUpImgs,
-    starshipImg,
-    bulletImg,
-    livesImg
-].map(img => new Promise(resolve => {
-    img.onload = resolve;
-    img.onerror = () => {
-        console.error("Erreur de chargement pour:", img.src);
-        resolve();
-    };
-})))
-.then(() => {
-    try {
-        // Démarrage de la boucle de jeu
-        update();
-
-        // Configuration des intervalles
-        const intervals = [
-            setInterval(shootBullet, 100),        // Tir des balles
-            setInterval(generateEnemies, 5000),   // Génération des ennemis
-            setInterval(shootEnemyBullets, 1000), // Tir des balles ennemies
-            setInterval(() => {                   // Tirs spéciaux des ennemis
-                if (!gameManager.isPaused) {
-                    enemies.forEach(enemy => {
-                        if (enemy.type === 1) shootEnemyBullets();
-                    });
+                if (!video) {
+                    console.error("Vidéo non trouvée");
+                    window.location.href = button.href;
+                    return;
                 }
-            }, 500)
-        ];
 
-        // Nettoyage à la fermeture
-        window.addEventListener("beforeunload", () => {
-            intervals.forEach(clearInterval);
-        });
+                videoContainer.style.display = 'block';
+                video.preload = 'auto';
+                video.muted = false;
+                video.play();
 
-    } catch (error) {
-        console.error("Erreur au démarrage du jeu:", error);
-    }
-})
-.catch(error => {
-    console.error("Erreur lors du chargement des ressources:", error);
-});
-   </script>
+                video.onended = () => {
+                    window.location.href = button.href;
+                };
+            }, 1600);
+        }
+    </script>
 </body>
 </html>
