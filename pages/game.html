@@ -287,7 +287,7 @@ const starshipImg = new Image();
 // Chargement du vaisseau par défaut en cas d'erreur
 starshipImg.onerror = function() {
     console.error("Erreur de chargement du vaisseau:", this.src);
-    this.src = "img/starship7.jpg"; // Image de secours
+    this.src = "/img/starship7.jpg"; // Image de secours
 };
 
 function getSelectedShip() {
@@ -310,13 +310,13 @@ function getSelectedShip() {
     
     // Si trouvé, utiliser le vaisseau choisi
     if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
-        console.log("Image chargée:", `img/${vaisseauImages[vaisseauChoisi]}`);
-        return `img/${vaisseauImages[vaisseauChoisi]}`;
+        console.log("Image chargée:", `/img/${vaisseauImages[vaisseauChoisi]}`);
+        return `/img/${vaisseauImages[vaisseauChoisi]}`;
     }
     
     // Image par défaut
     console.log("Image par défaut chargée");
-    return "img/starship7.jpg";
+    return "/img/starship7.jpg";
 }
 
 // Charger l'image du vaisseau
@@ -327,7 +327,7 @@ const starship2Img = isMultiplayer ? new Image() : null;
 if (isMultiplayer) {
     starship2Img.onerror = function() {
         console.error("Erreur de chargement du vaisseau 2:", this.src);
-        this.src = "img/starship6.jpg"; // Image de secours
+        this.src = "/img/starship6.jpg"; // Image de secours
     };
     
     // Fonction pour charger le vaisseau du joueur 2
@@ -348,13 +348,13 @@ if (isMultiplayer) {
         
         // Si trouvé, utiliser le vaisseau choisi
         if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
-            console.log("Image chargée pour joueur 2:", `img/${vaisseauImages[vaisseauChoisi]}`);
-            return `img/${vaisseauImages[vaisseauChoisi]}`;
+            console.log("Image chargée pour joueur 2:", `/img/${vaisseauImages[vaisseauChoisi]}`);
+            return `/img/${vaisseauImages[vaisseauChoisi]}`;
         }
         
         // Image par défaut
         console.log("Image par défaut chargée pour joueur 2");
-        return "img/starship6.jpg";
+        return "/img/starship6.jpg";
     }
     
     // Charger l'image du vaisseau du joueur 2
@@ -366,7 +366,7 @@ const starship3Img = isTriplePlayer ? new Image() : null;
 if (isTriplePlayer) {
     starship3Img.onerror = function() {
         console.error("Erreur de chargement du vaisseau 3:", this.src);
-        this.src = "img/starship5.jpg"; // Image de secours
+        this.src = "/img/starship5.jpg"; // Image de secours
     };
     
     // Fonction pour charger le vaisseau du joueur 3
@@ -393,7 +393,7 @@ if (isTriplePlayer) {
         
         // Image par défaut
         console.log("Image par défaut chargée pour joueur 3");
-        return "img/starship5.jpg";
+        return "/img/starship5.jpg";
     }
     
     // Charger l'image du vaisseau du joueur 3
@@ -402,27 +402,27 @@ if (isTriplePlayer) {
 
 // Autres images
 const bulletImg = new Image();
-bulletImg.src = "img/bullets1.jpg";
+bulletImg.src = "/img/bullets1.jpg";
 
 // Images des ennemis (6 types)
 const enemyImgs = Array(6).fill().map(() => new Image());
 enemyImgs.forEach((img, i) => {
-    img.src = `img/enemy${i ? i + 1 : ""}.jpg`;
+    img.src = `/img/enemy${i ? i + 1 : ""}.jpg`;
 });
 
 // Images des projectiles ennemis (3 types)
 const enemyBulletImgs = Array(3).fill().map(() => new Image());
 enemyBulletImgs.forEach((img, i) => {
-    img.src = `img/bullets${i + 2}.jpg`;
+    img.src = `/img/bullets${i + 2}.jpg`;
 });
 
 // Images des bonus
 const livesImg = new Image();
-livesImg.src = "img/lives.jpg";
+livesImg.src = "/img/lives.jpg";
 
 const powerUpImgs = Array(3).fill().map(() => new Image());
 powerUpImgs.forEach((img, i) => {
-    img.src = `img/powerUp${i ? i : ""}.jpg`;
+    img.src = `/img/powerUp${i ? i : ""}.jpg`;
 });
 
 // =============== CONFIGURATION VIDÉO ===============
