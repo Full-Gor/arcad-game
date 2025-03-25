@@ -97,8 +97,72 @@
             z-index: 2001;
             text-align: center;
         }
-        #gameCanvas {
-    cursor: none;
+
+        .player-stats {
+            position: fixed;
+            right: 20px;
+            top: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            z-index: 10;
+        }
+
+        .player-stats-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .player1-stats {
+            background: rgba(4, 251, 172, 0.2);
+        }
+
+        .player2-stats {
+            background: rgba(255, 127, 80, 0.2);
+        }
+
+        .player3-stats {
+            background: rgba(255, 255, 80, 0.2);
+        }
+        /* Style pour l'indicateur de vie du boss */
+#bossHealthBar {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid red;
+    display: none;
+    z-index: 10;
+}
+
+#bossHealthFill {
+    height: 100%;
+    background: linear-gradient(to right, #ff0000, #ff6600);
+    width: 100%;
+    transition: width 0.3s;
+}
+
+@keyframes rotateBackground {
+    from { background-position: 0 0; }
+    to { background-position: 100% 0; }
+}
+
+.scrolling-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('/img/back1.png') repeat-x;
+    background-size: auto 100%;
+    z-index: -1;
+    animation: rotateBackground 60s linear infinite;
 }
     </style>
 </head>
@@ -109,9 +173,32 @@
         Vies: <span id="livesCount">3</span><br>
         Ennemis tués: <span id="enemiesKilledCount">0</span>
     </div>
+    <!-- Fond d'écran défilant (sera affiché après la destruction du boss) -->
+    <div id="scrollingBackground" class="scrolling-background" style="display: none;"></div>
+   
+    <!-- Barre de vie du boss -->
+    <div id="bossHealthBar">
+        <div id="bossHealthFill"></div>
+    </div>
 
     <div class="player-mode" id="playerModeIndicator" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 20px; color: #04fbac; z-index: 10;">Mode 1 joueur</div>
-
+    <div id="playerStats" class="player-stats" style="display: none;">
+        <div id="player1Stats" class="player-stats-item player1-stats">
+            Player 1: <span id="p1Lives">3</span> vies |
+            Points: <span id="p1Points">0</span> |
+            Kills: <span id="p1Kills">0</span>
+        </div>
+        <div id="player2Stats" class="player-stats-item player2-stats">
+            Player 2: <span id="p2Lives">3</span> vies |
+            Points: <span id="p2Points">0</span> |
+            Kills: <span id="p2Kills">0</span>
+        </div>
+        <div id="player3Stats" class="player-stats-item player3-stats">
+            Player 3: <span id="p3Lives">3</span> vies |
+            Points: <span id="p3Points">0</span> |
+            Kills: <span id="p3Kills">0</span>
+        </div>
+    </div>
     <!-- Canvas du jeu -->
     <canvas id="gameCanvas"></canvas>
 
@@ -127,30 +214,18 @@
     <div id="gameOverMessage">GAME OVER</div>
 
     <script>
-       // Script du jeu (placez ce code à l'intérieur de la balise <script>)
+      // Configuration initiale
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-// Récupérer les paramètres de difficulté du localStorage
+// Récupération des paramètres de difficulté
 const enemySpeedMultiplier = parseFloat(localStorage.getItem('enemySpeed')) || 1;
 const enemyBulletSpeedMultiplier = parseFloat(localStorage.getItem('enemyBulletSpeed')) || 3;
 const powerUpFrequency = parseInt(localStorage.getItem('powerUpFrequency')) || 5;
 const livesFrequency = parseInt(localStorage.getItem('livesFrequency')) || 5;
 
-console.log("Niveau de difficulté chargé:", 
-            localStorage.getItem('gameDifficulty') || "moyen (par défaut)");
-
-// =============== INITIALISATION DU CANVAS ===============
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-// Fonction pour redimensionner le canvas
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
-
-// Variables pour le contrôle de fps et performance
+// Variables globales
+let gameIsRunning = true;
 let lastFrameTime = 0;
 let deltaTime = 0;
 let fpsCounter = 0;
@@ -158,13 +233,7 @@ let fpsTimer = 0;
 const fpsLimit = 60;
 const frameDuration = 1000 / fpsLimit;
 
-// =============== VARIABLES GLOBALES DU JEU ===============
-// Variables pour la détection de blocage
-let lastKillTime = Date.now();
-let lastEnemyCount = 0;
-let powerUpTimeoutId = null;
-
-// Variables pour les objets du jeu
+// Variables de jeu
 let shooting = false;
 let enemies = [];
 let enemyBullets = [];
@@ -175,20 +244,34 @@ let killTimer = null;
 let redPoints = [];
 let coins = 0;
 let killsWithoutDeath = 0;
-let gameIsRunning = true;
+let lastKillTime = Date.now();
+let lastEnemyCount = 0;
+let powerUpTimeoutId = null;
 
-// Vérifier si nous sommes en mode multijoueur
+// Boss configuration
+let bossActive = false;
+let boss = null;
+const bossImg = new Image();
+bossImg.src = "/img/boss.jpg";
+let bossHealth = 20;
+let bossRotation = 0;
+let bossShootTimer = 0;
+let bossHitEffect = false;
+let bossHitEffectTimer = 0;
+let backgroundActive = false;
+
+// Configuration multijoueur
 const urlParams = new URLSearchParams(window.location.search);
 const playersCount = urlParams.get('players') || '1';
 const isMultiplayer = playersCount !== '1';
 const isTriplePlayer = playersCount === '3';
 
-// Mettre à jour l'indicateur de mode
-document.getElementById('playerModeIndicator').textContent = 
-    isTriplePlayer ? 'Mode 3 joueurs' : 
+// Mise à jour de l'indicateur de mode
+document.getElementById('playerModeIndicator').textContent =
+    isTriplePlayer ? 'Mode 3 joueurs' :
     (isMultiplayer ? 'Mode 2 joueurs' : 'Mode 1 joueur');
 
-// Objet vaisseau du joueur principal
+// Configuration des vaisseaux
 const starship = {
     x: canvas.width / 2,
     y: canvas.height - 50,
@@ -197,10 +280,16 @@ const starship = {
     bullets: [],
     powerUpLevel: 0,
     player: 1,
-    powerUpTimeoutId: null
+    powerUpTimeoutId: null,
+    lives: 3,
+    isActive: true,
+    stunned: false,
+    stunnedTimeout: null,
+    redPointsCollected: 0,
+    shield: false,
+    shieldTimeout: null
 };
 
-// Objet vaisseau du joueur 2 (si mode multijoueur)
 const starship2 = isMultiplayer ? {
     x: canvas.width / 2 + 100,
     y: canvas.height - 50,
@@ -209,10 +298,16 @@ const starship2 = isMultiplayer ? {
     bullets: [],
     powerUpLevel: 0,
     player: 2,
-    powerUpTimeoutId: null
+    powerUpTimeoutId: null,
+    lives: 3,
+    isActive: true,
+    stunned: false,
+    stunnedTimeout: null,
+    redPointsCollected: 0,
+    shield: false,
+    shieldTimeout: null
 } : null;
 
-// Objet vaisseau du joueur 3 (si mode 3 joueurs)
 const starship3 = isTriplePlayer ? {
     x: canvas.width / 2 - 100,
     y: canvas.height - 50,
@@ -221,26 +316,29 @@ const starship3 = isTriplePlayer ? {
     bullets: [],
     powerUpLevel: 0,
     player: 3,
-    powerUpTimeoutId: null
+    powerUpTimeoutId: null,
+    lives: 3,
+    isActive: true,
+    stunned: false,
+    stunnedTimeout: null,
+    redPointsCollected: 0,
+    shield: false,
+    shieldTimeout: null
 } : null;
 
-// Variables pour contrôler les joueurs 2 et 3
+// Variables de contrôle
 let keyUp = false, keyDown = false, keyLeft = false, keyRight = false, keySpace = false;
 let keyW = false, keyS = false, keyA = false, keyD = false, keyE = false;
 let shooting2 = false;
 let shooting3 = false;
-
-// Variables pour le contrôle de la manette
 let gamepadConnected = false;
 let gamepadIndex = null;
+let shipRotation = 0;
+const maxRotation = 20;
+const rotationSpeed = 0.5;
+let lastShipX = canvas.width/2;
 
-let shipRotation = 0;           // Angle de rotation actuel
-const maxRotation = 20;         // Rotation maximale en degrés
-const rotationSpeed = 0.5;      // Vitesse de rotation
-let lastShipX = canvas.width/2; // Dernière position X du vaisseau
-
-// =============== CHARGEMENT DES SONS ===============
-// Sons du jeu
+// Chargement des sons
 const soundEffects = {
     shoot: new Audio("audio/tire1.mp3"),
     hit: new Audio("audio/hit.mp3"),
@@ -253,13 +351,13 @@ const soundEffects = {
     brutal: new Audio("audio/brutal.mp3"),
     super: new Audio("audio/super.mp3"),
     master: new Audio("audio/master.mp3"),
-    awesome: new Audio("audio/awesome.mp3")
+    awesome: new Audio("audio/awesome.mp3"),
+    bossAppear: new Audio("audio/king.mp3"),
+    bossHit: new Audio("audio/hit.mp3"),
+    bossDeath: new Audio("audio/awesome.mp3")
 };
 
-// Configuration du son de tir en continu
-soundEffects.shoot.loop = true;
-
-// Volumes des sons
+// Configuration des volumes
 const volumes = {
     shoot: 0.3,
     hit: 1.0,
@@ -272,184 +370,39 @@ const volumes = {
     brutal: 1.0,
     super: 1.0,
     master: 1.0,
-    awesome: 1.0
+    awesome: 1.0,
+    bossAppear: 1.0,
+    bossHit: 0.5,
+    bossDeath: 1.0
 };
 
-// Application des volumes
 Object.keys(soundEffects).forEach(key => {
     soundEffects[key].volume = volumes[key] || 1.0;
 });
 
-// =============== CHARGEMENT DES IMAGES ===============
-// Gestion du vaisseau avec sélection localStorage
+// Chargement des images
 const starshipImg = new Image();
-
-// Chargement du vaisseau par défaut en cas d'erreur
-starshipImg.onerror = function() {
-    console.error("Erreur de chargement du vaisseau:", this.src);
-    this.src = "/img/starship7.jpg"; // Image de secours
-};
-
-function getSelectedShip() {
-    // En mode multijoueur, on utilise vaisseauChoisiP1
-    const key = isMultiplayer ? 'vaisseauChoisiP1' : 'vaisseauChoisi';
-    const vaisseauChoisi = localStorage.getItem(key);
-    console.log("Vaisseau choisi dans localStorage:", vaisseauChoisi);
-    
-    // Correspondance entre noms et fichiers
-    const vaisseauImages = {
-        'Intercepteur': 'starship6.jpg',
-        'Croiseur': 'starship1.jpg',
-        'Destroyer': 'starship2.jpg',
-        'Chasseur': 'starship3.jpg',
-        'Éclaireur': 'starship4.jpg',
-        'Bombardier': 'starship5.jpg',
-        'aéronef': 'starship7.jpg'
-    };
-    
-    
-    // Si trouvé, utiliser le vaisseau choisi
-    if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
-        console.log("Image chargée:", `/img/${vaisseauImages[vaisseauChoisi]}`);
-        return `/img/${vaisseauImages[vaisseauChoisi]}`;
-    }
-    
-    // Image par défaut
-    console.log("Image par défaut chargée");
-    return "/img/starship7.jpg";
-}
-
-// Charger l'image du vaisseau
-starshipImg.src = getSelectedShip();
-
-// Charger l'image du vaisseau du joueur 2
 const starship2Img = isMultiplayer ? new Image() : null;
-if (isMultiplayer) {
-    starship2Img.onerror = function() {
-        console.error("Erreur de chargement du vaisseau 2:", this.src);
-        this.src = "/img/starship6.jpg"; // Image de secours
-    };
-    
-    // Fonction pour charger le vaisseau du joueur 2
-    function getSelectedShipP2() {
-        const vaisseauChoisi = localStorage.getItem('vaisseauChoisiP2');
-        console.log("Vaisseau 2 choisi dans localStorage:", vaisseauChoisi);
-        
-        // Correspondance entre noms et fichiers
-        const vaisseauImages = {
-            'Intercepteur': 'starship6.jpg',
-            'Croiseur': 'starship1.jpg',
-            'Destroyer': 'starship2.jpg',
-            'Chasseur': 'starship3.jpg',
-            'Éclaireur': 'starship4.jpg',
-            'Bombardier': 'starship5.jpg',
-            'aéronef': 'starship7.jpg'
-        };
-        
-        // Si trouvé, utiliser le vaisseau choisi
-        if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
-            console.log("Image chargée pour joueur 2:", `/img/${vaisseauImages[vaisseauChoisi]}`);
-            return `/img/${vaisseauImages[vaisseauChoisi]}`;
-        }
-        
-        // Image par défaut
-        console.log("Image par défaut chargée pour joueur 2");
-        return "/img/starship6.jpg";
-    }
-    
-    // Charger l'image du vaisseau du joueur 2
-    starship2Img.src = getSelectedShipP2();
-}
-
-// Charger l'image du vaisseau du joueur 3
 const starship3Img = isTriplePlayer ? new Image() : null;
-if (isTriplePlayer) {
-    starship3Img.onerror = function() {
-        console.error("Erreur de chargement du vaisseau 3:", this.src);
-        this.src = "/img/starship5.jpg"; // Image de secours
-    };
-    
-    // Fonction pour charger le vaisseau du joueur 3
-    function getSelectedShipP3() {
-        const vaisseauChoisi = localStorage.getItem('vaisseauChoisiP3');
-        console.log("Vaisseau 3 choisi dans localStorage:", vaisseauChoisi);
-        
-        // Correspondance entre noms et fichiers
-        const vaisseauImages = {
-            'Intercepteur': 'starship6.jpg',
-            'Croiseur': 'starship1.jpg',
-            'Destroyer': 'starship2.jpg',
-            'Chasseur': 'starship3.jpg',
-            'Éclaireur': 'starship4.jpg',
-            'Bombardier': 'starship5.jpg',
-            'aéronef': 'starship7.jpg'
-        };
-        
-        // Si trouvé, utiliser le vaisseau choisi
-        if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
-            console.log("Image chargée pour joueur 3:", `img/${vaisseauImages[vaisseauChoisi]}`);
-            return `img/${vaisseauImages[vaisseauChoisi]}`;
-        }
-        
-        // Image par défaut
-        console.log("Image par défaut chargée pour joueur 3");
-        return "/img/starship5.jpg";
-    }
-    
-    // Charger l'image du vaisseau du joueur 3
-    starship3Img.src = getSelectedShipP3();
-}
-
-// Autres images
-
-const miniBossImg = new Image();
-miniBossImg.src = "/img/miniBoss.jpg";
-
-
 const bulletImg = new Image();
-bulletImg.src = "/img/bullets1.jpg";
-
-// Images des ennemis (6 types)
+const backgroundImg = new Image();
+backgroundImg.src = "/img/back1.png";
 const enemyImgs = Array(6).fill().map(() => new Image());
-enemyImgs.forEach((img, i) => {
-    img.src = `/img/enemy${i ? i + 1 : ""}.jpg`;
-});
-
-// Images des projectiles ennemis (3 types)
 const enemyBulletImgs = Array(3).fill().map(() => new Image());
-enemyBulletImgs.forEach((img, i) => {
-    img.src = `/img/bullets${i + 2}.jpg`;
-});
-
-// Images des bonus
 const livesImg = new Image();
-livesImg.src = "/img/lives.jpg";
-
 const powerUpImgs = Array(3).fill().map(() => new Image());
-powerUpImgs.forEach((img, i) => {
-    img.src = `/img/powerUp${i ? i : ""}.jpg`;
-});
 
-// =============== CONFIGURATION VIDÉO ===============
-const videoContainer = document.getElementById("videoContainer");
-const powerUpVideo = document.getElementById("powerUpVideo");
+// Configuration des chemins d'images
+starshipImg.src = getSelectedShip();
+if (isMultiplayer && starship2Img) starship2Img.src = getSelectedShipP2();
+if (isTriplePlayer && starship3Img) starship3Img.src = getSelectedShipP3();
+bulletImg.src = "/img/bullets1.jpg";
+enemyImgs.forEach((img, i) => img.src = `/img/enemy${i ? i + 1 : ""}.jpg`);
+enemyBulletImgs.forEach((img, i) => img.src = `/img/bullets${i + 2}.jpg`);
+livesImg.src = "/img/lives.jpg";
+powerUpImgs.forEach((img, i) => img.src = `/img/powerUp${i ? i : ""}.jpg`);
 
-// Points de synchronisation vidéo
-const timecodes = {
-    firstPause: 7,
-    firstResume: 9.06
-};
-
-// Gestion de la vidéo power-up
-powerUpVideo.addEventListener("timeupdate", () => {
-    if (powerUpVideo.currentTime >= timecodes.firstPause &&
-        powerUpVideo.currentTime < timecodes.firstResume) {
-        powerUpVideo.currentTime = timecodes.firstResume;
-    }
-});
-
-// =============== CLASSES DU JEU ===============
-// Classe pour l'objet du jeu
+// Classes
 class GameObject {
     constructor(x, y, speed = 1.5) {
         this.x = x;
@@ -467,7 +420,6 @@ class GameObject {
         this.x += this.direction.x;
         this.y += this.direction.y;
 
-        // Rebonds sur les bords
         if (this.x <= 0 || this.x >= canvas.width - this.width) {
             this.direction.x *= -1;
         }
@@ -475,7 +427,6 @@ class GameObject {
             this.direction.y *= -1;
         }
 
-        // Changement aléatoire de direction
         if (Math.random() < 0.005) {
             this.direction.x = (Math.random() * 2 - 1) * this.speed;
             this.direction.y = (Math.random() * 2 - 1) * this.speed;
@@ -483,7 +434,6 @@ class GameObject {
     }
 }
 
-// Classe pour la gestion des bonus
 class BonusManager {
     constructor() {
         this.powerUps = [];
@@ -491,9 +441,8 @@ class BonusManager {
     }
 
     addPowerUp(type) {
-        // Limiter à 5 power-ups à l'écran
         if (this.powerUps.length >= 5) return;
-        
+
         this.powerUps.push({
             x: Math.random() * (canvas.width - 100) + 50,
             y: -50,
@@ -505,9 +454,8 @@ class BonusManager {
     }
 
     addLife() {
-        // Limiter à 3 vies à l'écran
         if (this.lives.length >= 3) return;
-        
+
         this.lives.push({
             x: Math.random() * (canvas.width - 100) + 50,
             y: -50,
@@ -526,8 +474,7 @@ class BonusManager {
             powerUp.y += powerUp.speed;
             powerUp.x += Math.sin(Date.now() * 0.002) * 2;
             powerUp.x = Math.max(0, Math.min(canvas.width - powerUp.width, powerUp.x));
-            
-            // Supprimer si hors écran
+
             if (powerUp.y >= canvas.height) {
                 this.powerUps.splice(i, 1);
             }
@@ -539,8 +486,7 @@ class BonusManager {
             life.y += life.speed;
             life.x += Math.sin(Date.now() * 0.001) * 1.5;
             life.x = Math.max(0, Math.min(canvas.width - life.width, life.x));
-            
-            // Supprimer si hors écran
+
             if (life.y >= canvas.height) {
                 this.lives.splice(i, 1);
             }
@@ -556,15 +502,19 @@ class BonusManager {
                     powerUp.x, powerUp.y,
                     powerUp.width, powerUp.height
                 );
-                
-                // Effet visuel pour attirer l'attention
+
                 if (Math.random() > 0.7) {
                     ctx.save();
                     ctx.globalAlpha = 0.3;
                     ctx.fillStyle = "#04fbac";
                     ctx.beginPath();
-                    ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, 
-                            powerUp.width/2 + 5, 0, Math.PI * 2);
+                    ctx.arc(
+                        powerUp.x + powerUp.width/2,
+                        powerUp.y + powerUp.height/2,
+                        powerUp.width/2 + 5,
+                        0,
+                        Math.PI * 2
+                    );
                     ctx.fill();
                     ctx.restore();
                 }
@@ -581,16 +531,20 @@ class BonusManager {
                     life.x, life.y,
                     life.width, life.height
                 );
-                
-                // Effet visuel de pulsation
+
                 const pulseFactor = Math.sin(Date.now() * 0.005) * 0.2 + 1;
-                
+
                 ctx.save();
                 ctx.globalAlpha = 0.2;
                 ctx.fillStyle = "red";
                 ctx.beginPath();
-                ctx.arc(life.x + life.width/2, life.y + life.height/2, 
-                        life.width/2 * pulseFactor, 0, Math.PI * 2);
+                ctx.arc(
+                    life.x + life.width/2,
+                    life.y + life.height/2,
+                    life.width/2 * pulseFactor,
+                    0,
+                    Math.PI * 2
+                );
                 ctx.fill();
                 ctx.restore();
             } catch (error) {
@@ -599,40 +553,36 @@ class BonusManager {
         });
     }
 
-    // Nouvelle méthode pour vérifier les collisions avec tous les joueurs
     checkAllCollisions() {
-        // Vérification pour le joueur 1
         this.checkCollisions(
             starship,
             type => activatePowerUp(starship, type),
             () => {
-                playerLives++;
-                document.getElementById("livesCount").innerText = playerLives;
+                starship.lives++;
+                updatePlayerStats();
                 playSound(soundEffects.perfect);
             }
         );
-        
-        // Vérification pour le joueur 2 si mode multijoueur
+
         if (isMultiplayer && starship2) {
             this.checkCollisions(
                 starship2,
                 type => activatePowerUp(starship2, type),
                 () => {
-                    playerLives++;
-                    document.getElementById("livesCount").innerText = playerLives;
+                    starship2.lives++;
+                    updatePlayerStats();
                     playSound(soundEffects.perfect);
                 }
             );
         }
-        
-        // Vérification pour le joueur 3 si mode 3 joueurs
+
         if (isTriplePlayer && starship3) {
             this.checkCollisions(
                 starship3,
                 type => activatePowerUp(starship3, type),
                 () => {
-                    playerLives++;
-                    document.getElementById("livesCount").innerText = playerLives;
+                    starship3.lives++;
+                    updatePlayerStats();
                     playSound(soundEffects.perfect);
                 }
             );
@@ -640,23 +590,19 @@ class BonusManager {
     }
 
     checkCollisions(ship, handlePowerUp, handleLife) {
-        if (!ship) return;
-        
-        // Vérification des collisions avec les power-ups
+        if (!ship || !ship.isActive) return;
+
         for (let i = this.powerUps.length - 1; i >= 0; i--) {
             const powerUp = this.powerUps[i];
             if (checkCollision(ship, powerUp)) {
-                console.log(`Power-up collecté de type: ${powerUp.type} par le joueur ${ship.player}`);
                 handlePowerUp(powerUp.type);
                 this.powerUps.splice(i, 1);
             }
         }
 
-        // Vérification des collisions avec les vies
         for (let i = this.lives.length - 1; i >= 0; i--) {
             const life = this.lives[i];
             if (checkCollision(ship, life)) {
-                console.log(`Vie collectée par le joueur ${ship.player}`);
                 handleLife();
                 this.lives.splice(i, 1);
             }
@@ -664,7 +610,6 @@ class BonusManager {
     }
 }
 
-// Classe pour la gestion du jeu
 class GameManager {
     constructor(canvas) {
         this.canvas = canvas;
@@ -674,13 +619,12 @@ class GameManager {
 
     setupPauseControl() {
         window.addEventListener("mousedown", (e) => {
-            if (e.button === 1) { // Clic du milieu
+            if (e.button === 1) {
                 e.preventDefault();
                 this.togglePause();
             }
         });
-        
-        // Pause avec touche Escape (au lieu de Space qui peut être utilisé pour tirer)
+
         window.addEventListener("keydown", (e) => {
             if (e.code === "Escape") {
                 this.togglePause();
@@ -690,11 +634,9 @@ class GameManager {
 
     togglePause() {
         this.isPaused = !this.isPaused;
-        console.log("Jeu " + (this.isPaused ? "en pause" : "repris"));
-        
         if (this.isPaused) {
             soundEffects.shoot.pause();
-        } else if (shooting) {
+        } else if (shooting && !starship.stunned) {
             soundEffects.shoot.play();
         }
     }
@@ -711,12 +653,11 @@ class GameManager {
     }
 }
 
-// Création des instances de classes
+// Création des instances
 const gameManager = new GameManager(canvas);
 const bonusManager = new BonusManager();
 
-// =============== ÉVÉNEMENTS ===============
-// Événements pour la manette
+// Événements
 window.addEventListener("gamepadconnected", function(e) {
     console.log("Manette connectée à l'indice %d: %s. %d boutons, %d axes.",
         e.gamepad.index, e.gamepad.id,
@@ -726,62 +667,55 @@ window.addEventListener("gamepadconnected", function(e) {
 });
 
 window.addEventListener("gamepaddisconnected", function(e) {
-    console.log("Manette déconnectée de l'indice %d: %s", e.gamepad.index, e.gamepad.id);
     if (gamepadIndex === e.gamepad.index) {
         gamepadConnected = false;
         gamepadIndex = null;
     }
 });
 
-// Événements clavier pour les joueurs 2 et 3
+// Contrôles clavier
 window.addEventListener("keydown", function(e) {
-    // Contrôles du joueur 2 (si mode multijoueur)
     if (isMultiplayer) {
         switch(e.code) {
             case "ArrowUp": keyUp = true; break;
             case "ArrowDown": keyDown = true; break;
             case "ArrowLeft": keyLeft = true; break;
             case "ArrowRight": keyRight = true; break;
-            case "Enter": 
-                keySpace = true; 
+            case "Enter":
+                keySpace = true;
                 shooting2 = true;
-                // Déclencher immédiatement un tir (si pas en pause)
                 if (!gameManager.isPaused && starship2) {
-                    let bullet = {
+                    starship2.bullets.push({
                         x: starship2.x + starship2.width / 2 - 2.5,
                         y: starship2.y,
                         width: 5,
                         height: 10,
                         speed: 20,
                         player: 2
-                    };
-                    starship2.bullets.push(bullet);
+                    });
                 }
                 break;
         }
     }
-    
-    // Contrôles du joueur 3 (si mode 3 joueurs)
+
     if (isTriplePlayer) {
         switch(e.code) {
             case "KeyW": keyW = true; break;
             case "KeyS": keyS = true; break;
             case "KeyA": keyA = true; break;
             case "KeyD": keyD = true; break;
-            case "KeyE": 
-                keyE = true; 
+            case "KeyE":
+                keyE = true;
                 shooting3 = true;
-                // Déclencher immédiatement un tir (si pas en pause)
                 if (!gameManager.isPaused && starship3) {
-                    let bullet = {
+                    starship3.bullets.push({
                         x: starship3.x + starship3.width / 2 - 2.5,
                         y: starship3.y,
                         width: 5,
                         height: 10,
                         speed: 20,
                         player: 3
-                    };
-                    starship3.bullets.push(bullet);
+                    });
                 }
                 break;
         }
@@ -789,38 +723,36 @@ window.addEventListener("keydown", function(e) {
 });
 
 window.addEventListener("keyup", function(e) {
-    // Relâchement des touches pour le joueur 2
     if (isMultiplayer) {
         switch(e.code) {
             case "ArrowUp": keyUp = false; break;
             case "ArrowDown": keyDown = false; break;
             case "ArrowLeft": keyLeft = false; break;
             case "ArrowRight": keyRight = false; break;
-            case "Enter": 
-                keySpace = false; 
+            case "Enter":
+                keySpace = false;
                 shooting2 = false;
                 break;
         }
     }
-    
-    // Relâchement des touches pour le joueur 3
+
     if (isTriplePlayer) {
         switch(e.code) {
             case "KeyW": keyW = false; break;
             case "KeyS": keyS = false; break;
             case "KeyA": keyA = false; break;
             case "KeyD": keyD = false; break;
-            case "KeyE": 
-                keyE = false; 
+            case "KeyE":
+                keyE = false;
                 shooting3 = false;
                 break;
         }
     }
 });
 
-// Mouvement du vaisseau principal avec la souris
+// Contrôles souris
 window.addEventListener("mousemove", (event) => {
-    if (!gameManager.isPaused) {
+    if (!gameManager.isPaused && !starship.stunned) {
         starship.x = Math.max(
             0,
             Math.min(
@@ -838,9 +770,8 @@ window.addEventListener("mousemove", (event) => {
     }
 });
 
-// Tirs avec le clic gauche pour le joueur principal
 window.addEventListener("mousedown", (e) => {
-    if (e.button === 0) { // Clic gauche
+    if (e.button === 0) {
         shooting = true;
         if (!gameManager.isPaused) {
             soundEffects.shoot.play().catch(() => {});
@@ -849,20 +780,14 @@ window.addEventListener("mousedown", (e) => {
 });
 
 window.addEventListener("mouseup", (e) => {
-    if (e.button === 0) { // Clic gauche
+    if (e.button === 0) {
         shooting = false;
         soundEffects.shoot.pause();
         soundEffects.shoot.currentTime = 0;
     }
 });
 
-// Quitter la page
-window.addEventListener("beforeunload", () => {
-    gameIsRunning = false;
-});
-
-// =============== FONCTIONS UTILITAIRES ===============
-// Fonction pour jouer un son
+// Fonctions utilitaires
 function playSound(sound) {
     try {
         sound.currentTime = 0;
@@ -874,40 +799,110 @@ function playSound(sound) {
     }
 }
 
-// Fonction pour détecter les collisions entre deux rectangles
 function checkCollision(rect1, rect2) {
-    // Vérification de validité des objets
-    if (!rect1 || !rect2 || 
+    if (!rect1 || !rect2 ||
         typeof rect1.x !== 'number' || typeof rect1.y !== 'number' ||
         typeof rect2.x !== 'number' || typeof rect2.y !== 'number') {
         return false;
     }
-    
-    // Calcul précis des chevauchements
-    const overlapX = Math.max(0, Math.min(rect1.x + rect1.width, rect2.x + rect2.width) - 
+
+    const overlapX = Math.max(0, Math.min(rect1.x + rect1.width, rect2.x + rect2.width) -
                        Math.max(rect1.x, rect2.x));
-    const overlapY = Math.max(0, Math.min(rect1.y + rect1.height, rect2.y + rect2.height) - 
+    const overlapY = Math.max(0, Math.min(rect1.y + rect1.height, rect2.y + rect2.height) -
                        Math.max(rect1.y, rect2.y));
-    
-    // Collision si les deux objets se chevauchent
+
     return overlapX > 0 && overlapY > 0;
 }
 
-// Fonction pour vérifier l'état du jeu (surveillance des performances)
+function updatePlayerStats() {
+    if (isMultiplayer) {
+        document.getElementById("playerStats").style.display = "block";
+        document.getElementById("p1Lives").textContent = starship.lives;
+
+        if (starship2) {
+            document.getElementById("p2Lives").textContent = starship2.lives;
+        }
+
+        if (isTriplePlayer && starship3) {
+            document.getElementById("p3Lives").textContent = starship3.lives;
+        }
+    } else {
+        document.getElementById("livesCount").textContent = starship.lives;
+    }
+}
+
+function getSelectedShip() {
+    const key = isMultiplayer ? 'vaisseauChoisiP1' : 'vaisseauChoisi';
+    const vaisseauChoisi = localStorage.getItem(key);
+
+    const vaisseauImages = {
+        'Intercepteur': 'starship6.jpg',
+        'Croiseur': 'starship1.jpg',
+        'Destroyer': 'starship2.jpg',
+        'Chasseur': 'starship3.jpg',
+        'Éclaireur': 'starship4.jpg',
+        'Bombardier': 'starship5.jpg',
+        'aéronef': 'starship7.jpg'
+    };
+
+    if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
+        return `/img/${vaisseauImages[vaisseauChoisi]}`;
+    }
+
+    return "/img/starship7.jpg";
+}
+
+function getSelectedShipP2() {
+    const vaisseauChoisi = localStorage.getItem('vaisseauChoisiP2');
+
+    const vaisseauImages = {
+        'Intercepteur': 'starship6.jpg',
+        'Croiseur': 'starship1.jpg',
+        'Destroyer': 'starship2.jpg',
+        'Chasseur': 'starship3.jpg',
+        'Éclaireur': 'starship4.jpg',
+        'Bombardier': 'starship5.jpg',
+        'aéronef': 'starship7.jpg'
+    };
+
+    if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
+        return `/img/${vaisseauImages[vaisseauChoisi]}`;
+    }
+
+    return "/img/starship6.jpg";
+}
+
+function getSelectedShipP3() {
+    const vaisseauChoisi = localStorage.getItem('vaisseauChoisiP3');
+
+    const vaisseauImages = {
+        'Intercepteur': 'starship6.jpg',
+        'Croiseur': 'starship1.jpg',
+        'Destroyer': 'starship2.jpg',
+        'Chasseur': 'starship3.jpg',
+        'Éclaireur': 'starship4.jpg',
+        'Bombardier': 'starship5.jpg',
+        'aéronef': 'starship7.jpg'
+    };
+
+    if (vaisseauChoisi && vaisseauImages[vaisseauChoisi]) {
+        return `/img/${vaisseauImages[vaisseauChoisi]}`;
+    }
+
+    return "/img/starship5.jpg";
+}
+
 function checkGameState() {
     if (!gameIsRunning) return;
-    
-    // Vérifier si les ennemis sont bloqués
+
     const currentTime = Date.now();
     const timeSinceLastKill = currentTime - lastKillTime;
-    
+
     if (enemies.length > 0 && timeSinceLastKill > 10000 && enemies.length === lastEnemyCount) {
-        console.log("Blocage détecté, réinitialisation partielle...");
         enemies = enemies.slice(0, Math.max(5, Math.floor(enemies.length / 2)));
         lastKillTime = currentTime;
     }
-    
-    // Limiter le nombre d'éléments à l'écran pour performance
+
     if (enemies.length > 40) {
         enemies = enemies.slice(0, 40);
     }
@@ -917,112 +912,105 @@ function checkGameState() {
     if (redPoints.length > 100) {
         redPoints = redPoints.slice(0, 100);
     }
-    
+
     lastEnemyCount = enemies.length;
     setTimeout(checkGameState, 5000);
 }
 
-// Fonction pour la mise à jour des contrôles des joueurs 2 et 3
 function updateMultiplayerControls() {
     if (gameManager.isPaused) return;
-    
-    // Mise à jour du joueur 2 en mode multijoueur
-    if (isMultiplayer && starship2) {
-        // Mise à jour via la manette
+
+    if (isMultiplayer && starship2 && !starship2.stunned) {
         if (gamepadConnected) {
             try {
                 const gamepad = navigator.getGamepads()[gamepadIndex];
                 if (gamepad) {
-                    // Axes pour le mouvement
+                    const moveSpeed = 8; // Augmentation de la vitesse
                     const axisX = gamepad.axes[0];
                     const axisY = gamepad.axes[1];
-                    
-                    // Appliquer un seuil pour éviter les mouvements dus aux imprécisions
+
                     if (Math.abs(axisX) > 0.1) {
-                        starship2.x += axisX * 5;
+                        starship2.x += axisX * moveSpeed;
                     }
                     if (Math.abs(axisY) > 0.1) {
-                        starship2.y += axisY * 5;
+                        starship2.y += axisY * moveSpeed;
                     }
-                    
-                    // Bouton 0 (généralement A/X) pour tirer
-                    if (gamepad.buttons[0].pressed) {
-                        if (!shooting2) {
-                            shooting2 = true;
-                        }
-                        // Tirer continuellement tant que le bouton est pressé
-                        let bullet = {
+
+                    if (gamepad.buttons[0].pressed && !shooting2) {
+                        shooting2 = true;
+                        starship2.bullets.push({
                             x: starship2.x + starship2.width / 2 - 2.5,
                             y: starship2.y,
                             width: 5,
                             height: 10,
                             speed: 20,
                             player: 2
-                        };
-                        starship2.bullets.push(bullet);
-                    } else if (!gamepad.buttons[0].pressed && shooting2) {
+                        });
+                    } else if (!gamepad.buttons[0].pressed) {
                         shooting2 = false;
                     }
                 }
             } catch (error) {
-                console.error("Erreur lors de la mise à jour de la manette:", error);
+                console.error("Erreur manette:", error);
             }
         }
-        
-        // Mise à jour via le clavier
+
         const moveSpeed = 5;
         if (keyUp) starship2.y -= moveSpeed;
         if (keyDown) starship2.y += moveSpeed;
         if (keyLeft) starship2.x -= moveSpeed;
         if (keyRight) starship2.x += moveSpeed;
-        
-        // Limites de l'écran
+
         starship2.x = Math.max(0, Math.min(canvas.width - starship2.width, starship2.x));
         starship2.y = Math.max(0, Math.min(canvas.height - starship2.height, starship2.y));
     }
-    
-    // Mise à jour du joueur 3 en mode 3 joueurs
-    if (isTriplePlayer && starship3) {
+
+    if (isTriplePlayer && starship3 && !starship3.stunned) {
         const moveSpeed = 5;
         if (keyW) starship3.y -= moveSpeed;
         if (keyS) starship3.y += moveSpeed;
         if (keyA) starship3.x -= moveSpeed;
         if (keyD) starship3.x += moveSpeed;
-        
-        // Limites de l'écran
+
         starship3.x = Math.max(0, Math.min(canvas.width - starship3.width, starship3.x));
         starship3.y = Math.max(0, Math.min(canvas.height - starship3.height, starship3.y));
     }
 }
 
-// =============== GESTION DES ACHIEVEMENTS ET POWER-UPS ===============
-// Gestion des kills et bonus
-function handleKill() {
-    // Mettre à jour le temps du dernier kill
+function handleKill(playerNumber) {
     lastKillTime = Date.now();
     simultaneousKills++;
     enemiesKilled++;
     killsWithoutDeath++;
     document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
-
-    // Apparition du mini-boss tous les 10 kills
-    if (enemiesKilled % 10 === 0) {
-        enemies.push({
-            x: Math.random() * (canvas.width - 100) + 50,
-            y: 100,
-            width: 80,  // Plus grand que les ennemis normaux
-            height: 80,
-            vx: 2,
-            vy: 0,
-            type: 'miniBoss',
-            rotation: 0,
-            lastShot: Date.now(),
-            health: 50
-        });
-        playSound(soundEffects.king);
+    // Vérifier si on atteint 50 ennemis tués pour faire apparaître le boss
+    if (enemiesKilled === 200 && !bossActive) {
+        createBoss();
     }
 
-    // Sons d'achievements
+    if (isMultiplayer) {
+        switch (playerNumber) {
+            case 1:
+                const p1Kills = parseInt(document.getElementById("p1Kills").textContent) + 1;
+                document.getElementById("p1Kills").textContent = p1Kills;
+                const p1Points = parseInt(document.getElementById("p1Points").textContent) + 10;
+                document.getElementById("p1Points").textContent = p1Points;
+                break;
+            case 2:
+                const p2Kills = parseInt(document.getElementById("p2Kills").textContent) + 1;
+                document.getElementById("p2Kills").textContent = p2Kills;
+                const p2Points = parseInt(document.getElementById("p2Points").textContent) + 10;
+                document.getElementById("p2Points").textContent = p2Points;
+                break;
+            case 3:
+                const p3Kills = parseInt(document.getElementById("p3Kills").textContent) + 1;
+                document.getElementById("p3Kills").textContent = p3Kills;
+                const p3Points = parseInt(document.getElementById("p3Points").textContent) + 10;
+                document.getElementById("p3Points").textContent = p3Points;
+                break;
+        }
+    }
+
     if (killsWithoutDeath === 20) {
         playSound(soundEffects.brutal);
     } else if (killsWithoutDeath === 30) {
@@ -1033,7 +1021,6 @@ function handleKill() {
         playSound(soundEffects.awesome);
     }
 
-    // Gestion des bonus en fonction de la difficulté
     if (enemiesKilled % 30 === 0) {
         bonusManager.addPowerUp(2);
         playSound(soundEffects.king);
@@ -1045,7 +1032,6 @@ function handleKill() {
         }
     }
 
-    // Gestion des kills multiples
     clearTimeout(killTimer);
     killTimer = setTimeout(() => {
         if (simultaneousKills === 2) {
@@ -1057,11 +1043,7 @@ function handleKill() {
     }, 200);
 }
 
-// Activation de power-up (maintenant avec un paramètre pour le vaisseau)
 function activatePowerUp(ship, powerUpType) {
-    console.log(`Activation power-up type: ${powerUpType} pour joueur ${ship.player}`);
-    
-    // Pour le power-up vidéo (type 2), on l'active globalement
     if (powerUpType === 2) {
         try {
             gameManager.isPaused = true;
@@ -1082,132 +1064,483 @@ function activatePowerUp(ship, powerUpType) {
             endPowerUpVideo();
         }
     } else {
-        // Annuler tout power-up précédent pour ce vaisseau
         if (ship.powerUpTimeoutId) {
             clearTimeout(ship.powerUpTimeoutId);
             ship.powerUpTimeoutId = null;
         }
-        
+
         ship.powerUpLevel = powerUpType + 1;
-        console.log(`Power-up activé, niveau: ${ship.powerUpLevel} pour joueur ${ship.player}`);
-        
+
         ship.powerUpTimeoutId = setTimeout(() => {
             if (ship.powerUpLevel === powerUpType + 1) {
                 ship.powerUpLevel = 0;
-                console.log(`Power-up terminé pour joueur ${ship.player}`);
             }
             ship.powerUpTimeoutId = null;
         }, 10000);
     }
 }
 
-// Fin du power-up vidéo
 function endPowerUpVideo() {
     videoContainer.style.display = "none";
     gameManager.isPaused = false;
     enemies = [];
     enemyBullets = [];
-    
-    // Activer le niveau spécial pour tous les vaisseaux
+
     starship.powerUpLevel = 3;
     if (isMultiplayer && starship2) starship2.powerUpLevel = 3;
     if (isTriplePlayer && starship3) starship3.powerUpLevel = 3;
-    
-    console.log("Power-up vidéo terminé, niveau spécial activé pour tous les joueurs");
-    
-    // Mettre fin aux power-ups après 10 secondes
+
     if (powerUpTimeoutId) {
         clearTimeout(powerUpTimeoutId);
     }
-    
+
     powerUpTimeoutId = setTimeout(() => {
         starship.powerUpLevel = 0;
         if (isMultiplayer && starship2) starship2.powerUpLevel = 0;
         if (isTriplePlayer && starship3) starship3.powerUpLevel = 0;
-        console.log("Power-up spécial terminé pour tous les joueurs");
         powerUpTimeoutId = null;
     }, 10000);
 }
 
+function stunPlayer(player, duration = 2000) {
+    if (!player || !player.isActive) return;
+   
+    player.stunned = true;
+   
+    document.querySelectorAll("#stun-effect-player" + player.player).forEach(e => e.remove());
+   
+    const stunEffect = document.createElement("div");
+    stunEffect.style.position = "absolute";
+    stunEffect.style.left = player.x + "px";
+    stunEffect.style.top = player.y + "px";
+    stunEffect.style.width = player.width + "px";
+    stunEffect.style.height = player.height + "px";
+    stunEffect.style.border = "2px dashed yellow";
+    stunEffect.style.borderRadius = "50%";
+    stunEffect.style.boxShadow = "0 0 10px yellow";
+    stunEffect.style.animation = "pulse 0.5s infinite alternate";
+    stunEffect.style.zIndex = "5";
+    stunEffect.id = "stun-effect-player" + player.player;
+   
+    document.body.appendChild(stunEffect);
+   
+    if (player.stunnedTimeout) {
+        clearTimeout(player.stunnedTimeout);
+    }
+   
+    player.stunnedTimeout = setTimeout(() => {
+        player.stunned = false;
+        document.querySelectorAll("#stun-effect-player" + player.player).forEach(e => e.remove());
+    }, duration);
+}
 
-// =============== FONCTIONS DE COMBAT ===============
-// Fonction pour tirer des balles avec différents patterns selon le niveau de power-up
+function activateShield(player, duration = 10000) {
+    if (!player || !player.isActive) return;
+   
+    player.shield = true;
+   
+    const shieldColors = {
+        1: "#04fbac",
+        2: "#FF7F50",
+        3: "#FFFF50"
+    };
+   
+    const shieldColor = shieldColors[player.player] || "#04fbac";
+   
+    const oldShield = document.getElementById(`shield-effect-player${player.player}`);
+    if (oldShield) oldShield.remove();
+   
+    const shieldEffect = document.createElement("div");
+    shieldEffect.id = `shield-effect-player${player.player}`;
+    shieldEffect.style.position = "absolute";
+    shieldEffect.style.left = (player.x - 10) + "px";
+    shieldEffect.style.top = (player.y - 10) + "px";
+    shieldEffect.style.width = (player.width + 20) + "px";
+    shieldEffect.style.height = (player.height + 20) + "px";
+    shieldEffect.style.border = `3px solid ${shieldColor}`;
+    shieldEffect.style.borderRadius = "50%";
+    shieldEffect.style.boxShadow = `0 0 15px ${shieldColor}`;
+    shieldEffect.style.animation = "shieldPulse 1s infinite alternate";
+    shieldEffect.style.zIndex = "4";
+   
+    document.body.appendChild(shieldEffect);
+   
+    if (player.shieldTimeout) {
+        clearTimeout(player.shieldTimeout);
+    }
+   
+    player.shieldTimeout = setTimeout(() => {
+        player.shield = false;
+        shieldEffect.remove();
+    }, duration);
+}
+
+function checkPlayerVsPlayerCollisions() {
+    if (!isMultiplayer) return;
+
+    const players = [starship];
+    if (starship2) players.push(starship2);
+    if (starship3) players.push(starship3);
+
+    for (let i = 0; i < players.length; i++) {
+        for (let j = i + 1; j < players.length; j++) {
+            const player1 = players[i];
+            const player2 = players[j];
+
+            if (!player1.isActive || !player2.isActive) continue;
+
+            player1.bullets.forEach((bullet, index) => {
+                if (checkCollision(bullet, player2) && !player2.shield) {
+                    player1.bullets.splice(index, 1);
+                    stunPlayer(player2);
+                    playSound(soundEffects.hit);
+                }
+            });
+
+            player2.bullets.forEach((bullet, index) => {
+                if (checkCollision(bullet, player1) && !player1.shield) {
+                    player2.bullets.splice(index, 1);
+                    stunPlayer(player1);
+                    playSound(soundEffects.hit);
+                }
+            });
+        }
+    }
+}
+
+function updateStunEffects() {
+    [starship, starship2, starship3].filter(Boolean).forEach(player => {
+        if (player.stunned) {
+            const effect = document.getElementById("stun-effect-player" + player.player);
+            if (effect) {
+                effect.style.left = player.x + "px";
+                effect.style.top = player.y + "px";
+            }
+        }
+       
+        if (player.shield) {
+            const shield = document.getElementById("shield-effect-player" + player.player);
+            if (shield) {
+                shield.style.left = (player.x - 10) + "px";
+                shield.style.top = (player.y - 10) + "px";
+            }
+        }
+    });
+}
+// Fonctions pour le boss
+function createBoss() {
+    if (bossActive) return; // Ne pas créer de boss si un est déjà actif
+   
+    bossActive = true;
+    bossHealth = 100;
+   
+    // Afficher la barre de vie du boss
+    document.getElementById("bossHealthBar").style.display = "block";
+    document.getElementById("bossHealthFill").style.width = "100%";
+   
+    // Position initiale du boss (au centre, en haut)
+    boss = {
+        x: canvas.width / 2 - 75,
+        y: 50,
+        width: 150,
+        height: 150,
+        vx: 0.5,
+        vy: 0.2,
+        rotation: 0
+    };
+   
+    // Effet sonore d'apparition du boss
+    playSound(soundEffects.bossAppear);
+   
+    // Supprimer les ennemis normaux lors de l'apparition du boss
+    enemies = [];
+}
+
+function updateBoss() {
+    if (!bossActive || !boss || gameManager.isPaused) return;
+   
+    // Rotation du boss
+    boss.rotation += 1; // Augmente la rotation de 1 degré par frame
+    if (boss.rotation >= 360) boss.rotation = 0;
+   
+    // Déplacement lent et aléatoire
+    boss.x += boss.vx;
+    boss.y += boss.vy;
+   
+    // Changement de direction si le boss atteint les bords
+    if (boss.x <= 0 || boss.x + boss.width >= canvas.width) {
+        boss.vx *= -1;
+    }
+   
+    if (boss.y <= 0 || boss.y + boss.height >= canvas.height / 2) {
+        boss.vy *= -1;
+    }
+   
+    // Tir de projectiles tous les 60 frames (environ 1 seconde à 60 FPS)
+    bossShootTimer++;
+    if (bossShootTimer >= 60) {
+        shootBossBullets();
+        bossShootTimer = 0;
+    }
+   
+    // Gestion de l'effet de hit
+    if (bossHitEffect) {
+        bossHitEffectTimer++;
+        if (bossHitEffectTimer >= 10) {
+            bossHitEffect = false;
+            bossHitEffectTimer = 0;
+        }
+    }
+}
+
+function drawBoss() {
+    if (!bossActive || !boss) return;
+   
+    ctx.save();
+    // Effet de flash si le boss est touché
+    if (bossHitEffect) {
+        ctx.globalAlpha = 0.7;
+    }
+   
+    // Rotation du boss
+    ctx.translate(boss.x + boss.width/2, boss.y + boss.height/2);
+    ctx.rotate(boss.rotation * Math.PI / 180);
+   
+    // Dessin du boss
+    if (bossImg.complete) {
+        ctx.drawImage(bossImg, -boss.width/2, -boss.height/2, boss.width, boss.height);
+    } else {
+        // Image de secours si l'image du boss n'est pas chargée
+        ctx.fillStyle = "red";
+        ctx.fillRect(-boss.width/2, -boss.height/2, boss.width, boss.height);
+    }
+   
+    ctx.restore();
+}
+
+function shootBossBullets() {
+    if (!bossActive || !boss) return;
+   
+    // Tirer dans 8 directions
+    const angles = [0, 45, 90, 135, 180, 225, 270, 315];
+    const speed = 3;
+   
+    angles.forEach(angle => {
+        const rad = angle * Math.PI / 180;
+        const vx = Math.cos(rad) * speed;
+        const vy = Math.sin(rad) * speed;
+       
+        enemyBullets.push({
+            x: boss.x + boss.width/2,
+            y: boss.y + boss.height/2,
+            width: 15,
+            height: 15,
+            speed: 0,
+            vx: vx,
+            vy: vy,
+            type: 2 // Type de projectile plus fort
+        });
+    });
+   
+    playSound(soundEffects.shoot);
+}
+
+function checkBossCollisions() {
+    if (!bossActive || !boss) return;
+   
+    // Vérifier les collisions avec les balles des joueurs
+    const checkPlayerBullets = (player) => {
+        if (!player || !player.isActive) return;
+       
+        for (let i = player.bullets.length - 1; i >= 0; i--) {
+            const bullet = player.bullets[i];
+           
+            // Rectangle de collision pour le boss (sans tenir compte de la rotation)
+            const bossRect = {
+                x: boss.x,
+                y: boss.y,
+                width: boss.width,
+                height: boss.height
+            };
+           
+            if (checkCollision(bullet, bossRect)) {
+                // Supprimer la balle
+                player.bullets.splice(i, 1);
+               
+                // Effet de hit
+                bossHitEffect = true;
+                bossHitEffectTimer = 0;
+               
+                // Diminuer la vie du boss
+                bossHealth--;
+               
+                // Mettre à jour la barre de vie
+                document.getElementById("bossHealthFill").style.width = (bossHealth / 20 * 100) + "%";
+               
+                playSound(soundEffects.bossHit);
+               
+                // Vérifier si le boss est détruit
+                if (bossHealth <= 0) {
+                    defeatBoss();
+                }
+            }
+        }
+    };
+   
+    checkPlayerBullets(starship);
+    if (isMultiplayer && starship2) checkPlayerBullets(starship2);
+    if (isTriplePlayer && starship3) checkPlayerBullets(starship3);
+   
+    // Vérifier les collisions entre le boss et les joueurs
+    const checkPlayerCollision = (player) => {
+        if (!player || !player.isActive) return;
+       
+        // Rectangle de collision pour le boss
+        const bossRect = {
+            x: boss.x,
+            y: boss.y,
+            width: boss.width,
+            height: boss.height
+        };
+       
+        if (checkCollision(player, bossRect)) {
+            if (!player.shield) {
+                player.lives--;
+                updatePlayerStats();
+               
+                if (player.lives <= 0) {
+                    playerDeath(player);
+                }
+            }
+        }
+    };
+   
+    checkPlayerCollision(starship);
+    if (isMultiplayer && starship2) checkPlayerCollision(starship2);
+    if (isTriplePlayer && starship3) checkPlayerCollision(starship3);
+}
+
+function defeatBoss() {
+    // Jouer un son
+    playSound(soundEffects.bossDeath);
+   
+    // Créer un effet d'explosion
+    for (let i = 0; i < 100; i++) {
+        redPoints.push({
+            x: boss.x + Math.random() * boss.width,
+            y: boss.y + Math.random() * boss.height
+        });
+    }
+   
+    // Désactiver le boss
+    bossActive = false;
+    boss = null;
+   
+    // Cacher la barre de vie
+    document.getElementById("bossHealthBar").style.display = "none";
+   
+    // Activer le fond d'écran défilant
+    backgroundActive = true;
+    document.getElementById("scrollingBackground").style.display = "block";
+   
+    // Donner un bonus de points
+    enemiesKilled += 10;
+    document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
+   
+    // Bonus pour tous les joueurs actifs
+    if (isMultiplayer) {
+        const p1Points = parseInt(document.getElementById("p1Points").textContent) + 100;
+        document.getElementById("p1Points").textContent = p1Points;
+       
+        if (starship2 && starship2.isActive) {
+            const p2Points = parseInt(document.getElementById("p2Points").textContent) + 100;
+            document.getElementById("p2Points").textContent = p2Points;
+        }
+       
+        if (isTriplePlayer && starship3 && starship3.isActive) {
+            const p3Points = parseInt(document.getElementById("p3Points").textContent) + 100;
+            document.getElementById("p3Points").textContent = p3Points;
+        }
+    }
+   
+    // Ajouter quelques power-ups
+    bonusManager.addPowerUp(2);
+    bonusManager.addLife();
+}
 function shootBullet() {
     if (gameManager.isPaused) return;
-    
-    // Tir pour le joueur 1 (souris)
-    if (shooting) {
-        switch (starship.powerUpLevel) {
-            case 0: // Tir normal
-                starship.bullets.push({
-                    x: starship.x + starship.width / 2 - 2.5,
-                    y: starship.y,
+
+    [
+        { ship: starship, isShooting: shooting },
+        { ship: starship2, isShooting: shooting2 },
+        { ship: starship3, isShooting: shooting3 }
+    ].filter(({ ship }) => ship && ship.isActive).forEach(({ ship, isShooting }) => {
+        if (!isShooting) return;
+
+        switch (ship.powerUpLevel) {
+            case 0:
+                ship.bullets.push({
+                    x: ship.x + ship.width / 2 - 2.5,
+                    y: ship.y,
                     width: 5,
                     height: 10,
                     speed: 20,
-                    player: 1
+                    player: ship.player
                 });
                 break;
-            case 1: // Tir triple
-                [-15, -2.5, 10].forEach((xOffset) => {
-                    starship.bullets.push({
-                        x: starship.x + starship.width / 2 + xOffset,
-                        y: starship.y,
+            case 1:
+                [-15, -2.5, 10].forEach(xOffset => {
+                    ship.bullets.push({
+                        x: ship.x + ship.width / 2 + xOffset,
+                        y: ship.y,
                         width: 10,
                         height: 15,
                         speed: 10,
-                        player: 1
+                        player: ship.player
                     });
                 });
                 break;
-            case 2: // Tir spécial
+            case 2:
             case 3:
-                const bulletConfigs = [
+                [
                     { vx: 0, vy: -5 },
                     { vx: 5, vy: -5 },
                     { vx: -5, vy: -5 },
                     { vx: 5, vy: 0 },
                     { vx: -5, vy: 0 }
-                ];
-                bulletConfigs.forEach((config) => {
-                    starship.bullets.push({
-                        x: starship.x + starship.width / 2 - 5,
-                        y: starship.y,
+                ].forEach(config => {
+                    ship.bullets.push({
+                        x: ship.x + ship.width / 2 - 5,
+                        y: ship.y,
                         width: 10,
                         height: 15,
                         speed: 10,
                         vx: config.vx,
                         vy: config.vy,
-                        player: 1
+                        player: ship.player
                     });
                 });
                 break;
         }
-        
-        // Limiter le nombre de balles pour la performance
-        if (starship.bullets.length > 100) {
-            starship.bullets = starship.bullets.slice(-100);
+
+        if (ship.bullets.length > 100) {
+            ship.bullets = ship.bullets.slice(-100);
         }
-    }
-    
-    // Les tirs pour les joueurs 2 et 3 sont gérés par des intervalles séparés
+    });
 }
 
-// Fonction pour faire tirer les ennemis
 function shootEnemyBullets() {
     if (gameManager.isPaused) return;
 
-    // Limiter le nombre de tirs par frame pour performance
     const maxNewBullets = 10;
     let newBullets = 0;
-    
+
     for (let i = 0; i < enemies.length && newBullets < maxNewBullets; i++) {
         const enemy = enemies[i];
-        
-        // 20% de chance de tirer
+
         if (Math.random() > 0.2) continue;
-        
-        if (enemy.type === 1) { // Tir latéral pour type 1
+
+        if (enemy.type === 1) {
             enemyBullets.push(
                 {
                     x: enemy.x,
@@ -1228,7 +1561,7 @@ function shootEnemyBullets() {
                     type: 1
                 }
             );
-        } else { // Tir normal
+        } else {
             enemyBullets.push({
                 x: enemy.x + enemy.width / 2 - 2.5,
                 y: enemy.y + enemy.height,
@@ -1238,31 +1571,26 @@ function shootEnemyBullets() {
                 type: Math.floor(Math.random() * 3)
             });
         }
-        
+
         newBullets++;
     }
-    
-    // Limiter le nombre total de balles ennemies
+
     if (enemyBullets.length > 100) {
         enemyBullets = enemyBullets.slice(-100);
     }
 }
 
-// Fonction pour générer des ennemis
 function generateEnemies() {
     if (gameManager.isPaused) return;
 
-    // Limiter le nombre d'ennemis
     if (enemies.length > 30) {
-        console.log("Trop d'ennemis, génération reportée");
         return;
     }
 
-    const newEnemies = [];
     const count = Math.min(7, 30 - enemies.length);
-    
+
     for (let i = 0; i < count; i++) {
-        newEnemies.push({
+        enemies.push({
             x: Math.random() * (canvas.width - 100) + 50,
             y: Math.random() * (canvas.height / 3),
             width: 50,
@@ -1272,236 +1600,106 @@ function generateEnemies() {
             type: Math.floor(Math.random() * 6)
         });
     }
-    
-    enemies = [...enemies, ...newEnemies];
 }
 
-// =============== FONCTIONS DE DESSIN ===============
-// Fonction pour dessiner les vaisseaux des joueurs
 function drawStarship() {
-    // Dessiner le vaisseau du joueur 1
-    if (starshipImg.complete && starshipImg.naturalWidth > 0) {
-        // Effet de rotation basé sur le mouvement
-        if (starship.x !== lastShipX) {
-            // Déterminer la direction du mouvement
-            const moveDirection = starship.x - lastShipX;
-            
-            // Ajuster progressivement la rotation en fonction de la direction
-            if (moveDirection < 0) {
-                // Vers la gauche: rotation négative
-                shipRotation = Math.max(-maxRotation, shipRotation - rotationSpeed);
-            } else if (moveDirection > 0) {
-                // Vers la droite: rotation positive
-                shipRotation = Math.min(maxRotation, shipRotation + rotationSpeed);
+    const drawPlayer = (player, img) => {
+        if (!player || !player.isActive) return;
+
+        if (img && img.complete && img.naturalWidth > 0) {
+            ctx.save();
+            ctx.translate(player.x + player.width/2, player.y + player.height/2);
+           
+            // Rotation uniquement pour le joueur 1
+            if (player === starship) {
+                if (player.x !== lastShipX) {
+                    const moveDirection = player.x - lastShipX;
+                    if (moveDirection < 0) {
+                        shipRotation = Math.max(-maxRotation, shipRotation - rotationSpeed);
+                    } else if (moveDirection > 0) {
+                        shipRotation = Math.min(maxRotation, shipRotation + rotationSpeed);
+                    }
+                    lastShipX = player.x;
+                } else {
+                    if (shipRotation > 0) {
+                        shipRotation = Math.max(0, shipRotation - rotationSpeed/2);
+                    } else if (shipRotation < 0) {
+                        shipRotation = Math.min(0, shipRotation + rotationSpeed/2);
+                    }
+                }
+                ctx.rotate(shipRotation * Math.PI / 180);
             }
-            
-            lastShipX = starship.x;
+           
+            ctx.drawImage(
+                img,
+                -player.width/2,
+                -player.height/2,
+                player.width,
+                player.height
+            );
+            ctx.restore();
         } else {
-            // Retour progressif à 0 quand pas de mouvement
-            if (shipRotation > 0) {
-                shipRotation = Math.max(0, shipRotation - rotationSpeed/2);
-            } else if (shipRotation < 0) {
-                shipRotation = Math.min(0, shipRotation + rotationSpeed/2);
-            }
+            const colors = {
+                1: "#04fbac",
+                2: "#FF7F50",
+                3: "#FFFF50"
+            };
+            ctx.fillStyle = colors[player.player];
+            ctx.fillRect(player.x, player.y, player.width, player.height);
         }
-        
-        // Dessin avec rotation
-        ctx.save();
-        ctx.translate(starship.x + starship.width/2, starship.y + starship.height/2);
-        ctx.rotate(shipRotation * Math.PI / 180);
-        ctx.drawImage(
-            starshipImg, 
-            -starship.width/2, 
-            -starship.height/2, 
-            starship.width, 
-            starship.height
-        );
-        ctx.restore();
-    } else {
-        // Dessin de secours si l'image ne charge pas
-        ctx.fillStyle = "#04fbac";
-        ctx.fillRect(starship.x, starship.y, starship.width, starship.height);
-    }
-    
-    // Dessiner le vaisseau du joueur 2 si en mode multijoueur
-    if (isMultiplayer && starship2) {
-        if (starship2Img && starship2Img.complete && starship2Img.naturalWidth > 0) {
-            ctx.drawImage(starship2Img, starship2.x, starship2.y, starship2.width, starship2.height);
-        } else {
-            // Dessin de secours avec une couleur différente
-            ctx.fillStyle = "#FF7F50"; // Orange pour le joueur 2
-            ctx.fillRect(starship2.x, starship2.y, starship2.width, starship2.height);
-        }
-    }
-    
-    // Dessiner le vaisseau du joueur 3 si en mode 3 joueurs
-    if (isTriplePlayer && starship3) {
-        if (starship3Img && starship3Img.complete && starship3Img.naturalWidth > 0) {
-            ctx.drawImage(starship3Img, starship3.x, starship3.y, starship3.width, starship3.height);
-        } else {
-            // Dessin de secours avec une couleur différente
-            ctx.fillStyle = "#FFFF50"; // Jaune pour le joueur 3
-            ctx.fillRect(starship3.x, starship3.y, starship3.width, starship3.height);
-        }
-    }
+    };
+
+    drawPlayer(starship, starshipImg);
+    if (isMultiplayer) drawPlayer(starship2, starship2Img);
+    if (isTriplePlayer) drawPlayer(starship3, starship3Img);
 }
 
-// Fonction pour dessiner les projectiles des joueurs
 function drawBullets() {
-    // Dessiner les balles du joueur 1
-    starship.bullets = starship.bullets.filter(bullet => {
-        return bullet.y > -20 && 
-               bullet.y < canvas.height + 20 && 
-               bullet.x > -20 && 
-               bullet.x < canvas.width + 20;
-    });
-    
-    starship.bullets.forEach(bullet => {
-        ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
-        
-        // Mise à jour de la position
-        if (bullet.vx !== undefined && bullet.vy !== undefined) {
-            bullet.x += bullet.vx;
-            bullet.y += bullet.vy;
-        } else {
-            bullet.y -= bullet.speed;
-        }
-    });
-    
-    // Dessiner les balles du joueur 2 si en mode multijoueur
-    if (isMultiplayer && starship2) {
-        starship2.bullets = starship2.bullets.filter(bullet => {
-            return bullet.y > -20 && 
-                   bullet.y < canvas.height + 20 && 
-                   bullet.x > -20 && 
-                   bullet.x < canvas.width + 20;
-        });
-        
-        starship2.bullets.forEach(bullet => {
-            // Effet légèrement différent pour les balles du joueur 2
-            ctx.save();
-            ctx.globalAlpha = 0.9;
-            ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
-            ctx.restore();
-            
-            // Mise à jour de la position
-            if (bullet.vx !== undefined && bullet.vy !== undefined) {
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-            } else {
-                bullet.y -= bullet.speed;
+    const drawPlayerBullets = (player) => {
+        if (!player || !player.isActive) return;
+
+        player.bullets = player.bullets.filter(bullet => {
+            const isOnScreen = bullet.y > -20 && bullet.y < canvas.height + 20 &&
+                             bullet.x > -20 && bullet.x < canvas.width + 20;
+
+            if (isOnScreen) {
+                ctx.save();
+                ctx.globalAlpha = player.player === 1 ? 1 : 0.9;
+                ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
+                ctx.restore();
+
+                if (bullet.vx !== undefined && bullet.vy !== undefined) {
+                    bullet.x += bullet.vx;
+                    bullet.y += bullet.vy;
+                } else {
+                    bullet.y -= bullet.speed;
+                }
             }
+
+            return isOnScreen;
         });
-    }
-    
-    // Dessiner les balles du joueur 3 si en mode 3 joueurs
-    if (isTriplePlayer && starship3) {
-        starship3.bullets = starship3.bullets.filter(bullet => {
-            return bullet.y > -20 && 
-                   bullet.y < canvas.height + 20 && 
-                   bullet.x > -20 && 
-                   bullet.x < canvas.width + 20;
-        });
-        
-        starship3.bullets.forEach(bullet => {
-            // Effet légèrement différent pour les balles du joueur 3
-            ctx.save();
-            ctx.globalAlpha = 0.8;
-            ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
-            ctx.restore();
-            
-            // Mise à jour de la position
-            if (bullet.vx !== undefined && bullet.vy !== undefined) {
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-            } else {
-                bullet.y -= bullet.speed;
-            }
-        });
-    }
+    };
+
+    drawPlayerBullets(starship);
+    if (isMultiplayer) drawPlayerBullets(starship2);
+    if (isTriplePlayer) drawPlayerBullets(starship3);
 }
 
-// Fonction pour dessiner les ennemis
 function drawEnemies() {
     enemies = enemies.filter(enemy => {
         try {
-            if (enemy.type === 'miniBoss') {
-                // Rotation du mini-boss
-                ctx.save();
-                ctx.translate(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
-                enemy.rotation += 0.02;
-                ctx.rotate(enemy.rotation);
-                ctx.drawImage(miniBossImg, -enemy.width/2, -enemy.height/2, enemy.width, enemy.height);
-                // Barre de santé au-dessus du mini-boss
-if (enemy.health) {
-    const healthBarWidth = enemy.width;
-    const healthBarHeight = 8;
-    const healthPercentage = enemy.health / 50;
+            ctx.drawImage(enemyImgs[enemy.type], enemy.x, enemy.y, enemy.width, enemy.height);
 
-    // Position de la barre de santé en tenant compte de la rotation
-    const barX = enemy.x;
-    const barY = enemy.y - 20;
-
-    ctx.save();
-    // Dessiner le fond rouge
-    ctx.fillStyle = "red";
-    ctx.fillRect(barX, barY, healthBarWidth, healthBarHeight);
-    
-    // Dessiner la partie verte
-    ctx.fillStyle = "lime";
-    ctx.fillRect(barX, barY, healthBarWidth * healthPercentage, healthBarHeight);
-    
-    // Texte
-    ctx.fillStyle = "white";
-    ctx.font = "10px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(`${enemy.health}/50`, barX + healthBarWidth/2, barY - 2);
-    ctx.restore();
-}
-                ctx.restore();
-
-                // Tirs dans toutes les directions
-                const currentTime = Date.now();
-                if (currentTime - enemy.lastShot > 1000) { // Tir toutes les secondes
-                    const angles = [0, Math.PI/2, Math.PI, Math.PI*3/2];
-                    angles.forEach(angle => {
-                        enemyBullets.push({
-                            x: enemy.x + enemy.width/2,
-                            y: enemy.y + enemy.height/2,
-                            width: 10,
-                            height: 15,
-                            speed: 20,
-                            vx: Math.cos(angle + enemy.rotation) * 4,
-                            vy: Math.sin(angle + enemy.rotation) * 4,
-                            type: 2
-                        });
-                    });
-                    enemy.lastShot = currentTime;
-                }
-
-                // Mouvement horizontal avec rebond
-                enemy.x += enemy.vx;
-                if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
-                    enemy.vx *= -1;
-                }
-            } else {
-                // Dessiner l'ennemi normal
-                ctx.drawImage(enemyImgs[enemy.type], enemy.x, enemy.y, enemy.width, enemy.height);
-            }
-            
-            // Mise à jour de la position
             enemy.x += enemy.vx;
             enemy.y += enemy.vy;
-            
-            // Rebonds sur les bords
+
             if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
                 enemy.vx *= -1;
             }
             if (enemy.y <= 0) {
                 enemy.vy *= -1;
             }
-            
-            // Conserver l'ennemi s'il est dans les limites
+
             return enemy.y < canvas.height;
         } catch (error) {
             console.error("Erreur lors du dessin d'un ennemi:", error);
@@ -1509,52 +1707,18 @@ if (enemy.health) {
         }
     });
 }
-// Ajouter après le dessin du mini-boss dans drawEnemies()
-if (enemy.type === 'miniBoss') {
-    // Fond de la barre de santé (rouge)
-    ctx.fillStyle = "red";
-    ctx.fillRect(
-        enemy.x, 
-        enemy.y - healthBarHeight - 5, 
-        healthBarWidth, 
-        healthBarHeight
-    );
 
-    // Santé restante (vert)
-    ctx.fillStyle = "lime";
-    ctx.fillRect(
-        enemy.x, 
-        enemy.y - healthBarHeight - 5, 
-        healthBarWidth * healthPercentage, 
-        healthBarHeight
-    );
-
-    // Texte de la santé
-    ctx.fillStyle = "white";
-    ctx.font = "10px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(
-        `${enemy.health}/50`, 
-        enemy.x + enemy.width/2, 
-        enemy.y - healthBarHeight - 8
-    );
-}
-// Fonction pour dessiner les projectiles ennemis
 function drawEnemyBullets() {
-    // Filtrer et dessiner les balles ennemies
     enemyBullets = enemyBullets.filter(bullet => {
         try {
-            // Dessiner la balle
             ctx.drawImage(enemyBulletImgs[bullet.type], bullet.x, bullet.y, bullet.width, bullet.height);
-            
-            // Mise à jour de la position
+
             if (bullet.vx) {
                 bullet.x += bullet.vx;
             } else {
                 bullet.y += bullet.speed;
             }
-            
-            // Conserver la balle si elle est dans les limites
+
             return bullet.y < canvas.height && bullet.x > 0 && bullet.x < canvas.width;
         } catch (error) {
             console.error("Erreur lors du dessin d'une balle ennemie:", error);
@@ -1563,394 +1727,350 @@ function drawEnemyBullets() {
     });
 }
 
-// Fonction pour dessiner les points rouges (avec attraction vers les joueurs)
 function drawRedPoints() {
-    // Limiter le nombre de points rouges
     if (redPoints.length > 500) {
         redPoints = redPoints.slice(0, 500);
     }
-    
-    // Dessiner et mettre à jour chaque point
+
     for (let i = redPoints.length - 1; i >= 0; i--) {
         const point = redPoints[i];
-        
-        // Dessiner le point
         ctx.fillStyle = "red";
         ctx.fillRect(point.x, point.y, 2, 2);
-        
-        // Mise à jour de la position (chute vers le bas)
         point.y += 1;
-        
-        // Variables pour l'attraction vers le joueur le plus proche
+
         let attractedToPlayer = false;
         let minDistance = Number.MAX_VALUE;
         let attraction = { x: 0, y: 0 };
-        
-        // Calculer l'attraction vers le joueur 1
-        let dx1 = starship.x + starship.width/2 - point.x;
-        let dy1 = starship.y + starship.height/2 - point.y;
-        let distance1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
-        
-        if (distance1 < 100) {
-            attraction.x = dx1 / distance1 * 3;
-            attraction.y = dy1 / distance1 * 3;
-            minDistance = distance1;
-            attractedToPlayer = true;
-        }
-        
-        // Calculer l'attraction vers le joueur 2 si en mode multijoueur
-        if (isMultiplayer && starship2) {
-            let dx2 = starship2.x + starship2.width/2 - point.x;
-            let dy2 = starship2.y + starship2.height/2 - point.y;
-            let distance2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-            
-            if (distance2 < 100 && distance2 < minDistance) {
-                attraction.x = dx2 / distance2 * 3;
-                attraction.y = dy2 / distance2 * 3;
-                minDistance = distance2;
+
+        const checkPlayerAttraction = (player) => {
+            if (!player || !player.isActive) return;
+
+            const dx = player.x + player.width/2 - point.x;
+            const dy = player.y + player.height/2 - point.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 100 && distance < minDistance) {
+                attraction.x = dx / distance * 3;
+                attraction.y = dy / distance * 3;
+                minDistance = distance;
                 attractedToPlayer = true;
+
+                if (distance < 30) {
+                    coins += 0.5;
+                    document.getElementById("coinsCount").textContent = coins.toFixed(1);
+                    playSound(soundEffects.coin);
+                    player.redPointsCollected++;
+                   
+                    if (player.redPointsCollected >= 200) {
+                        activateShield(player);
+                        player.redPointsCollected = 0;
+                    }
+                   
+                    redPoints.splice(i, 1);
+                    return true;
+                }
             }
-        }
-        
-        // Calculer l'attraction vers le joueur 3 si en mode 3 joueurs
-        if (isTriplePlayer && starship3) {
-            let dx3 = starship3.x + starship3.width/2 - point.x;
-            let dy3 = starship3.y + starship3.height/2 - point.y;
-            let distance3 = Math.sqrt(dx3 * dx3 + dy3 * dy3);
-            
-            if (distance3 < 100 && distance3 < minDistance) {
-                attraction.x = dx3 / distance3 * 3;
-                attraction.y = dy3 / distance3 * 3;
-                minDistance = distance3;
-                attractedToPlayer = true;
+            return false;
+        };
+
+        if (!checkPlayerAttraction(starship) &&
+            (!isMultiplayer || !checkPlayerAttraction(starship2)) &&
+            (!isTriplePlayer || !checkPlayerAttraction(starship3))) {
+           
+            if (attractedToPlayer) {
+                point.x += attraction.x;
+                point.y += attraction.y;
             }
-        }
-        
-        // Appliquer l'attraction si un joueur est proche
-        if (attractedToPlayer) {
-            point.x += attraction.x;
-            point.y += attraction.y;
-            
-            // Vérifier si le point est collecté par un joueur
-            if (minDistance < 30) {
-                coins += 0.5;
-                document.getElementById("coinsCount").textContent = coins.toFixed(1);
-                playSound(soundEffects.coin);
+
+            if (point.y > canvas.height) {
                 redPoints.splice(i, 1);
-                continue;
             }
         }
-        
-        // Supprimer les points hors écran
-        if (point.y > canvas.height) {
-            redPoints.splice(i, 1);
-        }
     }
 }
 
-// =============== GESTION DES COLLISIONS ===============
 function checkCollisions() {
-    try {
-        // Vérification des collisions pour le joueur 1
-        checkPlayerCollisions(starship, 1);
-        
-        // Vérification des collisions pour le joueur 2
-        if (isMultiplayer && starship2) {
-            checkPlayerCollisions(starship2, 2);
-        }
-        
-        // Vérification des collisions pour le joueur 3
-        if (isTriplePlayer && starship3) {
-            checkPlayerCollisions(starship3, 3);
-        }
-        
-        // Vérification des collisions avec les bonus pour tous les joueurs
-        bonusManager.checkAllCollisions();
-        
-    } catch (error) {
-        console.error("Erreur lors de la vérification des collisions:", error);
-    }
-}
+    if (!gameIsRunning || gameManager.isPaused) return;
 
-// Fonction pour vérifier les collisions d'un joueur avec les ennemis et leurs projectiles
-function checkPlayerCollisions(player, playerNumber) {
-    // Collisions des balles du joueur avec les ennemis
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i];
-        let enemyHit = false;
-        
-        // Vérification des collisions balles-ennemis pour ce joueur
-        for (let j = player.bullets.length - 1; j >= 0; j--) {
-            const bullet = player.bullets[j];
-            
-            // Vérifier la validité des objets
-            if (!bullet || !enemy) continue;
-            
-            if (checkCollision(bullet, enemy)) {
-                playSound(soundEffects.hit);
-                player.bullets.splice(j, 1);
-                
-                // Si c'est un mini-boss, réduire sa santé
-                if (enemy.type === 'miniBoss') {
-                    if (!enemy.health) enemy.health = 50; // Au cas où
-                    enemy.health--;
-                    
-                    // Effet visuel de dégâts
-                    ctx.save();
-                    ctx.globalAlpha = 0.5;
-                    ctx.fillStyle = "white";
-                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-                    ctx.restore();
-                    
-                    // Petite génération de points rouges à chaque coup
-                    for (let k = 0; k < 3; k++) {
-                        redPoints.push({
-                            x: enemy.x + Math.random() * enemy.width,
-                            y: enemy.y + Math.random() * enemy.height
-                        });
-                    }
-                    
-                    // Ne détruire l'ennemi que si sa santé est à zéro
-                    if (enemy.health <= 0) {
-                        enemyHit = true;
-                        
-                        // Plus de points rouges à la destruction
-                        for (let k = 0; k < 30; k++) {
-                            redPoints.push({
-                                x: enemy.x + Math.random() * enemy.width,
-                                y: enemy.y + Math.random() * enemy.height
-                            });
-                        }
-                        
-                        // Bonus de pièces
-                        coins += 5;
-                        document.getElementById("coinsCount").textContent = coins.toFixed(1);
-                        
-                        // Son de boss vaincu
-                        playSound(soundEffects.king);
-                        
-                        handleKill();
-                    }
-                } else {
-                    // Pour les ennemis normaux, comportement habituel
+    if (enemies.length > 40) enemies = enemies.slice(0, 40);
+    if (enemyBullets.length > 60) enemyBullets = enemyBullets.slice(0, 60);
+
+    const checkPlayerCollisions = (player, playerNumber) => {
+        if (!player || !player.isActive) return;
+
+        // Collisions balles-ennemis
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i];
+            let enemyHit = false;
+
+            for (let j = player.bullets.length - 1; j >= 0; j--) {
+                const bullet = player.bullets[j];
+                if (!bullet || !enemy) continue;
+
+                if (checkCollision(bullet, enemy)) {
+                    playSound(soundEffects.hit);
+                    player.bullets.splice(j, 1);
                     enemyHit = true;
-                    
-                    // Génération des points rouges
+
                     for (let k = 0; k < 15; k++) {
                         redPoints.push({
                             x: enemy.x + Math.random() * enemy.width,
                             y: enemy.y + Math.random() * enemy.height
                         });
                     }
-                    
-                    handleKill();
+
+                    handleKill(playerNumber);
+                    break;
                 }
-                break;
+            }
+
+            if (enemyHit) {
+                enemies.splice(i, 1);
+                continue;
+            }
+
+            if (checkCollision(player, enemy)) {
+                playSound(soundEffects.hit);
+                if (!player.shield) {
+                    player.lives--;
+                    updatePlayerStats();
+                }
+                enemies.splice(i, 1);
+
+                if (player.lives <= 0) {
+                    playerDeath(player);
+                }
             }
         }
-        
-        if (enemyHit) {
-            enemies.splice(i, 1);
-            continue;
-        }
-        
-        // Collision joueur-ennemi
-        if (checkCollision(player, enemy)) {
-            playSound(soundEffects.hit);
-            playerLives--;
-            killsWithoutDeath = 0;
-            document.getElementById("livesCount").innerText = playerLives;
-            enemies.splice(i, 1);
-            
-            if (playerLives <= 0) {
-                gameOver();
+
+        // Collisions avec les balles ennemies
+        for (let i = enemyBullets.length - 1; i >= 0; i--) {
+            const bullet = enemyBullets[i];
+            if (checkCollision(player, bullet)) {
+                playSound(soundEffects.hit);
+                enemyBullets.splice(i, 1);
+
+                if (!player.shield) {
+                    player.lives--;
+                    killsWithoutDeath = 0;
+                    updatePlayerStats();
+                    if (player.lives <= 0) {
+                        playerDeath(player);
+                    }
+                }
             }
         }
-    }
-    
-    // Collisions avec les balles ennemies
-    for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        const bullet = enemyBullets[i];
-        
-        if (checkCollision(player, bullet)) {
-            playSound(soundEffects.hit);
-            playerLives--;
-            killsWithoutDeath = 0;
-            document.getElementById("livesCount").innerText = playerLives;
-            enemyBullets.splice(i, 1);
-            
-            if (playerLives <= 0) {
-                gameOver();
-            }
-        }
+    };
+
+    checkPlayerCollisions(starship, 1);
+    if (isMultiplayer && starship2) checkPlayerCollisions(starship2, 2);
+    if (isTriplePlayer && starship3) checkPlayerCollisions(starship3, 3);
+
+    bonusManager.checkAllCollisions();
+    if (isMultiplayer) checkPlayerVsPlayerCollisions();
+}
+
+function playerDeath(player) {
+    player.isActive = false;
+
+    let allPlayersDead = !starship.isActive;
+    if (isMultiplayer) allPlayersDead = allPlayersDead && !starship2.isActive;
+    if (isTriplePlayer) allPlayersDead = allPlayersDead && !starship3.isActive;
+
+    if (allPlayersDead) {
+        gameOver();
+    } else {
+        const playerMessage = document.createElement("div");
+        playerMessage.style.position = "absolute";
+        playerMessage.style.color = player.player === 1 ? "#04fbac" :
+                                  player.player === 2 ? "#FF7F50" : "#FFFF50";
+        playerMessage.style.fontSize = "24px";
+        playerMessage.style.fontWeight = "bold";
+        playerMessage.style.padding = "10px";
+        playerMessage.style.borderRadius = "5px";
+        playerMessage.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+        playerMessage.style.left = "50%";
+        playerMessage.style.transform = "translateX(-50%)";
+        playerMessage.style.zIndex = "100";
+        playerMessage.style.top = (30 + (player.player - 1) * 10) + "%";
+        playerMessage.textContent = `Joueur ${player.player} T'ES MORT !`;
+
+        document.body.appendChild(playerMessage);
+
+        setTimeout(() => {
+            document.body.removeChild(playerMessage);
+        }, 2000);
     }
 }
 
-// =============== GAME OVER ===============
 function gameOver() {
-    // Arrêter tous les sons
+    document.querySelectorAll("[id^='stun-effect-player'], [id^='shield-effect-player']").forEach(e => e.remove());
     Object.values(soundEffects).forEach(sound => {
         sound.pause();
         sound.currentTime = 0;
     });
-    
-    // Afficher l'écran de game over
+
     const gameOverContainer = document.getElementById("gameOverContainer");
     const gameOverMessage = document.getElementById("gameOverMessage");
     const continueCounter = document.getElementById("continueCounter");
-    
+
     gameOverContainer.style.display = "block";
     gameManager.isPaused = true;
-    
-    // Compte à rebours
+
     let countdown = 5;
     continueCounter.textContent = countdown;
-    
+
     const countInterval = setInterval(() => {
         countdown--;
         continueCounter.textContent = countdown;
-        
+
         if (countdown <= 0) {
             clearInterval(countInterval);
             continueCounter.style.display = "none";
             gameOverMessage.style.display = "block";
-            
+
             setTimeout(() => {
-                // Réinitialiser le jeu
                 gameOverContainer.style.display = "none";
                 gameOverMessage.style.display = "none";
                 continueCounter.style.display = "block";
                 gameManager.isPaused = false;
-                
-                // Réinitialiser les variables
+
+                // Réinitialisation
                 enemies = [];
                 enemyBullets = [];
-                starship.bullets = [];
-                if (isMultiplayer && starship2) {
-                    starship2.bullets = [];
-                    starship2.powerUpLevel = 0;
-                }
-                if (isTriplePlayer && starship3) {
-                    starship3.bullets = [];
-                    starship3.powerUpLevel = 0;
-                }
                 redPoints = [];
                 enemiesKilled = 0;
-                playerLives = 3;
                 simultaneousKills = 0;
                 killsWithoutDeath = 0;
                 coins = 0;
-                starship.powerUpLevel = 0;
-                
-                // Réinitialiser l'interface
+
+                [starship, starship2, starship3].filter(Boolean).forEach(player => {
+                    player.bullets = [];
+                    player.powerUpLevel = 0;
+                    player.lives = 3;
+                    player.isActive = true;
+                });
+
+                if (isMultiplayer) {
+                    document.getElementById("p1Points").textContent = "0";
+                    document.getElementById("p1Kills").textContent = "0";
+                    if (starship2) {
+                        document.getElementById("p2Points").textContent = "0";
+                        document.getElementById("p2Kills").textContent = "0";
+                    }
+                    if (isTriplePlayer && starship3) {
+                        document.getElementById("p3Points").textContent = "0";
+                        document.getElementById("p3Kills").textContent = "0";
+                    }
+                }
+
                 document.getElementById("livesCount").innerText = playerLives;
                 document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
                 document.getElementById("coinsCount").textContent = coins.toFixed(1);
-                
-                // Replacer les vaisseaux
+
                 starship.x = canvas.width / 2;
                 starship.y = canvas.height - 50;
-                
                 if (isMultiplayer && starship2) {
                     starship2.x = canvas.width / 2 + 100;
                     starship2.y = canvas.height - 50;
                 }
-                
                 if (isTriplePlayer && starship3) {
                     starship3.x = canvas.width / 2 - 100;
                     starship3.y = canvas.height - 50;
                 }
-                
-                // Son de réinitialisation
+
                 if (enemiesKilled < 5) {
                     playSound(soundEffects.humiliation);
                 }
             }, 2000);
         }
     }, 1000);
-} // <-- Accolade fermante manquante ajoutée ici
-   // =============== BOUCLE PRINCIPALE ===============
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
 function update(timestamp) {
     if (!gameIsRunning) return;
-    
-    // Calcul du temps écoulé depuis la dernière frame
+
     if (!lastFrameTime) lastFrameTime = timestamp;
     deltaTime = timestamp - lastFrameTime;
-    
-    // Limiter le framerate pour stabilité
+
     if (deltaTime < frameDuration) {
         requestAnimationFrame(update);
         return;
     }
-    
-    // Mise à jour du FPS
+
     fpsCounter++;
     fpsTimer += deltaTime;
     if (fpsTimer >= 1000) {
-        // console.log(`FPS: ${fpsCounter}`);
         fpsCounter = 0;
         fpsTimer = 0;
     }
-    
+
     lastFrameTime = timestamp;
-    
-    // Si le jeu est en pause, afficher uniquement l'écran de pause
+
     if (gameManager.isPaused) {
         gameManager.draw(ctx);
         requestAnimationFrame(update);
         return;
     }
-    
+
     try {
-        // Nettoyage de l'écran
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Mise à jour des contrôles multijoueur
+
         if (isMultiplayer) {
             updateMultiplayerControls();
         }
-        
-        // Dessin des éléments du jeu
+
         drawStarship();
+        updateStunEffects();
         drawBullets();
         drawEnemies();
         drawEnemyBullets();
         drawRedPoints();
-        
-        // Mise à jour et dessin des bonus
+// Gestion du boss
+if (bossActive) {
+            updateBoss();
+            drawBoss();
+            checkBossCollisions();
+        }
         bonusManager.update();
         bonusManager.draw(ctx);
-        
-        // Affichage de la pause si nécessaire
+
         gameManager.draw(ctx);
-        
-        // Vérification des collisions
+
         checkCollisions();
-        
+        if (isMultiplayer) {
+            checkPlayerVsPlayerCollisions();
+        }
+
     } catch (error) {
         console.error("Erreur dans la boucle de jeu:", error);
     }
-    
-    // Surveillance des performances
+
     const currentTime = Date.now();
     const frameDelta = currentTime - (window.lastFrameTime || currentTime);
     window.lastFrameTime = currentTime;
-    
-    // Si les performances sont mauvaises, réduire les éléments à l'écran
+
     if (frameDelta > 100) {
         if (frameDelta > 300) {
-            console.warn("Performances faibles, réduction des éléments");
             if (enemies.length > 15) enemies = enemies.slice(0, 15);
             if (enemyBullets.length > 20) enemyBullets = enemyBullets.slice(0, 20);
             if (redPoints.length > 50) redPoints = redPoints.slice(0, 50);
         }
     }
-    
+
     requestAnimationFrame(update);
 }
 
-// =============== DÉMARRAGE DU JEU ===============
-// Attendre le chargement des images
+// Initialisation
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+// Chargement des ressources
 Promise.all([
     ...enemyImgs,
     ...enemyBulletImgs,
@@ -1973,151 +2093,26 @@ Promise.all([
 })))
 .then(() => {
     try {
-        console.log("Toutes les ressources sont chargées");
-        
-        // Démarrage de la surveillance
+        updatePlayerStats();
         checkGameState();
-        
-        // Démarrage de la boucle de jeu
         requestAnimationFrame(update);
-        
-        // Configuration des intervalles
+
         const intervals = [
             setInterval(shootBullet, 100),
             setInterval(generateEnemies, 5000),
             setInterval(shootEnemyBullets, 1000),
             setInterval(() => {
                 if (!gameManager.isPaused) {
-                    // Limiter les tirs spéciaux pour performance
                     const specialEnemies = enemies.filter(e => e.type === 1).slice(0, 3);
-                    if (specialEnemies.length > 0) {
-                        specialEnemies.forEach(() => shootEnemyBullets());
-                    }
+                    specialEnemies.forEach(() => shootEnemyBullets());
                 }
-            }, 500),
-            
-            // Tirs pour le joueur 2
-            setInterval(() => {
-                if (!isMultiplayer || gameManager.isPaused || !starship2 || !shooting2) return;
-                
-                // Tir selon le niveau de power-up
-                switch (starship2.powerUpLevel) {
-                    case 0: // Tir normal
-                        starship2.bullets.push({
-                            x: starship2.x + starship2.width / 2 - 2.5,
-                            y: starship2.y,
-                            width: 5,
-                            height: 10,
-                            speed: 20,
-                            player: 2
-                        });
-                        break;
-                    case 1: // Tir triple
-                        [-15, -2.5, 10].forEach((xOffset) => {
-                            starship2.bullets.push({
-                                x: starship2.x + starship2.width / 2 + xOffset,
-                                y: starship2.y,
-                                width: 10,
-                                height: 15,
-                                speed: 10,
-                                player: 2
-                            });
-                        });
-                        break;
-                    case 2: // Tir spécial
-                    case 3:
-                        const bulletConfigs = [
-                            { vx: 0, vy: -5 },
-                            { vx: 5, vy: -5 },
-                            { vx: -5, vy: -5 },
-                            { vx: 5, vy: 0 },
-                            { vx: -5, vy: 0 }
-                        ];
-                        bulletConfigs.forEach((config) => {
-                            starship2.bullets.push({
-                                x: starship2.x + starship2.width / 2 - 5,
-                                y: starship2.y,
-                                width: 10,
-                                height: 15,
-                                speed: 10,
-                                vx: config.vx,
-                                vy: config.vy,
-                                player: 2
-                            });
-                        });
-                        break;
-                }
-                
-                // Limiter le nombre de balles
-                if (starship2.bullets.length > 100) {
-                    starship2.bullets = starship2.bullets.slice(-100);
-                }
-            }, 100),
-            
-            // Tirs pour le joueur 3
-            setInterval(() => {
-                if (!isTriplePlayer || gameManager.isPaused || !starship3 || !shooting3) return;
-                
-                // Tir selon le niveau de power-up
-                switch (starship3.powerUpLevel) {
-                    case 0: // Tir normal
-                        starship3.bullets.push({
-                            x: starship3.x + starship3.width / 2 - 2.5,
-                            y: starship3.y,
-                            width: 5,
-                            height: 10,
-                            speed: 20,
-                            player: 3
-                        });
-                        break;
-                    case 1: // Tir triple
-                        [-15, -2.5, 10].forEach((xOffset) => {
-                            starship3.bullets.push({
-                                x: starship3.x + starship3.width / 2 + xOffset,
-                                y: starship3.y,
-                                width: 10,
-                                height: 15,
-                                speed: 10,
-                                player: 3
-                            });
-                        });
-                        break;
-                    case 2: // Tir spécial
-                    case 3:
-                        const bulletConfigs = [
-                            { vx: 0, vy: -5 },
-                            { vx: 5, vy: -5 },
-                            { vx: -5, vy: -5 },
-                            { vx: 5, vy: 0 },
-                            { vx: -5, vy: 0 }
-                        ];
-                        bulletConfigs.forEach((config) => {
-                            starship3.bullets.push({
-                                x: starship3.x + starship3.width / 2 - 5,
-                                y: starship3.y,
-                                width: 10,
-                                height: 15,
-                                speed: 10,
-                                vx: config.vx,
-                                vy: config.vy,
-                                player: 3
-                            });
-                        });
-                        break;
-                }
-                
-                // Limiter le nombre de balles
-                if (starship3.bullets.length > 100) {
-                    starship3.bullets = starship3.bullets.slice(-100);
-                }
-            }, 100)
+            }, 500)
         ];
-        
-        // Nettoyage à la fermeture de la page
+
         window.addEventListener("beforeunload", () => {
             intervals.forEach(clearInterval);
         });
-        
+
     } catch (error) {
         console.error("Erreur au démarrage du jeu:", error);
     }
