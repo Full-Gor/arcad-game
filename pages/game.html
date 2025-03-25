@@ -401,6 +401,11 @@ if (isTriplePlayer) {
 }
 
 // Autres images
+
+const miniBossImg = new Image();
+miniBossImg.src = "/img/miniBoss.jpg";
+
+
 const bulletImg = new Image();
 bulletImg.src = "/img/bullets1.jpg";
 
@@ -995,11 +1000,27 @@ function updateMultiplayerControls() {
 function handleKill() {
     // Mettre à jour le temps du dernier kill
     lastKillTime = Date.now();
-    
     simultaneousKills++;
     enemiesKilled++;
     killsWithoutDeath++;
     document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
+
+    // Apparition du mini-boss tous les 10 kills
+    if (enemiesKilled % 10 === 0) {
+        enemies.push({
+            x: Math.random() * (canvas.width - 100) + 50,
+            y: 100,
+            width: 80,  // Plus grand que les ennemis normaux
+            height: 80,
+            vx: 2,
+            vy: 0,
+            type: 'miniBoss',
+            rotation: 0,
+            lastShot: Date.now(),
+            health: 50
+        });
+        playSound(soundEffects.king);
+    }
 
     // Sons d'achievements
     if (killsWithoutDeath === 20) {
@@ -1107,6 +1128,7 @@ function endPowerUpVideo() {
         powerUpTimeoutId = null;
     }, 10000);
 }
+
 
 // =============== FONCTIONS DE COMBAT ===============
 // Fonction pour tirer des balles avec différents patterns selon le niveau de power-up
@@ -1401,11 +1423,71 @@ function drawBullets() {
 
 // Fonction pour dessiner les ennemis
 function drawEnemies() {
-    // Utiliser filter pour enlever les ennemis hors écran
     enemies = enemies.filter(enemy => {
         try {
-            // Dessiner l'ennemi
-            ctx.drawImage(enemyImgs[enemy.type], enemy.x, enemy.y, enemy.width, enemy.height);
+            if (enemy.type === 'miniBoss') {
+                // Rotation du mini-boss
+                ctx.save();
+                ctx.translate(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
+                enemy.rotation += 0.02;
+                ctx.rotate(enemy.rotation);
+                ctx.drawImage(miniBossImg, -enemy.width/2, -enemy.height/2, enemy.width, enemy.height);
+                // Barre de santé au-dessus du mini-boss
+if (enemy.health) {
+    const healthBarWidth = enemy.width;
+    const healthBarHeight = 8;
+    const healthPercentage = enemy.health / 50;
+
+    // Position de la barre de santé en tenant compte de la rotation
+    const barX = enemy.x;
+    const barY = enemy.y - 20;
+
+    ctx.save();
+    // Dessiner le fond rouge
+    ctx.fillStyle = "red";
+    ctx.fillRect(barX, barY, healthBarWidth, healthBarHeight);
+    
+    // Dessiner la partie verte
+    ctx.fillStyle = "lime";
+    ctx.fillRect(barX, barY, healthBarWidth * healthPercentage, healthBarHeight);
+    
+    // Texte
+    ctx.fillStyle = "white";
+    ctx.font = "10px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(`${enemy.health}/50`, barX + healthBarWidth/2, barY - 2);
+    ctx.restore();
+}
+                ctx.restore();
+
+                // Tirs dans toutes les directions
+                const currentTime = Date.now();
+                if (currentTime - enemy.lastShot > 1000) { // Tir toutes les secondes
+                    const angles = [0, Math.PI/2, Math.PI, Math.PI*3/2];
+                    angles.forEach(angle => {
+                        enemyBullets.push({
+                            x: enemy.x + enemy.width/2,
+                            y: enemy.y + enemy.height/2,
+                            width: 10,
+                            height: 15,
+                            speed: 20,
+                            vx: Math.cos(angle + enemy.rotation) * 4,
+                            vy: Math.sin(angle + enemy.rotation) * 4,
+                            type: 2
+                        });
+                    });
+                    enemy.lastShot = currentTime;
+                }
+
+                // Mouvement horizontal avec rebond
+                enemy.x += enemy.vx;
+                if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+                    enemy.vx *= -1;
+                }
+            } else {
+                // Dessiner l'ennemi normal
+                ctx.drawImage(enemyImgs[enemy.type], enemy.x, enemy.y, enemy.width, enemy.height);
+            }
             
             // Mise à jour de la position
             enemy.x += enemy.vx;
@@ -1427,7 +1509,36 @@ function drawEnemies() {
         }
     });
 }
+// Ajouter après le dessin du mini-boss dans drawEnemies()
+if (enemy.type === 'miniBoss') {
+    // Fond de la barre de santé (rouge)
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+        enemy.x, 
+        enemy.y - healthBarHeight - 5, 
+        healthBarWidth, 
+        healthBarHeight
+    );
 
+    // Santé restante (vert)
+    ctx.fillStyle = "lime";
+    ctx.fillRect(
+        enemy.x, 
+        enemy.y - healthBarHeight - 5, 
+        healthBarWidth * healthPercentage, 
+        healthBarHeight
+    );
+
+    // Texte de la santé
+    ctx.fillStyle = "white";
+    ctx.font = "10px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(
+        `${enemy.health}/50`, 
+        enemy.x + enemy.width/2, 
+        enemy.y - healthBarHeight - 8
+    );
+}
 // Fonction pour dessiner les projectiles ennemis
 function drawEnemyBullets() {
     // Filtrer et dessiner les balles ennemies
@@ -1578,17 +1689,62 @@ function checkPlayerCollisions(player, playerNumber) {
             if (checkCollision(bullet, enemy)) {
                 playSound(soundEffects.hit);
                 player.bullets.splice(j, 1);
-                enemyHit = true;
                 
-                // Génération des points rouges
-                for (let k = 0; k < 15; k++) {
-                    redPoints.push({
-                        x: enemy.x + Math.random() * enemy.width,
-                        y: enemy.y + Math.random() * enemy.height
-                    });
+                // Si c'est un mini-boss, réduire sa santé
+                if (enemy.type === 'miniBoss') {
+                    if (!enemy.health) enemy.health = 50; // Au cas où
+                    enemy.health--;
+                    
+                    // Effet visuel de dégâts
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = "white";
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    ctx.restore();
+                    
+                    // Petite génération de points rouges à chaque coup
+                    for (let k = 0; k < 3; k++) {
+                        redPoints.push({
+                            x: enemy.x + Math.random() * enemy.width,
+                            y: enemy.y + Math.random() * enemy.height
+                        });
+                    }
+                    
+                    // Ne détruire l'ennemi que si sa santé est à zéro
+                    if (enemy.health <= 0) {
+                        enemyHit = true;
+                        
+                        // Plus de points rouges à la destruction
+                        for (let k = 0; k < 30; k++) {
+                            redPoints.push({
+                                x: enemy.x + Math.random() * enemy.width,
+                                y: enemy.y + Math.random() * enemy.height
+                            });
+                        }
+                        
+                        // Bonus de pièces
+                        coins += 5;
+                        document.getElementById("coinsCount").textContent = coins.toFixed(1);
+                        
+                        // Son de boss vaincu
+                        playSound(soundEffects.king);
+                        
+                        handleKill();
+                    }
+                } else {
+                    // Pour les ennemis normaux, comportement habituel
+                    enemyHit = true;
+                    
+                    // Génération des points rouges
+                    for (let k = 0; k < 15; k++) {
+                        redPoints.push({
+                            x: enemy.x + Math.random() * enemy.width,
+                            y: enemy.y + Math.random() * enemy.height
+                        });
+                    }
+                    
+                    handleKill();
                 }
-                
-                handleKill();
                 break;
             }
         }
