@@ -1297,7 +1297,7 @@ if (isMobile) {
                         ship.powerUpLevel = 0;
                     }
                     ship.powerUpTimeoutId = null;
-                }, 10000);
+                }, 6000);
             }
         }
 
@@ -1320,7 +1320,7 @@ if (isMobile) {
                 if (isMultiplayer && starship2) starship2.powerUpLevel = 0;
                 if (isTriplePlayer && starship3) starship3.powerUpLevel = 0;
                 powerUpTimeoutId = null;
-            }, 10000);
+            }, 6000);
         }
 
         function stunPlayer(player, duration = 2000) {
@@ -1355,7 +1355,7 @@ if (isMobile) {
             }, duration);
         }
 
-        function activateShield(player, duration = 10000) {
+        function activateShield(player, duration = 7000) {
             if (!player || !player.isActive) return;
            
             player.shield = true;
