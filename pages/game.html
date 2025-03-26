@@ -208,70 +208,21 @@
             z-index: 1000;
         }
 
-        /* Contrôles tactiles pour mobile */
-        #mobileControls {
-            display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 25vh;
-            z-index: 100;
-            opacity: 0.5;
-        }
-
-        #joystick {
+        .touch-indicator {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 100px;
-            height: 100px;
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #joystickHandle {
             width: 40px;
             height: 40px;
-            background-color: rgba(255, 255, 255, 0.6);
             border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 999;
+            display: none;
         }
-
-        #fireButton {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 80px;
-            height: 80px;
-            background-color: rgba(255, 0, 0, 0.4);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            color: white;
-        }
-
+        
         .player-mode {
             font-size: clamp(14px, 4vw, 20px);
-        }
-
-        /* Adaptation pour petits écrans */
-        @media (max-width: 768px) {
-            #mobileControls {
-                display: block;
-            }
-
-            .player-stats-item {
-                font-size: clamp(10px, 2.5vw, 14px);
-            }
-
-            .stats, #coinsCount {
-                font-size: clamp(12px, 3.5vw, 18px);
-            }
         }
 
         /* Adaptation pour orientation paysage vs portrait */
@@ -318,13 +269,8 @@
         </div>
     </div>
 
-    <!-- Contrôles pour appareils mobiles -->
-    <div id="mobileControls">
-        <div id="joystick">
-            <div id="joystickHandle"></div>
-        </div>
-        <div id="fireButton">FIRE</div>
-    </div>
+    <!-- Indicateur de toucher -->
+    <div id="touchIndicator" class="touch-indicator"></div>
 
     <!-- Canvas du jeu -->
     <canvas id="gameCanvas"></canvas>
@@ -341,13 +287,12 @@
     <div id="gameOverMessage">GAME OVER</div>
 
     <script>
-       
-
-        // Détection des appareils mobiles
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         // Configuration initiale
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        
+
+        
 
         // Récupération des paramètres de difficulté
         const enemySpeedMultiplier = parseFloat(localStorage.getItem('enemySpeed')) || 1;
@@ -363,6 +308,16 @@
         let fpsTimer = 0;
         const fpsLimit = 60;
         const frameDuration = 1000 / fpsLimit;
+
+        // Détection des appareils mobiles
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// Variables tactiles
+let touchActive = false;
+let lastTouchX = 0;
+let lastTouchY = 0;
+let touchShootInterval = null;
+const touchIndicator = document.getElementById("touchIndicator");
 
         // Variables de jeu
         let shooting = false;
@@ -749,19 +704,33 @@
             }
 
             setupPauseControl() {
-                window.addEventListener("mousedown", (e) => {
-                    if (e.button === 1) {
-                        e.preventDefault();
-                        this.togglePause();
-                    }
-                });
+    window.addEventListener("mousedown", (e) => {
+        if (e.button === 1) {
+            e.preventDefault();
+            this.togglePause();
+        }
+    });
 
-                window.addEventListener("keydown", (e) => {
-                    if (e.code === "Escape") {
-                        this.togglePause();
-                    }
-                });
+    window.addEventListener("keydown", (e) => {
+        if (e.code === "Escape") {
+            this.togglePause();
+        }
+    });
+    
+    // Double tap pour pause sur mobile
+    if (isMobile) {
+        let lastTap = 0;
+        document.addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 300 && tapLength > 0 && e.touches.length === 0) {
+                this.togglePause();
+                e.preventDefault();
             }
+            lastTap = currentTime;
+        });
+    }
+}
 
             togglePause() {
                 this.isPaused = !this.isPaused;
@@ -771,7 +740,23 @@
                     soundEffects.shoot.play();
                 }
             }
-
+            togglePause() {
+    this.isPaused = !this.isPaused;
+    if (this.isPaused) {
+        soundEffects.shoot.pause();
+        // Arrêter le tir continu si en pause
+        if (touchShootInterval) {
+            clearInterval(touchShootInterval);
+            touchShootInterval = null;
+        }
+    } else if (shooting && !starship.stunned) {
+        soundEffects.shoot.play();
+        // Reprendre le tir si le doigt était sur l'écran
+        if (touchActive && !touchShootInterval) {
+            touchShootInterval = setInterval(shootBullet, 100);
+        }
+    }
+}
             draw(ctx) {
                 if (this.isPaused) {
                     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
@@ -900,7 +885,86 @@
                 );
             }
         });
+// Contrôles tactiles
+if (isMobile) {
+    // Événements tactiles pour le vaisseau principal
+    canvas.addEventListener("touchstart", function(e) {
+        e.preventDefault();
+        if (gameManager.isPaused) return;
+        
+        const touch = e.touches[0];
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
+        
+        // Montrer l'indicateur de toucher
+        touchIndicator.style.display = "block";
+        touchIndicator.style.left = touchX + "px";
+        touchIndicator.style.top = touchY + "px";
+        
+        // Mettre à jour la position du vaisseau
+        updateStarshipPosition(touchX, touchY);
+        
+        // Commencer à tirer
+        touchActive = true;
+        shooting = true;
+        if (!gameManager.isPaused) {
+            soundEffects.shoot.play().catch(() => {});
+        }
+        
+        // Configuration du tir continu
+        if (!touchShootInterval) {
+            touchShootInterval = setInterval(shootBullet, 100);
+        }
+    });
 
+    canvas.addEventListener("touchmove", function(e) {
+        e.preventDefault();
+        if (gameManager.isPaused || !touchActive) return;
+        
+        const touch = e.touches[0];
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
+        
+        // Déplacer l'indicateur de toucher
+        touchIndicator.style.left = touchX + "px";
+        touchIndicator.style.top = touchY + "px";
+        
+        // Mettre à jour la position du vaisseau
+        updateStarshipPosition(touchX, touchY);
+    });
+
+    canvas.addEventListener("touchend", function(e) {
+        e.preventDefault();
+        touchActive = false;
+        shooting = false;
+        touchIndicator.style.display = "none";
+        
+        soundEffects.shoot.pause();
+        soundEffects.shoot.currentTime = 0;
+        
+        // Arrêter le tir continu
+        if (touchShootInterval) {
+            clearInterval(touchShootInterval);
+            touchShootInterval = null;
+        }
+    });
+
+    canvas.addEventListener("touchcancel", function(e) {
+        e.preventDefault();
+        touchActive = false;
+        shooting = false;
+        touchIndicator.style.display = "none";
+        
+        soundEffects.shoot.pause();
+        soundEffects.shoot.currentTime = 0;
+        
+        // Arrêter le tir continu
+        if (touchShootInterval) {
+            clearInterval(touchShootInterval);
+            touchShootInterval = null;
+        }
+    });
+}
         window.addEventListener("mousedown", (e) => {
             if (e.button === 0) {
                 shooting = true;
@@ -929,7 +993,33 @@
                 console.error("Erreur lors de la lecture du son:", error);
             }
         }
-
+        function updateStarshipPosition(x, y) {
+    if (!starship || !starship.isActive || starship.stunned) return;
+    
+    // Mémoriser la dernière position tactile
+    lastTouchX = x;
+    lastTouchY = y;
+    
+    // Assurer une position adéquate du vaisseau
+    // On place le vaisseau légèrement au-dessus du doigt pour une meilleure visibilité
+    const offsetY = 50; // Décalage vertical pour plus de visibilité
+    
+    starship.x = Math.max(
+        0,
+        Math.min(
+            canvas.width - starship.width,
+            x - starship.width / 2
+        )
+    );
+    
+    starship.y = Math.max(
+        0,
+        Math.min(
+            canvas.height - starship.height,
+            y - offsetY
+        )
+    );
+}
         function checkCollision(rect1, rect2) {
             if (!rect1 || !rect2 ||
                 typeof rect1.x !== 'number' || typeof rect1.y !== 'number' ||
@@ -2179,9 +2269,23 @@
         }
 
         function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Repositionner le vaisseau pour qu'il reste dans les limites du canvas
+    if (starship) {
+        starship.x = Math.min(starship.x, canvas.width - starship.width);
+        starship.y = Math.min(starship.y, canvas.height - starship.height);
+    }
+    if (starship2) {
+        starship2.x = Math.min(starship2.x, canvas.width - starship2.width);
+        starship2.y = Math.min(starship2.y, canvas.height - starship2.height);
+    }
+    if (starship3) {
+        starship3.x = Math.min(starship3.x, canvas.width - starship3.width);
+        starship3.y = Math.min(starship3.y, canvas.height - starship3.height);
+    }
+}
 
         function update(timestamp) {
     if (!gameIsRunning) return;
