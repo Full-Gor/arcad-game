@@ -92,31 +92,31 @@
     <h1>Choisis ton aéronef !</h1>
     <div class="vaisseaux">
         <div class="vaisseau-container">
-            <img src="img/starship1.jpg" alt="Vaisseau 1" class="vaisseau" onclick="choisirVaisseau(this, 'Croiseur', 'audio/fulgor.mp3')">
+            <img src="/img/starship1.jpg" alt="Vaisseau 1" class="vaisseau" onclick="choisirVaisseau(this, 'Croiseur', 'audio/fulgor.mp3')">
             <h2 class="vaisseau-titre">Croiseur</h2>
         </div>
         <div class="vaisseau-container">
-            <img src="img/starship2.jpg" alt="Vaisseau 2" class="vaisseau" onclick="choisirVaisseau(this, 'Destroyer', 'audio/glacius.mp3')">
+            <img src="/img/starship2.jpg" alt="Vaisseau 2" class="vaisseau" onclick="choisirVaisseau(this, 'Destroyer', 'audio/glacius.mp3')">
             <h2 class="vaisseau-titre">Destroyer</h2>
         </div>
         <div class="vaisseau-container">
-            <img src="img/starship3.jpg" alt="Vaisseau 3" class="vaisseau" onclick="choisirVaisseau(this, 'Chasseur', 'audio/fulgor.mp3')">
+            <img src="/img/starship3.jpg" alt="Vaisseau 3" class="vaisseau" onclick="choisirVaisseau(this, 'Chasseur', 'audio/fulgor.mp3')">
             <h2 class="vaisseau-titre">Chasseur</h2>
         </div>
         <div class="vaisseau-container">
-            <img src="img/starship4.jpg" alt="Vaisseau 4" class="vaisseau" onclick="choisirVaisseau(this, 'Éclaireur', 'audio/cinder.mp3')">
+            <img src="/img/starship4.jpg" alt="Vaisseau 4" class="vaisseau" onclick="choisirVaisseau(this, 'Éclaireur', 'audio/cinder.mp3')">
             <h2 class="vaisseau-titre">Éclaireur</h2>
         </div>
         <div class="vaisseau-container">
-            <img src="img/starship5.jpg" alt="Vaisseau 5" class="vaisseau" onclick="choisirVaisseau(this, 'Aéronef', 'audio/glacius.mp3')">
+            <img src="/img/starship5.jpg" alt="Vaisseau 5" class="vaisseau" onclick="choisirVaisseau(this, 'Aéronef', 'audio/glacius.mp3')">
             <h2 class="vaisseau-titre">Aéronef</h2>
         </div>
         <div class="vaisseau-container">
-            <img src="img/starship6.jpg" alt="Vaisseau 6" class="vaisseau" onclick="choisirVaisseau(this, 'Intercepteur', 'audio/cinder.mp3')">
+            <img src="/img/starship6.jpg" alt="Vaisseau 6" class="vaisseau" onclick="choisirVaisseau(this, 'Intercepteur', 'audio/cinder.mp3')">
             <h2 class="vaisseau-titre">Intercepteur</h2>
         </div>
         <div class="vaisseau-container">
-            <img src="img/starship7.jpg" alt="Vaisseau 7" class="vaisseau" onclick="choisirVaisseau(this, 'Bombardier', 'audio/cinder.mp3')">
+            <img src="/img/starship7.jpg" alt="Vaisseau 7" class="vaisseau" onclick="choisirVaisseau(this, 'Bombardier', 'audio/cinder.mp3')">
             <h2 class="vaisseau-titre">Bombardier</h2>
         </div>
     </div>
@@ -152,77 +152,83 @@ const isTriplePlayer = playersCount === 3;
 // Variable pour suivre le joueur actuellement en train de sélectionner
 let currentPlayer = 1;
 
+// Meilleure gestion de l'audio
 function choisirVaisseau(element, nom, audioSrc) {
     // Ajouter l'effet de clignotement
     element.classList.add('clignote');
     
-    // Créer et jouer l'audio
-    const audio = new Audio(audioSrc);
-    audio.play();
+    // Créer et jouer l'audio avec gestion d'erreur
+    try {
+        const audio = new Audio(audioSrc);
+        audio.play().catch(error => {
+            console.log("Impossible de jouer l'audio, mais on continue", error);
+        });
+    } catch (error) {
+        console.log("Erreur audio", error);
+    }
     
     // Dans la fonction choisirVaisseau, modifiez cette partie :
-if (isMultiplayer) {
-    if (currentPlayer === 1) {
-        localStorage.setItem('vaisseauChoisiP1', nom);
-        currentPlayer = 2;
-        
-        // Afficher un message pour le second joueur
-        const oldMessage = document.querySelector('[style*="margin: 20px 0;"]');
-        if (oldMessage) oldMessage.remove();
-        
-        const message = document.createElement('div');
-        message.innerHTML = '<h2 style="color: #FF7F50; text-align: center; margin: 20px 0;">Joueur 2, choisissez votre vaisseau!</h2>';
-        document.body.insertBefore(message, document.querySelector('.vaisseaux'));
-        
-        // Enlever l'effet de clignotement
-        setTimeout(function() {
-            document.querySelectorAll('.vaisseau').forEach(img => {
-                img.classList.remove('clignote');
-            });
-        }, 1000);
-    } else if (currentPlayer === 2 && isTriplePlayer) {
-        localStorage.setItem('vaisseauChoisiP2', nom);
-        currentPlayer = 3;
-        
-        // Afficher un message pour le troisième joueur
-        const oldMessage = document.querySelector('[style*="margin: 20px 0;"]');
-        if (oldMessage) oldMessage.remove();
-        
-        const message = document.createElement('div');
-        message.innerHTML = '<h2 style="color: #FFFF50; text-align: center; margin: 20px 0;">Joueur 3, choisissez votre vaisseau!</h2>';
-        document.body.insertBefore(message, document.querySelector('.vaisseaux'));
-        
-        // Enlever l'effet de clignotement
-        setTimeout(function() {
-            document.querySelectorAll('.vaisseau').forEach(img => {
-                img.classList.remove('clignote');
-            });
-        }, 1000);
-    } else {
-        // Dernier joueur sélectionné
-        if (currentPlayer === 2) {
+    if (isMultiplayer) {
+        if (currentPlayer === 1) {
+            // Joueur 1 choisit
+            localStorage.setItem('vaisseauChoisiP1', nom);
+            currentPlayer = 2;
+            
+            // Afficher un message pour le second joueur
+            const oldMessage = document.querySelector('[style*="margin: 20px 0;"]');
+            if (oldMessage) oldMessage.remove();
+            
+            const message = document.createElement('div');
+            message.innerHTML = '<h2 style="color: #FF7F50; text-align: center; margin: 20px 0;">Joueur 2, choisissez votre vaisseau!</h2>';
+            document.body.insertBefore(message, document.querySelector('.vaisseaux'));
+            
+            // Enlever l'effet de clignotement
+            setTimeout(function() {
+                element.classList.remove('clignote');
+            }, 1000);
+        } else if (currentPlayer === 2) {
+            // Joueur 2 choisit
             localStorage.setItem('vaisseauChoisiP2', nom);
+            
+            if (isTriplePlayer) {
+                // Passer au joueur 3 si mode 3 joueurs
+                currentPlayer = 3;
+                
+                // Afficher un message pour le troisième joueur
+                const oldMessage = document.querySelector('[style*="margin: 20px 0;"]');
+                if (oldMessage) oldMessage.remove();
+                
+                const message = document.createElement('div');
+                message.innerHTML = '<h2 style="color: #FFFF50; text-align: center; margin: 20px 0;">Joueur 3, choisissez votre vaisseau!</h2>';
+                document.body.insertBefore(message, document.querySelector('.vaisseaux'));
+                
+                // Enlever l'effet de clignotement
+                setTimeout(function() {
+                    element.classList.remove('clignote');
+                }, 1000);
+            } else {
+                // Mode 2 joueurs: aller directement au jeu
+                setTimeout(function() {
+                    window.location.href = 'game.html?players=' + playersCount;
+                }, 1500);
+            }
         } else if (currentPlayer === 3) {
+            // Joueur 3 choisit (uniquement en mode 3 joueurs)
             localStorage.setItem('vaisseauChoisiP3', nom);
+            
+            // Redirection vers la page de jeu
+            setTimeout(function() {
+                window.location.href = 'game.html?players=' + playersCount;
+            }, 1500);
         }
-        
-        // Redirection vers la page de jeu
+    } else {
+        // Mode 1 joueur
+        localStorage.setItem('vaisseauChoisi', nom);
         setTimeout(function() {
-            window.location.href = 'game.html?players=' + playersCount;
+            window.location.href = 'game.html';
         }, 1500);
     }
-} else {
-    // Mode 1 joueur
-    localStorage.setItem('vaisseauChoisi', nom);
-    setTimeout(function() {
-        window.location.href = 'game.html';
-    }, 1500);
-}}
-
-// Empêcher le glisser-déposer des images
-document.querySelectorAll('img').forEach(img => {
-    img.addEventListener('dragstart', (e) => e.preventDefault());
-});
+}
     </script>
 </body>
 </html>
