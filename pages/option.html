@@ -112,10 +112,10 @@
             <h2 class="section-title">Difficulté du jeu</h2>
             
             <div class="difficulty-buttons">
-                <button class="difficulty-option" data-difficulty="easy">EASY</button>
-                <button class="difficulty-option" data-difficulty="medium">MEDIUM</button>
-                <button class="difficulty-option" data-difficulty="hard">HARD</button>
-                <button class="difficulty-option" data-difficulty="master">MASTER</button>
+                <button class="difficulty-option" data-difficulty="easy" data-href="/">EASY</button>
+                <button class="difficulty-option" data-difficulty="medium" data-href="/">MEDIUM</button>
+                <button class="difficulty-option" data-difficulty="hard" data-href="/">HARD</button>
+                <button class="difficulty-option" data-difficulty="master" data-href="/">MASTER</button>
             </div>
             
             <div class="option-description" id="difficultyDescription">
@@ -123,7 +123,11 @@
             </div>
         </div>
         
-        <a href="/" class="back-button">RETOUR AU MENU</a>
+        <a href="/" class="back-button" data-href="/">RETOUR AU MENU</a>
+
+        <!-- Add audio elements -->
+        <audio id="hover-sound" src="/audio/survole.mp3"></audio>
+        <audio id="click-sound" src="/audio/click.mp3"></audio>
     </div>
 
     <script>
@@ -169,6 +173,9 @@
         // Sélectionner toutes les options de difficulté
         const difficultyOptions = document.querySelectorAll('.difficulty-option');
         const difficultyDescription = document.getElementById('difficultyDescription');
+        const hoverSound = document.getElementById('hover-sound');
+        const clickSound = document.getElementById('click-sound');
+        const backButton = document.querySelector('.back-button');
         
         // Fonction pour mettre à jour la sélection et enregistrer la difficulté
         function updateDifficultySelection(difficulty) {
@@ -199,16 +206,72 @@
             }
         }
         
-        // Ajouter les événements click aux options de difficulté
-        difficultyOptions.forEach(option => {
-            option.addEventListener('click', function() {
-                const difficulty = this.getAttribute('data-difficulty');
-                updateDifficultySelection(difficulty);
+        // Ajouter les événements sonores
+        function addSoundEffects() {
+            // Fonction pour gérer la navigation avec délai
+            function navigateWithDelay(element) {
+                // Désactiver les clics pendant le délai
+                element.style.pointerEvents = 'none';
+                
+                // Jouer le son de clic
+                try {
+                    clickSound.currentTime = 0;
+                    clickSound.play();
+                } catch(error) {
+                    console.log('Click sound error:', error);
+                }
+                
+                // Récupérer l'URL de destination
+                const href = element.getAttribute('href') || element.getAttribute('data-href') || '/';
+                
+                // Naviguer après 2 secondes
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 2000);
+            }
+            
+            // Hover et click pour les options de difficulté
+            difficultyOptions.forEach(option => {
+                // Son au survol
+                option.addEventListener('mouseenter', function() {
+                    try {
+                        hoverSound.currentTime = 0;
+                        hoverSound.play();
+                    } catch(error) {
+                        console.log('Hover sound error:', error);
+                    }
+                });
+
+                // Son au clic
+                option.addEventListener('click', function() {
+                    const difficulty = this.getAttribute('data-difficulty');
+                    updateDifficultySelection(difficulty);
+                    navigateWithDelay(this);
+                });
             });
-        });
+
+            // Son au survol pour le bouton retour
+            backButton.addEventListener('mouseenter', function() {
+                try {
+                    hoverSound.currentTime = 0;
+                    hoverSound.play();
+                } catch(error) {
+                    console.log('Hover sound error:', error);
+                }
+            });
+
+            // Son au clic pour le bouton retour
+            backButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                navigateWithDelay(this);
+            });
+        }
         
         // Initialiser avec la difficulté sauvegardée
         updateDifficultySelection(savedDifficulty);
+
+        // Ajouter les événements sonores
+        addSoundEffects();
     </script>
 </body>
 </html>
