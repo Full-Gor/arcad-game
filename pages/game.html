@@ -385,6 +385,13 @@ const touchIndicator = document.getElementById("touchIndicator");
         let bossHitEffect = false;
         let bossHitEffectTimer = 0;
         let backgroundActive = false;
+        // Variables pour le mini-boss
+let miniBossActive = false;
+let miniBoss = null;
+const miniBossImg = new Image();
+miniBossImg.src = "img/miniBoss.jpg";
+let miniBossHealth = 50;
+let miniBossShootTimer = 0;
 
         // Configuration multijoueur
         const urlParams = new URLSearchParams(window.location.search);
@@ -1250,18 +1257,27 @@ if (isMobile) {
     document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
    
     // Compteur différent selon le stage
-    if (!isStage2) {
-        // Stage 1
-        if (enemiesKilled === 200 && !bossActive) {
-            createBoss();
-        }
-    } else {
-        // Stage 2
-        stage2EnemiesKilled++;
-        if (stage2EnemiesKilled === 200 && !bossActive) {
-            createBoss2();
-        }
+  // Compteur différent selon le stage
+if (!isStage2) {
+    // Stage 1
+    if (enemiesKilled === 200 && !bossActive) {
+        createBoss();
     }
+    // Ajouter cette condition pour faire apparaître le mini-boss
+    else if (enemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
+        createMiniBoss();
+    }
+} else {
+    // Stage 2
+    stage2EnemiesKilled++;
+    if (stage2EnemiesKilled === 200 && !bossActive) {
+        createBoss2();
+    }
+    // Ajouter aussi pour le stage 2
+    else if (stage2EnemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
+        createMiniBoss();
+    }
+}
             if (isMultiplayer) {
                 switch (playerNumber) {
                     case 1:
@@ -1879,6 +1895,161 @@ function checkBossCollisions() {
     bonusManager.addPowerUp(2);
     bonusManager.addLife();
 }
+// Fonction pour créer le mini-boss
+function createMiniBoss() {
+    if (miniBossActive) return;
+   
+    miniBossActive = true;
+    miniBossHealth = 50;
+   
+    miniBoss = {
+        x: canvas.width / 2 - 50,
+        y: 80,
+        width: 100,
+        height: 100,
+        vx: 0.5, // Mouvement très lent
+        vy: 0.3,
+        lastShootTime: Date.now()
+    };
+   
+    // Jouer un son d'alerte pour l'apparition du mini-boss
+    playSound(soundEffects.king);
+}
+
+// Fonction pour mettre à jour le mini-boss
+function updateMiniBoss() {
+    if (!miniBossActive || !miniBoss || gameManager.isPaused) return;
+   
+    // Mouvement lent
+    miniBoss.x += miniBoss.vx;
+    miniBoss.y += miniBoss.vy;
+   
+    // Rebondir aux bords
+    if (miniBoss.x <= 0 || miniBoss.x + miniBoss.width >= canvas.width) {
+        miniBoss.vx *= -1;
+    }
+    if (miniBoss.y <= 0 || miniBoss.y + miniBoss.height >= canvas.height / 2) {
+        miniBoss.vy *= -1;
+    }
+   
+    // Tir toutes les 3 secondes
+    const currentTime = Date.now();
+    if (currentTime - miniBoss.lastShootTime > 3000) {
+        shootMiniBossBullets();
+        miniBoss.lastShootTime = currentTime;
+    }
+}
+
+// Fonction pour dessiner le mini-boss
+function drawMiniBoss() {
+    if (!miniBossActive || !miniBoss) return;
+   
+    ctx.save();
+    
+    // Dessiner le mini-boss
+    if (miniBossImg.complete) {
+        ctx.drawImage(miniBossImg, miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
+    } else {
+        // Image de secours si l'image n'est pas chargée
+        ctx.fillStyle = "orange";
+        ctx.fillRect(miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
+    }
+    
+    // Afficher la santé du mini-boss
+    ctx.fillStyle = "white";
+    ctx.font = "14px Arial";
+    ctx.fillText(miniBossHealth + "/50", miniBoss.x + miniBoss.width/2 - 20, miniBoss.y - 10);
+    
+    ctx.restore();
+}
+
+// Fonction pour les tirs du mini-boss
+function shootMiniBossBullets() {
+    if (!miniBossActive || !miniBoss) return;
+    
+    // Créer une rangée de 5 lasers rouges
+    for (let i = 0; i < 5; i++) {
+        enemyBullets.push({
+            x: miniBoss.x + (miniBoss.width / 5) * i,
+            y: miniBoss.y + miniBoss.height,
+            width: 5, // Largeur 5px
+            height: 20, // Longueur 20px
+            speed: 1, // Très lent
+            color: "red", // Couleur rouge
+            isMiniBossBullet: true // Pour l'identifier
+        });
+    }
+    
+    playSound(soundEffects.shoot);
+}
+
+// Fonction pour vérifier les collisions avec le mini-boss
+function checkMiniBossCollisions() {
+    if (!miniBossActive || !miniBoss) return;
+   
+    // Vérifier les collisions avec les balles des joueurs
+    [starship, starship2, starship3].filter(Boolean).forEach(player => {
+        if (!player.isActive) return;
+        
+        for (let i = player.bullets.length - 1; i >= 0; i--) {
+            const bullet = player.bullets[i];
+            
+            if (checkCollision(bullet, miniBoss)) {
+                // Supprimer la balle
+                player.bullets.splice(i, 1);
+                
+                // Réduire la santé du mini-boss
+                miniBossHealth--;
+                
+                // Son de coup
+                playSound(soundEffects.hit);
+                
+                // Vérifier si le mini-boss est détruit
+                if (miniBossHealth <= 0) {
+                    defeatMiniBoss();
+                }
+            }
+        }
+        
+        // Vérifier si le joueur touche le mini-boss
+        if (checkCollision(player, miniBoss)) {
+            if (!player.shield) {
+                player.lives--;
+                updatePlayerStats();
+                
+                if (player.lives <= 0) {
+                    playerDeath(player);
+                }
+            }
+        }
+    });
+}
+
+// Fonction pour la défaite du mini-boss
+function defeatMiniBoss() {
+    // Jouer un son
+    playSound(soundEffects.perfect);
+   
+    // Créer un effet d'explosion
+    for (let i = 0; i < 50; i++) {
+        redPoints.push({
+            x: miniBoss.x + Math.random() * miniBoss.width,
+            y: miniBoss.y + Math.random() * miniBoss.height
+        });
+    }
+   
+    // Désactiver le mini-boss
+    miniBossActive = false;
+    miniBoss = null;
+   
+    // Bonus points
+    coins += 10;
+    document.getElementById("coinsCount").textContent = coins.toFixed(1);
+    
+    // Donner un power-up
+    bonusManager.addPowerUp();
+    bonusManager.addLife();
+}
 
         function shootBullet() {
             if (gameManager.isPaused) return;
@@ -2137,12 +2308,19 @@ function checkBossCollisions() {
         function drawEnemyBullets() {
     enemyBullets = enemyBullets.filter(bullet => {
         try {
-            // Sauvegarder l'opacité globale actuelle
-            const currentAlpha = ctx.globalAlpha;
+            if (bullet.isMiniBossBullet) {
+                // Dessiner les lasers du mini-boss
+                ctx.save();
+                ctx.fillStyle = bullet.color || "red";
+                ctx.shadowColor = "red";
+                ctx.shadowBlur = 10;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                ctx.restore();
+            } else {
+                // Code existant pour les balles normales
+                ctx.drawImage(enemyBulletImgs[bullet.type], bullet.x, bullet.y, bullet.width, bullet.height);
+            }
            
-            ctx.drawImage(enemyBulletImgs[bullet.type], bullet.x, bullet.y, bullet.width, bullet.height);
-           
-            // Mettre à jour la position avec vx et vy si définis
             if (bullet.vx !== undefined) {
                 bullet.x += bullet.vx;
             }
@@ -2150,7 +2328,7 @@ function checkBossCollisions() {
             if (bullet.vy !== undefined) {
                 bullet.y += bullet.vy;
             } else if (bullet.speed) {
-                bullet.y += bullet.speed; // Pour la compatibilité arrière
+                bullet.y += bullet.speed;
             }
 
             return bullet.y < canvas.height && bullet.y > 0 && bullet.x > 0 && bullet.x < canvas.width;
@@ -2497,10 +2675,9 @@ function checkBossCollisions() {
 }
 
 function update(timestamp) {
-    // Votre code existant...
-   
     try {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
        
         // Ne pas modifier globalAlpha ici pour préserver l'opacité définie dans createBoss
 
@@ -2514,6 +2691,13 @@ function update(timestamp) {
         drawEnemies();
         drawEnemyBullets();
         drawRedPoints();
+
+        // Mettre à jour et dessiner le mini-boss
+        if (miniBossActive) {
+            updateMiniBoss();
+            drawMiniBoss();
+            checkMiniBossCollisions();
+        }
 
         if (bossActive) {
             updateBoss();
