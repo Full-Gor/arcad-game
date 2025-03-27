@@ -1380,42 +1380,41 @@ if (!isStage2) {
     }, 100);
 }
 
-        function activatePowerUp(ship, powerUpType) {
-            if (powerUpType === 2) {
-                try {
-                    gameManager.isPaused = true;
-                    videoContainer.style.display = "block";
-                    powerUpVideo.currentTime = 0;
+function activatePowerUp(ship, powerUpType) {
+    if (powerUpType === 2) {
+        try {
+            gameManager.isPaused = true;
+            videoContainer.style.display = "block";
+            powerUpVideo.currentTime = 0;
 
-                    const playPromise = powerUpVideo.play();
-                    if (playPromise) {
-                        playPromise.catch(error => {
-                            console.error("Erreur vidéo:", error);
-                            endPowerUpVideo();
-                        });
-                    }
-
-                    powerUpVideo.onended = endPowerUpVideo;
-                } catch (error) {
-                    console.error("Erreur powerup:", error);
+            const playPromise = powerUpVideo.play();
+            if (playPromise) {
+                playPromise.catch(error => {
+                    console.error("Erreur vidéo:", error);
                     endPowerUpVideo();
-                }
-            } else {
-                if (ship.powerUpTimeoutId) {
-                    clearTimeout(ship.powerUpTimeoutId);
-                    ship.powerUpTimeoutId = null;
-                }
-
-                ship.powerUpLevel = powerUpType + 1;
-
-                ship.powerUpTimeoutId = setTimeout(() => {
-                    if (ship.powerUpLevel === powerUpType + 1) {
-                        ship.powerUpLevel = 0;
-                    }
-                    ship.powerUpTimeoutId = null;
-                }, 6000);
+                });
             }
+
+            powerUpVideo.onended = endPowerUpVideo;
+        } catch (error) {
+            console.error("Erreur powerup:", error);
+            endPowerUpVideo();
         }
+    } else {
+        if (ship.powerUpTimeoutId) {
+            clearTimeout(ship.powerUpTimeoutId);
+            ship.powerUpTimeoutId = null;
+        }
+
+        // Incrémenter le niveau de powerUp, mais plafonner à 3
+        ship.powerUpLevel = Math.min(3, ship.powerUpLevel + 1);
+
+        ship.powerUpTimeoutId = setTimeout(() => {
+            ship.powerUpLevel = Math.max(0, ship.powerUpLevel - 1); // Diminuer d'un niveau à l'expiration
+            ship.powerUpTimeoutId = null;
+        }, 6000);
+    }
+}
 
         function endPowerUpVideo() {
             videoContainer.style.display = "none";
@@ -1974,15 +1973,29 @@ function shootMiniBossBullets() {
             y: miniBoss.y + miniBoss.height,
             width: 5, // Largeur 5px
             height: 20, // Longueur 20px
-            speed: 1, // Très lent
+            speed: 3, // Vitesse des lasers
             color: "red", // Couleur rouge
             isMiniBossBullet: true // Pour l'identifier
         });
     }
     
+    // Ajouter une boule rouge qui suit les lasers
+    setTimeout(function() {
+        // Créer une boule rouge au centre du mini-boss
+        enemyBullets.push({
+            x: miniBoss.x + (miniBoss.width / 2) - 5, // Centré (10px de diamètre)
+            y: miniBoss.y + miniBoss.height,
+            width: 30, // Diamètre 10px
+            height: 10, // Forme circulaire
+            speed: 2, // Un peu plus lent que les lasers
+            color: "red", // Couleur rouge
+            isMiniBossBullet: true, // Pour l'identifier
+            isRedBall: true // Pour identifier spécifiquement la boule
+        });
+    }, 500); // Délai de 500ms après les lasers
+    
     playSound(soundEffects.shoot);
 }
-
 // Fonction pour vérifier les collisions avec le mini-boss
 function checkMiniBossCollisions() {
     if (!miniBossActive || !miniBoss) return;
@@ -2050,70 +2063,112 @@ function defeatMiniBoss() {
     bonusManager.addPowerUp();
     bonusManager.addLife();
 }
+function shootBullet() {
+    if (gameManager.isPaused) return;
 
-        function shootBullet() {
-            if (gameManager.isPaused) return;
+    [
+        { ship: starship, isShooting: shooting },
+        { ship: starship2, isShooting: shooting2 },
+        { ship: starship3, isShooting: shooting3 }
+    ].filter(({ ship }) => ship && ship.isActive).forEach(({ ship, isShooting }) => {
+        if (!isShooting) return;
 
-            [
-                { ship: starship, isShooting: shooting },
-                { ship: starship2, isShooting: shooting2 },
-                { ship: starship3, isShooting: shooting3 }
-            ].filter(({ ship }) => ship && ship.isActive).forEach(({ ship, isShooting }) => {
-                if (!isShooting) return;
-
-                switch (ship.powerUpLevel) {
-                    case 0:
-                        ship.bullets.push({
-                            x: ship.x + ship.width / 2 - 2.5,
-                            y: ship.y,
-                            width: 5,
-                            height: 10,
-                            speed: 20,
-                            player: ship.player
-                        });
-                        break;
-                    case 1:
-                        [-15, -2.5, 10].forEach(xOffset => {
-                            ship.bullets.push({
-                                x: ship.x + ship.width / 2 + xOffset,
-                                y: ship.y,
-                                width: 10,
-                                height: 15,
-                                speed: 10,
-                                player: ship.player
-                            });
-                        });
-                        break;
-                    case 2:
-                    case 3:
-                        [
-                            { vx: 0, vy: -5 },
-                            { vx: 5, vy: -5 },
-                            { vx: -5, vy: -5 },
-                            { vx: 5, vy: 0 },
-                            { vx: -5, vy: 0 }
-                        ].forEach(config => {
-                            ship.bullets.push({
-                                x: ship.x + ship.width / 2 - 5,
-                                y: ship.y,
-                                width: 10,
-                                height: 15,
-                                speed: 10,
-                                vx: config.vx,
-                                vy: config.vy,
-                                player: ship.player
-                            });
-                        });
-                        break;
-                }
-
-                if (ship.bullets.length > 100) {
-                    ship.bullets = ship.bullets.slice(-100);
-                }
+        // Cas de base - niveau 0 (pas de powerUp)
+        if (ship.powerUpLevel === 0) {
+            ship.bullets.push({
+                x: ship.x + ship.width / 2 - 2, // Centré (4px de diamètre)
+                y: ship.y,
+                width: 4, // Diamètre 4px
+                height: 4, // Pour garder un cercle
+                speed: 20,
+                player: ship.player
+            });
+        } 
+        // Premier powerUp - 3 bullets en ligne horizontale
+        else if (ship.powerUpLevel === 1) {
+            [-15, -2.5, 10].forEach(xOffset => {
+                ship.bullets.push({
+                    x: ship.x + ship.width / 2 + xOffset,
+                    y: ship.y,
+                    width: 4, // Diamètre 4px
+                    height: 4, // Pour garder un cercle
+                    speed: 10,
+                    player: ship.player
+                });
+            });
+        }
+        // Deuxième powerUp - 3 bullets de base + 4 bullets décalées verticalement
+        else if (ship.powerUpLevel === 2) {
+            // 3 bullets de base (comme niveau 1)
+            [-15, -2.5, 10].forEach(xOffset => {
+                ship.bullets.push({
+                    x: ship.x + ship.width / 2 + xOffset,
+                    y: ship.y,
+                    width: 4,
+                    height: 4,
+                    speed: 10,
+                    player: ship.player
+                });
+            });
+            
+            // 4 bullets supplémentaires décalées verticalement
+            [-20, -10, 5, 15].forEach(xOffset => {
+                ship.bullets.push({
+                    x: ship.x + ship.width / 2 + xOffset,
+                    y: ship.y - 4, // Décalage vertical de 4px vers le haut
+                    width: 4,
+                    height: 4,
+                    speed: 12, // Légèrement plus rapide
+                    player: ship.player
+                });
+            });
+        }
+        // Troisième powerUp - pattern complet avec 3 rangées
+        else if (ship.powerUpLevel >= 3) {
+            // Première rangée (base)
+            [-15, -2.5, 10].forEach(xOffset => {
+                ship.bullets.push({
+                    x: ship.x + ship.width / 2 + xOffset,
+                    y: ship.y,
+                    width: 4,
+                    height: 4,
+                    speed: 10,
+                    player: ship.player
+                });
+            });
+            
+            // Deuxième rangée (décalée de 4px vers le haut)
+            [-20, -10, 5, 15].forEach(xOffset => {
+                ship.bullets.push({
+                    x: ship.x + ship.width / 2 + xOffset,
+                    y: ship.y - 4,
+                    width: 4,
+                    height: 4,
+                    speed: 12,
+                    player: ship.player
+                });
+            });
+            
+            // Troisième rangée (décalée de 8px vers le haut)
+            [-25, -15, 0, 10, 20].forEach(xOffset => {
+                ship.bullets.push({
+                    x: ship.x + ship.width / 2 + xOffset,
+                    y: ship.y - 8,
+                    width: 4,
+                    height: 4,
+                    speed: 14, // Encore plus rapide
+                    player: ship.player
+                });
             });
         }
 
-        function shootEnemyBullets() {
+        // Limiter le nombre de balles pour éviter les problèmes de performance
+        if (ship.bullets.length > 100) {
+            ship.bullets = ship.bullets.slice(-100);
+        }
+    });
+}
+function shootEnemyBullets() {
     if (gameManager.isPaused) return;
 
     const maxNewBullets = 10;
@@ -2124,13 +2179,82 @@ function defeatMiniBoss() {
 
         if (Math.random() > 0.2) continue;
 
-        if (enemy.type === 1) {
+       // Cas spécial pour enemy8 - tire une boule de chaque côté
+if (enemy.type === 7) { // enemy8 (index commence à 0)
+    // Boule gauche
+    enemyBullets.push({
+        x: enemy.x - 15, // À gauche de l'ennemi
+        y: enemy.y + enemy.height/2 - 7.5, // Centré verticalement
+        width: 15, // Diamètre de 15px
+        height: 15, // Pour garder un cercle
+        speed: 0,
+        vx: -2,
+    vy: 0,
+    isSpecialEnemyBullet: true, // Nouvelle propriété
+    enemyType: 8, // Indiquer quel type d'ennemi a tiré
+        color: "cyan", // La couleur de ses propres balles
+        isMiniBossBullet: true, // Pour utiliser le rendu spécial
+        isRedBall: true, // Pour qu'il soit rendu comme une boule
+        type: 0
+    });
+ 
+    // Boule droite
+    enemyBullets.push({
+        x: enemy.x + enemy.width, // À droite de l'ennemi
+        y: enemy.y + enemy.height/2 - 7.5, // Centré verticalement
+        width: 15, // Diamètre de 15px
+        height: 15, // Pour garder un cercle
+        speed: 0,
+        vx: -2,
+    vy: 0,
+    isSpecialEnemyBullet: true, // Nouvelle propriété
+    enemyType: 8, // Indiquer quel type d'ennemi a tiré
+        color: "cyan",
+        isMiniBossBullet: true,
+        isRedBall: true,
+        type: 0
+    });
+    
+    playSound(soundEffects.shoot);
+}
+        // Cas spécial pour enemy12 - tir horizontal
+        else if (enemy.type === 11) { // enemy12 (index commence à 0)
+            // Tir vers la gauche
+            enemyBullets.push({
+                x: enemy.x,
+                y: enemy.y + enemy.height / 2,
+                width: 15,
+                height: 15,
+                speed: 0,
+                vx: -3 * enemyBulletSpeedMultiplier,
+    vy: 0,
+    isSpecialEnemyBullet: true, // Nouvelle propriété
+    enemyType: 12, // Indiquer quel type d'ennemi a tiré
+                type: 2 // Type 2 pour la couleur
+            });
+            
+            // Tir vers la droite
+            enemyBullets.push({
+                x: enemy.x + enemy.width,
+                y: enemy.y + enemy.height / 2,
+                width: 15,
+                height: 15,
+                speed: 0,
+                vx: -3 * enemyBulletSpeedMultiplier,
+    vy: 0,
+    isSpecialEnemyBullet: true, // Nouvelle propriété
+    enemyType: 12, // Indiquer quel type d'ennemi a tiré
+                type: 2 // Type 2 pour la couleur
+            });
+        } 
+        // Traitement normal pour les autres types d'ennemis
+        else if (enemy.type === 1) {
             enemyBullets.push(
                 {
                     x: enemy.x,
                     y: enemy.y + enemy.height / 2,
-                    width: 10,
-                    height: 15,
+                    width: 4, // Diamètre 4px
+                    height: 4, // Pour garder un cercle
                     speed: 0,
                     vx: -3 * enemyBulletSpeedMultiplier,
                     type: 1
@@ -2138,8 +2262,8 @@ function defeatMiniBoss() {
                 {
                     x: enemy.x + enemy.width,
                     y: enemy.y + enemy.height / 2,
-                    width: 10,
-                    height: 15,
+                    width: 4, // Diamètre 4px
+                    height: 4, // Pour garder un cercle
                     speed: 0,
                     vx: 3 * enemyBulletSpeedMultiplier,
                     type: 1
@@ -2148,10 +2272,10 @@ function defeatMiniBoss() {
         } else {
             // Tir normal vers le bas
             enemyBullets.push({
-                x: enemy.x + enemy.width / 2 - 2.5,
+                x: enemy.x + enemy.width / 2 - 2, // Centré (4px de diamètre)
                 y: enemy.y + enemy.height,
-                width: 10,
-                height: 15,
+                width: 4, // Diamètre 4px
+                height: 4, // Pour garder un cercle
                 speed: 3 * enemyBulletSpeedMultiplier,
                 type: Math.floor(Math.random() * 3)
             });
@@ -2159,10 +2283,10 @@ function defeatMiniBoss() {
             // Tir vers l'arrière (vers le haut) uniquement en stage 2
             if (isStage2) {
                 enemyBullets.push({
-                    x: enemy.x + enemy.width / 2 - 2.5,
+                    x: enemy.x + enemy.width / 2 - 2, // Centré (4px de diamètre)
                     y: enemy.y,
-                    width: 10,
-                    height: 15,
+                    width: 4, // Diamètre 4px
+                    height: 4, // Pour garder un cercle
                     speed: -3 * enemyBulletSpeedMultiplier, // Vitesse négative pour aller vers le haut
                     type: Math.floor(Math.random() * 3)
                 });
@@ -2251,37 +2375,57 @@ function defeatMiniBoss() {
     if (isTriplePlayer) drawPlayer(starship3, starship3Img);
 }
 
-        function drawBullets() {
-            const drawPlayerBullets = (player) => {
-                if (!player || !player.isActive) return;
+function drawBullets() {
+    const drawPlayerBullets = (player) => {
+        if (!player || !player.isActive) return;
 
-                player.bullets = player.bullets.filter(bullet => {
-                    const isOnScreen = bullet.y > -20 && bullet.y < canvas.height + 20 &&
-                                     bullet.x > -20 && bullet.x < canvas.width + 20;
+        player.bullets = player.bullets.filter(bullet => {
+            const isOnScreen = bullet.y > -20 && bullet.y < canvas.height + 20 &&
+                             bullet.x > -20 && bullet.x < canvas.width + 20;
 
-                    if (isOnScreen) {
-                        ctx.save();
-                        ctx.globalAlpha = player.player === 1 ? 1 : 0.9;
-                        ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
-                        ctx.restore();
+            if (isOnScreen) {
+                // Déterminer la couleur selon le joueur
+                let bulletColor;
+                if (player.player === 1) bulletColor = "#04fbac"; // Vert-bleu
+                else if (player.player === 2) bulletColor = "#FF7F50"; // Orange
+                else if (player.player === 3) bulletColor = "#FFFF50"; // Jaune
+                else bulletColor = "white";
+                
+                // Dessiner une boule au lieu d'une image
+                ctx.save();
+                ctx.fillStyle = bulletColor;
+                ctx.shadowColor = bulletColor;
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(
+                    bullet.x + bullet.width/2, 
+                    bullet.y + bullet.width/2, 
+                    bullet.width/2, // Rayon = moitié de la largeur
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                ctx.restore();
 
-                        if (bullet.vx !== undefined && bullet.vy !== undefined) {
-                            bullet.x += bullet.vx;
-                            bullet.y += bullet.vy;
-                        } else {
-                            bullet.y -= bullet.speed;
-                        }
-                    }
+                // Mettre à jour la position
+                if (bullet.vx !== undefined && bullet.vy !== undefined) {
+                    bullet.x += bullet.vx;
+                    bullet.y += bullet.vy;
+                } else {
+                    bullet.y -= bullet.speed;
+                }
+            }
 
-                    return isOnScreen;
-                });
-            };
+            return isOnScreen;
+        });
+    };
 
-            drawPlayerBullets(starship);
-            if (isMultiplayer) drawPlayerBullets(starship2);
-            if (isTriplePlayer) drawPlayerBullets(starship3);
-        }
+    drawPlayerBullets(starship);
+    if (isMultiplayer) drawPlayerBullets(starship2);
+    if (isTriplePlayer) drawPlayerBullets(starship3);
+}
 
+          
         function drawEnemies() {
             enemies = enemies.filter(enemy => {
                 try {
@@ -2309,18 +2453,58 @@ function defeatMiniBoss() {
     enemyBullets = enemyBullets.filter(bullet => {
         try {
             if (bullet.isMiniBossBullet) {
-                // Dessiner les lasers du mini-boss
+                // Sauvegarde le contexte
                 ctx.save();
-                ctx.fillStyle = bullet.color || "red";
-                ctx.shadowColor = "red";
-                ctx.shadowBlur = 10;
-                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                
+                if (bullet.isRedBall) {
+                    // Dessiner une boule avec la taille spécifiée
+                    ctx.fillStyle = bullet.color || "red";
+                    ctx.shadowColor = bullet.color || "red";
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(
+                        bullet.x + bullet.width/2, 
+                        bullet.y + bullet.height/2, 
+                        bullet.width/2, // Utiliser la taille définie dans le bullet
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                } else {
+                    // Dessiner les lasers du mini-boss
+                    ctx.fillStyle = bullet.color || "red";
+                    ctx.shadowColor = bullet.color || "red";
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                }
+                
                 ctx.restore();
             } else {
-                // Code existant pour les balles normales
-                ctx.drawImage(enemyBulletImgs[bullet.type], bullet.x, bullet.y, bullet.width, bullet.height);
+                // Pour les balles ennemies normales, respecter la taille définie
+                let bulletColor;
+                if (bullet.type === 0) bulletColor = "cyan"; 
+                else if (bullet.type === 1) bulletColor = "magenta";
+                else if (bullet.type === 2) bulletColor = "gold";
+                else bulletColor = "white";
+                
+                // Dessiner une boule colorée avec la taille définie
+                ctx.save();
+                ctx.fillStyle = bulletColor;
+                ctx.shadowColor = bulletColor;
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(
+                    bullet.x + bullet.width/2, 
+                    bullet.y + bullet.height/2, 
+                    bullet.width/2, // Utiliser la taille définie dans le bullet
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                ctx.restore();
             }
-           
+            
+            // Mettre à jour la position
             if (bullet.vx !== undefined) {
                 bullet.x += bullet.vx;
             }
@@ -2338,7 +2522,6 @@ function defeatMiniBoss() {
         }
     });
 }
-
         function drawRedPoints() {
     if (redPoints.length > 500) {
         redPoints = redPoints.slice(0, 500);
