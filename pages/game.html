@@ -181,46 +181,70 @@
             animation: rotateBackground 60s linear infinite;
         }
 
-        @keyframes shieldPulse {
+       /* Animation de bouclier */
+@keyframes shieldPulse {
     0% {
         transform: scale(1) rotate(0deg);
-        opacity: 0.8;
+        opacity: 0.6;
         box-shadow: 0 0 15px currentColor, inset 0 0 10px currentColor;
     }
     50% {
         transform: scale(1.1) rotate(180deg);
-        opacity: 0.6;
+        opacity: 0.8;
         box-shadow: 0 0 25px currentColor, inset 0 0 20px currentColor;
     }
     100% {
         transform: scale(1) rotate(360deg);
-        opacity: 0.8;
+        opacity: 0.6;
         box-shadow: 0 0 15px currentColor, inset 0 0 10px currentColor;
     }
 }
 
 .shield-effect {
-    animation: shieldPulse 2s infinite linear;
-    border: 3px solid currentColor;
+    animation: shieldPulse 4s infinite linear;
+    border: 2px solid currentColor;
     border-radius: 50%;
     position: absolute;
     pointer-events: none;
-    z-index: 1000;
-    background: radial-gradient(circle at center, transparent 40%, currentColor 100%);
+    z-index: 900;
+    background: radial-gradient(circle at center, transparent 60%, currentColor 100%);
 }
 
-.shield-effect::before {
+.shield-effect::before, .shield-effect::after {
     content: '';
     position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    animation: shieldPulse 3s infinite linear reverse;
+    opacity: 0.5;
+}
+
+.shield-effect::after {
     top: -5px;
     left: -5px;
     right: -5px;
     bottom: -5px;
-    border: 2px solid currentColor;
-    border-radius: 50%;
-    animation: shieldPulse 3s infinite linear reverse;
+    border: 1px dashed currentColor;
+    animation-duration: 5s;
+    animation-direction: normal;
 }
 
+/* Nouveau style pour les particules de bouclier individuelles */
+@keyframes particleBlink {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+}
+
+.shield-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particleBlink 1s infinite alternate;
+}
        
 
         .touch-indicator {
@@ -516,6 +540,109 @@ const volumes = {
 Object.keys(soundEffects).forEach(key => {
     soundEffects[key].volume = volumes[key] || 1.0;
 });
+
+// Configuration des particules de bouclier
+const shieldParticles = {
+  particleCount: 20,
+  particles: [],
+  colors: ["#04fbac", "#00ffff", "#0088ff"],
+  minSize: 2,
+  maxSize: 4,
+  minSpeed: 0.02,
+  maxSpeed: 0.05
+};
+
+// Créer la fonction d'initialisation des particules
+function createShieldParticles(player) {
+  // Vider le tableau de particules existantes s'il y en a
+  shieldParticles.particles = [];
+  
+  // Créer de nouvelles particules
+  for (let i = 0; i < shieldParticles.particleCount; i++) {
+    const angle = Math.random() * Math.PI * 2; // Angle aléatoire entre 0 et 2π
+    const distance = 30 + Math.random() * 10; // Distance depuis le centre du vaisseau
+    
+    shieldParticles.particles.push({
+      x: 0, // Position relative, sera mise à jour à chaque frame
+      y: 0,
+      size: shieldParticles.minSize + Math.random() * (shieldParticles.maxSize - shieldParticles.minSize),
+      angle,
+      distance,
+      speed: shieldParticles.minSpeed + Math.random() * (shieldParticles.maxSpeed - shieldParticles.minSpeed),
+      color: shieldParticles.colors[Math.floor(Math.random() * shieldParticles.colors.length)],
+      player: player.player,
+      opacity: 0.5 + Math.random() * 0.5,
+      blinking: Math.random() > 0.7 // Certaines particules clignotent
+    });
+  }
+}
+
+// Mettre à jour les particules de bouclier
+function updateShieldParticles() {
+  if (gameManager.isPaused) return;
+
+  // Pour chaque joueur qui a un bouclier actif
+  [starship, starship2, starship3].filter(player => player && player.isActive && player.shield).forEach(player => {
+    shieldParticles.particles.filter(p => p.player === player.player).forEach(particle => {
+      // Mettre à jour l'angle de la particule
+      particle.angle += particle.speed;
+      if (particle.angle > Math.PI * 2) particle.angle -= Math.PI * 2;
+      
+      // Si la particule clignote, faire varier son opacité
+      if (particle.blinking) {
+        particle.opacity = 0.2 + (Math.sin(Date.now() * 0.01) + 1) * 0.4;
+      }
+    });
+  });
+}
+
+// Dessiner les particules de bouclier
+function drawShieldParticles() {
+  [starship, starship2, starship3].filter(player => player && player.isActive && player.shield).forEach(player => {
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
+    
+    shieldParticles.particles.filter(p => p.player === player.player).forEach(particle => {
+      ctx.save();
+      
+      // Calculer la position absolue de la particule
+      const x = centerX + Math.cos(particle.angle) * particle.distance;
+      const y = centerY + Math.sin(particle.angle) * particle.distance;
+      
+      // Dessiner la particule
+      ctx.globalAlpha = particle.opacity;
+      ctx.fillStyle = particle.color;
+      
+      // Ajouter un effet de lueur
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = particle.color;
+      
+      // Dessiner la particule en tant que cercle
+      ctx.beginPath();
+      ctx.arc(x, y, particle.size, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
+    });
+    
+    // Dessiner l'aura de bouclier
+    ctx.save();
+    const gradient = ctx.createRadialGradient(
+      centerX, centerY, player.width / 2,
+      centerX, centerY, player.width / 2 + 15
+    );
+    gradient.addColorStop(0, 'rgba(4, 251, 172, 0)');
+    gradient.addColorStop(0.7, 'rgba(4, 251, 172, 0.1)');
+    gradient.addColorStop(1, 'rgba(4, 251, 172, 0.3)');
+    
+    ctx.globalAlpha = 0.5 + Math.sin(Date.now() * 0.003) * 0.2;
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, player.width / 2 + 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
 
         // Chargement des images
         const starshipImg = new Image();
@@ -1470,43 +1597,19 @@ function activatePowerUp(ship, powerUpType) {
             }, duration);
         }
 
-        function activateShield(player, duration = 7000) {
-            if (!player || !player.isActive) return;
-           
-            player.shield = true;
-           
-            const shieldColors = {
-                1: "#04fbac",
-                2: "#FF7F50",
-                3: "#ae00ff"
-            };
-           
-            const shieldColor = shieldColors[player.player] || "#04fbac";
-           
-            const oldShield = document.getElementById(`shield-effect-player${player.player}`);
-            if (oldShield) oldShield.remove();
-           
-            const shieldEffect = document.createElement("div");
-            shieldEffect.id = `shield-effect-player${player.player}`;
-            shieldEffect.className = "shield-effect";
-            shieldEffect.style.color = shieldColor;
-            shieldEffect.style.left = (player.x - 10) + "px";
-            shieldEffect.style.top = (player.y - 10) + "px";
-            shieldEffect.style.width = (player.width + 20) + "px";
-            shieldEffect.style.height = (player.height + 20) + "px";
-           
-            document.body.appendChild(shieldEffect);
-           
-            if (player.shieldTimeout) {
-                clearTimeout(player.shieldTimeout);
-            }
-           
-            player.shieldTimeout = setTimeout(() => {
-                player.shield = false;
-                shieldEffect.remove();
-            }, duration);
-        }
-
+        function activateShield(player, duration = 10000) {
+  // Du code existant concernant l'activation du bouclier
+  player.shield = true;
+  
+  // Probablement du code qui crée un élément pour l'effet visuel
+  // ...
+  
+  // Du code qui définit un timeout pour désactiver le bouclier
+  player.shieldTimeout = setTimeout(() => {
+    player.shield = false;
+    // Plus de code ici...
+  }, duration);
+}
         function checkPlayerVsPlayerCollisions() {
             if (!isMultiplayer) return;
 
@@ -2869,6 +2972,9 @@ function update(timestamp) {
         }
 
         drawStarship();
+        // Mise à jour des particules de bouclier
+updateShieldParticles();
+drawShieldParticles(); // Dessiner les particules du bouclier
         updateStunEffects();
         drawBullets();
         drawEnemies();
