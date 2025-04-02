@@ -370,6 +370,212 @@
         // Variables pour le stage 2
 let isStage2 = false;
 let stage2EnemiesKilled = 0;
+
+
+// Variables pour le stage 3
+let isStage3 = false;
+let stage3Phase = 0;
+let stage3EnemyTypes = [10, 11, 12, 13, 14, 15, 16, 17]; // Types d'ennemis pour le stage 3
+let stage3CurrentEnemyType = 0;
+let stage3EnemiesSpawned = 0;
+
+function startStage3() {
+    console.log("Début du Stage 3");
+    
+    // Changer le fond d'écran
+    const scrollingBg = document.getElementById("scrollingBackground");
+    scrollingBg.style.backgroundImage = "url('/img/back2.png')";
+    scrollingBg.style.display = "block";
+    scrollingBg.style.filter = "brightness(0.9) contrast(1.1)";
+    
+    // Réinitialiser les variables du stage 3
+    isStage3 = true;
+    stage3Phase = 0;
+    stage3CurrentEnemyType = 0;
+    stage3EnemiesSpawned = 0;
+    
+    // Augmenter la difficulté
+    enemySpeedMultiplier *= 1.5;
+    enemyBulletSpeedMultiplier *= 1.5;
+}
+
+function generateStage3Enemies() {
+    if (!isStage3 || gameManager.isPaused) return;
+    
+    // Vérifier si nous devons passer au prochain type d'ennemi
+    if (stage3EnemiesSpawned >= 5) {
+        stage3CurrentEnemyType++;
+        stage3EnemiesSpawned = 0;
+        
+        // Vérifier si tous les types d'ennemis ont été utilisés
+        if (stage3CurrentEnemyType >= stage3EnemyTypes.length) {
+            isStage3 = false;
+            // Optionnel : Ajouter un événement de fin de stage 3
+            return;
+        }
+    }
+    
+    // Générer 5 ennemis du type actuel
+    if (stage3EnemiesSpawned < 5) {
+        const enemyType = stage3EnemyTypes[stage3CurrentEnemyType];
+        
+        for (let i = 0; i < 1; i++) {
+            enemies.push({
+                x: Math.random() * (canvas.width - 100) + 50,
+                y: Math.random() * (canvas.height / 3),
+                width: 60,
+                height: 60,
+                vx: (Math.random() * 2 - 1) * 3, // Vitesse un peu plus rapide
+                vy: Math.random() * 2,
+                type: enemyType
+            });
+        }
+        
+        stage3EnemiesSpawned++;
+    }
+}
+
+function defeatBoss2() {
+    console.log("Création du stage 3 après défaite du boss 2");
+    if (bossActive) return;
+   
+    bossActive = true;
+    bossHealth = 1000; // Plus de vie pour boss2
+   
+    document.getElementById("bossHealthBar").style.display = "block";
+    document.getElementById("bossHealthFill").style.width = "100%";
+   
+    boss = {
+        x: canvas.width / 2 - 150, // Ajusté pour la taille 2x
+        y: 50,
+        width: 150,
+        height: 150,
+        vx: 0.5, // Déplacement plus lent
+        vy: 0.5, // Déplacement plus lent
+        rotation: 0, // Ne sera pas utilisé pour boss2
+        movePattern: 0,
+        moveTimer: 0,
+        lastMoveChange: Date.now(),
+        isBoss2: true
+    };
+   
+    playSound(soundEffects.bossAppear);
+    enemies = [];
+   
+    // Afficher un message pour le boss 2
+    const stageTitle = document.getElementById("stageTitle");
+    stageTitle.textContent = "BOSS FINAL !";
+    stageTitle.style.display = "block";
+   
+    // Animation de fade-in
+    setTimeout(() => {
+        stageTitle.style.opacity = "1";
+       
+        // Animation de fade-out après 2 secondes
+        setTimeout(() => {
+            stageTitle.style.opacity = "0";
+           
+            // Masquer l'élément après la transition
+            setTimeout(() => {
+                stageTitle.style.display = "none";
+            }, 2000);
+        }, 2000);
+    }, 100);
+}
+
+function defeatBoss2() {
+    console.log("Création du stage 3 après défaite du boss 2");
+   
+    // Désactiver le boss
+    bossActive = false;
+    boss = null;
+   
+    // Cacher la barre de vie
+    document.getElementById("bossHealthBar").style.display = "none";
+   
+    // Réinitialiser l'opacité
+    ctx.globalAlpha = 1.0;
+   
+    // Démarrer le stage 3
+    startStage3();
+   
+    // Donner un bonus de points
+    enemiesKilled += 10;
+    document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
+   
+    // Bonus pour tous les joueurs actifs
+    if (isMultiplayer) {
+        const p1Points = parseInt(document.getElementById("p1Points").textContent) + 100;
+        document.getElementById("p1Points").textContent = p1Points;
+       
+        if (starship2 && starship2.isActive) {
+            const p2Points = parseInt(document.getElementById("p2Points").textContent) + 100;
+            document.getElementById("p2Points").textContent = p2Points;
+        }
+       
+        if (isTriplePlayer && starship3 && starship3.isActive) {
+            const p3Points = parseInt(document.getElementById("p3Points").textContent) + 100;
+            document.getElementById("p3Points").textContent = p3Points;
+        }
+    }
+   
+    // Remplacer les images d'ennemis par les nouvelles
+    enemyImgs.forEach((img, i) => {
+        img.src = `/img/enemy${i + 10}.jpg`; // Utiliser enemy10 à enemy17
+    });
+   
+    // Afficher le titre de stage
+    const stageTitle = document.getElementById("stageTitle");
+    stageTitle.textContent = "STAGE 3: ZONE DE GUERRE";
+    stageTitle.style.display = "block";
+   
+    // Animation de fade-in
+    setTimeout(() => {
+        stageTitle.style.opacity = "1";
+       
+        // Animation de fade-out après 3 secondes
+        setTimeout(() => {
+            stageTitle.style.opacity = "0";
+           
+            // Masquer l'élément après la transition
+            setTimeout(() => {
+                stageTitle.style.display = "none";
+            }, 2000);
+        }, 3000);
+    }, 100);
+   
+    // Ajouter quelques power-ups
+    bonusManager.addPowerUp(2);
+    bonusManager.addLife();
+}
+
+// Modifier la fonction de génération d'ennemis existante
+function generateEnemies() {
+    if (gameManager.isPaused) return;
+
+    if (isStage3) {
+        generateStage3Enemies();
+        return;
+    }
+
+    if (enemies.length > 30) {
+        return;
+    }
+
+    const count = Math.min(7, 30 - enemies.length);
+
+    for (let i = 0; i < count; i++) {
+        enemies.push({
+            x: Math.random() * (canvas.width - 100) + 50,
+            y: Math.random() * (canvas.height / 3),
+            width: 60,
+            height: 60,
+            vx: (Math.random() * 2 - 1) * 2,
+            vy: Math.random() * 1.5,
+            type: Math.floor(Math.random() * 6)
+        });
+    }
+}
 const boss2Img = new Image();
 boss2Img.src = "/img/boss2.jpg";
 
@@ -384,6 +590,15 @@ let touchShootInterval = null;
 const touchIndicator = document.getElementById("touchIndicator");
 
         // Variables de jeu
+// Remplacez les variables existantes pour l'éclair par celles-ci
+let thunderActive = false;
+let thunderCount = 0; // Compteur d'éclairs actifs (0, 1, 2, 3)
+let thunderStartTime = 0;
+let thunderDirections = [
+    { angle: 90 },     // Horizontalement vers la droite (90 degrés)
+    { angle: 135 },    // Diagonale bas-droite (135 degrés)
+    { angle: 45 }      // Diagonale haut-droite (45 degrés)
+];
         let shooting = false;
         let enemies = [];
         let enemyBullets = [];
@@ -416,6 +631,7 @@ const miniBossImg = new Image();
 miniBossImg.src = "/img/miniBoss.jpg";
 let miniBossHealth = 50;
 let miniBossShootTimer = 0;
+
 
         // Configuration multijoueur
         const urlParams = new URLSearchParams(window.location.search);
@@ -552,7 +768,118 @@ const shieldParticles = {
   maxSpeed: 0.05,
   suspensionCount: 15 // Nombre de particules en suspension
 };
+function activateThunder(ship) {
+    // Si c'est déjà actif, on ajoute juste un éclair de plus
+    if (thunderActive) {
+        thunderCount = Math.min(thunderCount + 1, 3); // Maximum 3 éclairs
+    } else {
+        thunderActive = true;
+        thunderCount = 1;
+        thunderStartTime = Date.now();
+    }
+    
+    // Jouer un son pour l'éclair
+    playSound(soundEffects.king);
+}
 
+function updateAndDrawThunder() {
+    if (!thunderActive) return;
+    
+    const currentTime = Date.now();
+    const elapsedTime = currentTime - thunderStartTime;
+    
+    // Vérifier si la durée de 7 secondes est écoulée
+    if (elapsedTime > 7000) {
+        thunderActive = false;
+        thunderCount = 0;
+        return;
+    }
+    
+    // Animer la séquence des images (alternance entre les 3 images)
+    const thunderFrame = Math.floor(elapsedTime / 100) % 3;
+    
+    // Pour tous les vaisseaux actifs
+    [starship, starship2, starship3].filter(ship => ship && ship.isActive).forEach(ship => {
+        // Position de départ (centre du vaisseau)
+        const startX = ship.x + ship.width / 2;
+        const startY = ship.y;
+        
+        // Dessiner chaque éclair actif
+        for (let i = 0; i < thunderCount; i++) {
+            const thunderDirection = thunderDirections[i];
+            ctx.save();
+            
+            // Convertir l'angle en radians pour la rotation de l'image
+            const angleRad = (thunderDirection.angle - 90) * Math.PI / 180;
+            
+            // Appliquer rotation
+            ctx.translate(startX, startY);
+            ctx.rotate(angleRad);
+            
+            // Dessiner l'éclair
+            if (thunderImgs[thunderFrame].complete) {
+                ctx.drawImage(
+                    thunderImgs[thunderFrame],
+                    -20, // Centré horizontalement
+                    -400, // Étend vers le haut
+                    40,   // Largeur
+                    400   // Longueur
+                );
+            }
+            
+            ctx.restore();
+            
+            // Calculer impacts pour cet éclair
+            if (elapsedTime % 200 < 20) {
+                for (let j = 1; j <= 5; j++) {
+                    // Calculer position du point d'impact en fonction de l'angle
+                    const distance = j * 80;
+                    
+                    // Utiliser l'angle pour calculer correctement la position
+                    // Attention: ici on utilise l'angle sans le décalage de -90 utilisé pour l'affichage
+                    const calcAngleRad = thunderDirection.angle * Math.PI / 180;
+                    const impactX = startX + Math.cos(calcAngleRad) * distance + (Math.random() * 20 - 10);
+                    const impactY = startY + Math.sin(calcAngleRad) * distance + (Math.random() * 20 - 10);
+                    
+                    // Tracer visuellement les points d'impact (pour débogage)
+                    ctx.save();
+                    ctx.fillStyle = "rgba(255, 255, 0, 0.5)";
+                    ctx.beginPath();
+                    ctx.arc(impactX, impactY, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                    
+                    // Vérifier les collisions avec les ennemis
+                    for (let k = 0; k < enemies.length; k++) {
+                        const enemy = enemies[k];
+                        const dist = Math.sqrt(
+                            Math.pow(enemy.x + enemy.width/2 - impactX, 2) + 
+                            Math.pow(enemy.y + enemy.height/2 - impactY, 2)
+                        );
+                        
+                        // Zone de collision plus grande
+                        if (dist < 50) {
+                            playSound(soundEffects.hit);
+                            
+                            // Créer des points rouges
+                            for (let l = 0; l < 10; l++) {
+                                redPoints.push({
+                                    x: enemy.x + Math.random() * enemy.width,
+                                    y: enemy.y + Math.random() * enemy.height
+                                });
+                            }
+                            
+                            // Supprimer l'ennemi et augmenter le score
+                            enemies.splice(k, 1);
+                            handleKill(ship.player);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
 // Créer la fonction d'initialisation des particules
 function createShieldParticles(player) {
   // Vider les tableaux de particules existantes
@@ -788,6 +1115,8 @@ function activateShield(player, duration = 10000) {
 
 
         // Chargement des images
+        const thunderImgs = Array(3).fill().map(() => new Image());
+thunderImgs.forEach((img, i) => img.src = `/img/thunder${i + 1}.jpg`);
         const starshipImg = new Image();
         const starship2Img = isMultiplayer ? new Image() : null;
         const starship3Img = isTriplePlayer ? new Image() : null;
@@ -848,17 +1177,28 @@ function activateShield(player, duration = 10000) {
             }
 
             addPowerUp(type) {
-                if (this.powerUps.length >= 5) return;
+    if (this.powerUps.length >= 5) return;
 
-                this.powerUps.push({
-                    x: Math.random() * (canvas.width - 100) + 50,
-                    y: -50,
-                    width: 40,
-                    height: 40,
-                    speed: 1,
-                    type: type !== undefined ? type : Math.floor(Math.random() * 2)
-                });
-            }
+    // Si le type n'est pas spécifié, on le détermine en fonction du stage
+    if (type === undefined) {
+        if (isStage2) {
+            // En stage 2, possibilité d'obtenir le powerup.jpg (type 0) ou le powerup1.jpg (type 1)
+            type = Math.floor(Math.random() * 2);
+        } else {
+            // En stage 1 ou autres, uniquement le powerup1.jpg (type 1)
+            type = 1;
+        }
+    }
+
+    this.powerUps.push({
+        x: Math.random() * (canvas.width - 100) + 50,
+        y: -50,
+        width: 40,
+        height: 40,
+        speed: 1,
+        type: type
+    });
+}
 
             addLife() {
                 if (this.lives.length >= 3) return;
@@ -1670,22 +2010,24 @@ function activatePowerUp(ship, powerUpType) {
             console.error("Erreur powerup:", error);
             endPowerUpVideo();
         }
-    } else {
+    } else if (powerUpType === 0) { // powerUp.jpg (type 0)
+        // Activer l'éclair
+        activateThunder(ship);
+    } else if (powerUpType === 1) { // powerUp1.jpg (type 1)
         if (ship.powerUpTimeoutId) {
             clearTimeout(ship.powerUpTimeoutId);
             ship.powerUpTimeoutId = null;
         }
 
-        // Incrémenter le niveau de powerUp, mais plafonner à 3
-        ship.powerUpLevel = Math.min(5, ship.powerUpLevel + 1);
+        // Incrémenter le niveau de powerUp
+        ship.powerUpLevel = Math.min(9, ship.powerUpLevel + 1);
 
         ship.powerUpTimeoutId = setTimeout(() => {
-            ship.powerUpLevel = Math.max(0, ship.powerUpLevel - 1); // Diminuer d'un niveau à l'expiration
+            ship.powerUpLevel = Math.max(0, ship.powerUpLevel - 1);
             ship.powerUpTimeoutId = null;
         }, 6000);
     }
 }
-
         function endPowerUpVideo() {
             videoContainer.style.display = "none";
             gameManager.isPaused = false;
@@ -2065,7 +2407,7 @@ function checkBossCollisions() {
     playSound(soundEffects.bossDeath);
    
     // Créer un effet d'explosion
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 150; i++) {
         redPoints.push({
             x: boss.x + Math.random() * boss.width,
             y: boss.y + Math.random() * boss.height
@@ -2233,7 +2575,7 @@ function shootMiniBossBullets() {
             y: miniBoss.y + miniBoss.height,
             width: 30, // Diamètre 10px
             height: 10, // Forme circulaire
-            speed: 2, // Un peu plus lent que les lasers
+            speed: 5, // Un peu plus lent que les lasers
             color: "red", // Couleur rouge
             isMiniBossBullet: true, // Pour l'identifier
             isRedBall: true // Pour identifier spécifiquement la boule
@@ -2290,7 +2632,7 @@ function defeatMiniBoss() {
     playSound(soundEffects.perfect);
    
     // Créer un effet d'explosion
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 100; i++) {
         redPoints.push({
             x: miniBoss.x + Math.random() * miniBoss.width,
             y: miniBoss.y + Math.random() * miniBoss.height
@@ -2302,7 +2644,7 @@ function defeatMiniBoss() {
     miniBoss = null;
    
     // Bonus points
-    coins += 10;
+    coins += 30;
     document.getElementById("coinsCount").textContent = coins.toFixed(1);
     
     // Donner un power-up
@@ -3138,6 +3480,7 @@ updateShieldParticles();
 updateShieldParticles();
 drawShieldParticles(); // Dessiner les particules du bouclier
         updateStunEffects();
+        updateAndDrawThunder();
         drawBullets();
         drawEnemies();
         drawEnemyBullets();
