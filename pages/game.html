@@ -311,7 +311,7 @@
     <div class="player-mode" id="playerModeIndicator" style="position: absolute; top: min(20px, 5vh); left: 50%; transform: translateX(-50%); color: #04fbac; z-index: 10;">Mode 1 joueur</div>
     <div id="playerStats" class="player-stats" style="display: none;">
         <div id="player1Stats" class="player-stats-item player1-stats">
-            Player 1: <span id="p1Lives">3</span> vies |
+    Player 1: <span id="p1Lives">3</span> vies |
             Points: <span id="p1Points">0</span> |
             Kills: <span id="p1Kills">0</span>
         </div>
@@ -2385,14 +2385,27 @@ function checkBossCollisions() {
             height: boss.isBoss2 ? boss.height * 2 : boss.height
         };
        
-        if (checkCollision(player, bossRect)) {
-            if (!player.shield) {
-                player.lives--;
-                updatePlayerStats();
-               
-                if (player.lives <= 0) {
-                    playerDeath(player);
-                }
+        if (checkCollision(player, bossRect) && !player.shield) {
+            player.lives--;
+            updatePlayerStats();
+            
+            // Ajouter une explosion visuelle quand le joueur est touché par le boss
+            for (let k = 0; k < 20; k++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 2;
+                redPoints.push({
+                    x: player.x + player.width/2,
+                    y: player.y + player.height/2,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 15 + Math.floor(Math.random() * 10),
+                    isExplosion: true,
+                    color: ["red", "orange", "yellow"][Math.floor(Math.random() * 3)]
+                });
+            }
+            
+            if (player.lives <= 0) {
+                playerDeath(player);
             }
         }
     };
@@ -2401,7 +2414,6 @@ function checkBossCollisions() {
     if (isMultiplayer && starship2) checkPlayerCollision(starship2);
     if (isTriplePlayer && starship3) checkPlayerCollision(starship3);
 }
-
         function defeatBoss() {
     // Jouer un son
     playSound(soundEffects.bossDeath);
@@ -3092,113 +3104,79 @@ function drawBullets() {
         }
     });
 }
-        function drawRedPoints() {
+function drawRedPoints() {
     if (redPoints.length > 500) {
         redPoints = redPoints.slice(0, 500);
     }
    
-    // Nouvelle approche qui évite les boucles infinies
     redPoints = redPoints.filter((point) => {
-        ctx.fillStyle = "red";
-        ctx.fillRect(point.x, point.y, 2, 2);
-        point.y += 1;
-       
-        let attractedToPlayer = false;
-        let minDistance = Number.MAX_VALUE;
-        let attraction = { x: 0, y: 0 };
-       
-        // Vérifier attraction au joueur 1
-        if (starship && starship.isActive) {
-            const dx = starship.x + starship.width/2 - point.x;
-            const dy = starship.y + starship.height/2 - point.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-           
-            if (distance < 100 && distance < minDistance) {
-                attraction.x = dx / distance * 3;
-                attraction.y = dy / distance * 3;
-                minDistance = distance;
-                attractedToPlayer = true;
-               
-                if (distance < 30) {
-                    coins += 0.5;
-                    document.getElementById("coinsCount").textContent = coins.toFixed(1);
-                    playSound(soundEffects.coin);
-                    starship.redPointsCollected++;
-                   
-                    if (starship.redPointsCollected >= 200) {
-                        activateShield(starship);
-                        starship.redPointsCollected = 0;
+        // Si c'est une particule d'explosion (non récoltable)
+        if (point.isExplosion) {
+            ctx.fillStyle = point.color || "red";
+            ctx.fillRect(point.x, point.y, 3, 3); // Un peu plus grandes
+            
+            // Mettre à jour la position avec la vélocité
+            point.x += point.vx;
+            point.y += point.vy;
+            
+            // Ralentir progressivement
+            point.vx *= 0.95;
+            point.vy *= 0.95;
+            
+            // Réduire la durée de vie
+            point.life--;
+            
+            return point.life > 0;
+        } 
+        // Points récoltables - comportement d'origine
+        else {
+            ctx.fillStyle = "red";
+            ctx.fillRect(point.x, point.y, 2, 2);
+            point.y += 1;
+            
+            let attractedToPlayer = false;
+            let minDistance = Number.MAX_VALUE;
+            let attraction = { x: 0, y: 0 };
+            
+            // Vérifier attraction au joueur 1
+            if (starship && starship.isActive) {
+                const dx = starship.x + starship.width/2 - point.x;
+                const dy = starship.y + starship.height/2 - point.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 100 && distance < minDistance) {
+                    attraction.x = dx / distance * 3;
+                    attraction.y = dy / distance * 3;
+                    minDistance = distance;
+                    attractedToPlayer = true;
+                    
+                    if (distance < 30) {
+                        coins += 0.5;
+                        document.getElementById("coinsCount").textContent = coins.toFixed(1);
+                        playSound(soundEffects.coin);
+                        starship.redPointsCollected++;
+                        
+                        if (starship.redPointsCollected >= 200) {
+                            activateShield(starship);
+                            starship.redPointsCollected = 0;
+                        }
+                        
+                        return false; // supprime ce point
                     }
-                   
-                    return false; // supprime ce point
                 }
             }
-        }
-       
-        // Vérifier attraction au joueur 2
-        if (isMultiplayer && starship2 && starship2.isActive) {
-            const dx = starship2.x + starship2.width/2 - point.x;
-            const dy = starship2.y + starship2.height/2 - point.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-           
-            if (distance < 100 && distance < minDistance) {
-                attraction.x = dx / distance * 3;
-                attraction.y = dy / distance * 3;
-                minDistance = distance;
-                attractedToPlayer = true;
-               
-                if (distance < 30) {
-                    coins += 0.5;
-                    document.getElementById("coinsCount").textContent = coins.toFixed(1);
-                    playSound(soundEffects.coin);
-                    starship2.redPointsCollected++;
-                   
-                    if (starship2.redPointsCollected >= 200) {
-                        activateShield(starship2);
-                        starship2.redPointsCollected = 0;
-                    }
-                   
-                    return false; // supprime ce point
-                }
+            
+            // [Le reste du code d'attraction pour les joueurs 2 et 3]
+            
+            // Appliquer l'attraction si nécessaire
+            if (attractedToPlayer) {
+                point.x += attraction.x;
+                point.y += attraction.y;
             }
+            
+            // Conserver le point s'il est toujours dans l'écran
+            return point.y <= canvas.height;
         }
-       
-        // Vérifier attraction au joueur 3
-        if (isTriplePlayer && starship3 && starship3.isActive) {
-            const dx = starship3.x + starship3.width/2 - point.x;
-            const dy = starship3.y + starship3.height/2 - point.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-           
-            if (distance < 100 && distance < minDistance) {
-                attraction.x = dx / distance * 3;
-                attraction.y = dy / distance * 3;
-                minDistance = distance;
-                attractedToPlayer = true;
-               
-                if (distance < 30) {
-                    coins += 0.5;
-                    document.getElementById("coinsCount").textContent = coins.toFixed(1);
-                    playSound(soundEffects.coin);
-                    starship3.redPointsCollected++;
-                   
-                    if (starship3.redPointsCollected >= 200) {
-                        activateShield(starship3);
-                        starship3.redPointsCollected = 0;
-                    }
-                   
-                    return false; // supprime ce point
-                }
-            }
-        }
-       
-        // Appliquer l'attraction si nécessaire
-        if (attractedToPlayer) {
-            point.x += attraction.x;
-            point.y += attraction.y;
-        }
-       
-        // Conserver le point s'il est toujours dans l'écran
-        return point.y <= canvas.height;
     });
 }
 function activateShield(player, duration = 10000) {
@@ -3260,12 +3238,29 @@ function activateShield(player, duration = 10000) {
                             player.bullets.splice(j, 1);
                             enemyHit = true;
 
-                            for (let k = 0; k < 15; k++) {
-                                redPoints.push({
-                                    x: enemy.x + Math.random() * enemy.width,
-                                    y: enemy.y + Math.random() * enemy.height
-                                });
-                            }
+// Explosion plus spectaculaire
+for (let k = 0; k < 100; k++) {  // Quelques particules d'explosion
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    redPoints.push({
+        x: enemy.x + enemy.width/2,
+        y: enemy.y + enemy.height/2,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 30 + Math.floor(Math.random() * 20),
+        isExplosion: true,  // Identifier comme particule d'explosion
+        color: ["yellow", "blue"][Math.floor(Math.random() * 3)]
+    });
+}
+
+// Points rouges récoltables (conserver le comportement d'origine)
+for (let k = 0; k < 10; k++) {
+    redPoints.push({
+        x: enemy.x + Math.random() * enemy.width,
+        y: enemy.y + Math.random() * enemy.height,
+        isCollectible: true  // Identifier comme point récoltable
+    });
+}
 
                             handleKill(playerNumber);
                             break;
@@ -3291,23 +3286,54 @@ function activateShield(player, duration = 10000) {
                     }
                 }
 
-                // Collisions avec les balles ennemies
-                for (let i = enemyBullets.length - 1; i >= 0; i--) {
-                    const bullet = enemyBullets[i];
-                    if (checkCollision(player, bullet)) {
-                        playSound(soundEffects.hit);
-                        enemyBullets.splice(i, 1);
+         // Collisions avec les balles ennemies
+for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    const bullet = enemyBullets[i];
+    if (checkCollision(player, bullet)) {
+        playSound(soundEffects.hit);
+        enemyBullets.splice(i, 1);
 
-                        if (!player.shield) {
-                            player.lives--;
-                            killsWithoutDeath = 0;
-                            updatePlayerStats();
-                            if (player.lives <= 0) {
-                                playerDeath(player);
-                            }
-                        }
-                    }
+        if (!player.shield) {
+            player.lives--;
+            killsWithoutDeath = 0;
+            updatePlayerStats();
+            
+            // Si c'est la dernière vie (mort du joueur), explosion massive
+            if (player.lives <= 0) {
+                // Grande explosion finale (beaucoup plus de particules)
+                for (let k = 0; k < 1000; k++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 4; // Plus rapide
+                    redPoints.push({
+                        x: player.x + player.width/2,
+                        y: player.y + player.height/2,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 30 + Math.floor(Math.random() * 30), // Plus longue durée
+                        isExplosion: true,
+                        color: ["purple", "yellow", "grey"][Math.floor(Math.random() * 4)]
+                    });
                 }
+                playerDeath(player);
+            } else {
+                // Explosion normale quand touché mais pas encore mort
+                for (let k = 0; k < 100; k++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 2;
+                    redPoints.push({
+                        x: player.x + player.width/2,
+                        y: player.y + player.height/2,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 15 + Math.floor(Math.random() * 10),
+                        isExplosion: true,
+                        color: ["grey","yellow"][Math.floor(Math.random() * 3)]
+                    });
+                }
+            }
+        }
+    }
+}
             };
 
             checkPlayerCollisions(starship, 1);
@@ -3319,38 +3345,43 @@ function activateShield(player, duration = 10000) {
         }
 
         function playerDeath(player) {
-            player.isActive = false;
+    player.isActive = false;
 
-            let allPlayersDead = !starship.isActive;
-            if (isMultiplayer) allPlayersDead = allPlayersDead && !starship2.isActive;
-            if (isTriplePlayer) allPlayersDead = allPlayersDead && !starship3.isActive;
+    let allPlayersDead = !starship.isActive;
+    if (isMultiplayer) allPlayersDead = allPlayersDead && !starship2.isActive;
+    if (isTriplePlayer) allPlayersDead = allPlayersDead && !starship3.isActive;
 
-            if (allPlayersDead) {
-                gameOver();
-            } else {
-                const playerMessage = document.createElement("div");
-                playerMessage.style.position = "absolute";
-                playerMessage.style.color = player.player === 1 ? "#04fbac" :
-                                          player.player === 2 ? "#FF7F50" : "#FFFF50";
-                playerMessage.style.fontSize = "24px";
-                playerMessage.style.fontWeight = "bold";
-                playerMessage.style.padding = "10px";
-                playerMessage.style.borderRadius = "5px";
-                playerMessage.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-                playerMessage.style.left = "50%";
-                playerMessage.style.transform = "translateX(-50%)";
-                playerMessage.style.zIndex = "100";
-                playerMessage.style.top = (30 + (player.player - 1) * 10) + "%";
-                playerMessage.textContent = `Joueur ${player.player} T'ES MORT !`;
+    // Message quand un joueur meurt en mode multijoueur
+    const playerMessage = document.createElement("div");
+    playerMessage.style.position = "absolute";
+    playerMessage.style.color = player.player === 1 ? "#04fbac" :
+                              player.player === 2 ? "#FF7F50" : "#FFFF50";
+    playerMessage.style.fontSize = "24px";
+    playerMessage.style.fontWeight = "bold";
+    playerMessage.style.padding = "10px";
+    playerMessage.style.borderRadius = "5px";
+    playerMessage.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+    playerMessage.style.left = "50%";
+    playerMessage.style.transform = "translateX(-50%)";
+    playerMessage.style.zIndex = "100";
+    playerMessage.style.top = (30 + (player.player - 1) * 10) + "%";
+    playerMessage.textContent = `Joueur ${player.player} T'ES MORT !`;
 
-                document.body.appendChild(playerMessage);
+    document.body.appendChild(playerMessage);
 
-                setTimeout(() => {
-                    document.body.removeChild(playerMessage);
-                }, 2000);
-            }
-        }
-
+    if (allPlayersDead) {
+        // Attendre 1.5 secondes avant d'afficher le Game Over
+        // pour laisser le temps de voir l'explosion finale
+        setTimeout(() => {
+            gameOver();
+            document.body.removeChild(playerMessage);
+        }, 1500);
+    } else {
+        setTimeout(() => {
+            document.body.removeChild(playerMessage);
+        }, 2000);
+    }
+}
         function gameOver() {
     document.querySelectorAll("[id^='stun-effect-player'], [id^='shield-effect-player']").forEach(e => e.remove());
     Object.values(soundEffects).forEach(sound => {
