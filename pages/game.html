@@ -290,6 +290,10 @@
     font-weight: bold;
     display: none;
 }
+@keyframes scrollBackgroundVertical {
+    from { background-position: 0 100%; }  /* Commencer du bas */
+    to { background-position: 0 0%; }      /* Défiler vers le haut */
+}
     </style>
 </head>
 <body>
@@ -379,25 +383,57 @@ let stage3EnemyTypes = [10, 11, 12, 13, 14, 15, 16, 17]; // Types d'ennemis pour
 let stage3CurrentEnemyType = 0;
 let stage3EnemiesSpawned = 0;
 
+// CORRECTION 3: Améliorer la fonction startStage3 pour assurer la transition correcte
 function startStage3() {
     console.log("Début du Stage 3");
     
-    // Changer le fond d'écran
+    // Changer le fond d'écran et le configurer pour un défilement vertical
     const scrollingBg = document.getElementById("scrollingBackground");
     scrollingBg.style.backgroundImage = "url('/img/back2.png')";
     scrollingBg.style.display = "block";
     scrollingBg.style.filter = "brightness(0.9) contrast(1.1)";
     
+    // Configuration horizontale avec défilement vertical
+    scrollingBg.style.backgroundSize = "100% auto"; // Étirer sur la largeur
+    scrollingBg.style.backgroundPosition = "center bottom"; // Commencer par le bas
+    scrollingBg.style.animation = "scrollBackgroundVertical 60s linear infinite";
+    
     // Réinitialiser les variables du stage 3
     isStage3 = true;
+    isStage2 = false; // S'assurer que le stage 2 est désactivé
     stage3Phase = 0;
     stage3CurrentEnemyType = 0;
     stage3EnemiesSpawned = 0;
+    
+    // Vider les ennemis actuels pour faire place aux nouveaux
+    enemies = [];
+    
+    // Afficher le titre de stage 3
+    const stageTitle = document.getElementById("stageTitle");
+    stageTitle.textContent = "STAGE 3: ZONE DE GUERRE";
+    stageTitle.style.display = "block";
+    stageTitle.style.opacity = "0"; // S'assurer qu'il est initialement invisible
+    
+    // Animation de fade-in
+    setTimeout(() => {
+        stageTitle.style.opacity = "1";
+        
+        // Animation de fade-out après 3 secondes
+        setTimeout(() => {
+            stageTitle.style.opacity = "0";
+            
+            // Masquer l'élément après la transition
+            setTimeout(() => {
+                stageTitle.style.display = "none";
+            }, 2000);
+        }, 3000);
+    }, 100);
     
     // Augmenter la difficulté
     enemySpeedMultiplier *= 1.5;
     enemyBulletSpeedMultiplier *= 1.5;
 }
+
 
 function generateStage3Enemies() {
     if (!isStage3 || gameManager.isPaused) return;
@@ -407,19 +443,18 @@ function generateStage3Enemies() {
         stage3CurrentEnemyType++;
         stage3EnemiesSpawned = 0;
         
-        // Vérifier si tous les types d'ennemis ont été utilisés
+        // Revenir au premier type si on a parcouru tous les types
         if (stage3CurrentEnemyType >= stage3EnemyTypes.length) {
-            isStage3 = false;
-            // Optionnel : Ajouter un événement de fin de stage 3
-            return;
+            stage3CurrentEnemyType = 0;
         }
     }
     
-    // Générer 5 ennemis du type actuel
-    if (stage3EnemiesSpawned < 5) {
-        const enemyType = stage3EnemyTypes[stage3CurrentEnemyType];
+    // Générer des ennemis du type actuel (tous les mêmes pour chaque vague)
+    if (stage3EnemiesSpawned < 5 && enemies.length < 30) {
+        const enemyType = stage3EnemyTypes[stage3CurrentEnemyType] - 10; // Ajuster l'index pour les nouvelles images
         
-        for (let i = 0; i < 1; i++) {
+        // Générer 5 ennemis à la fois
+        for (let i = 0; i < 5; i++) {
             enemies.push({
                 x: Math.random() * (canvas.width - 100) + 50,
                 y: Math.random() * (canvas.height / 3),
@@ -431,60 +466,29 @@ function generateStage3Enemies() {
             });
         }
         
-        stage3EnemiesSpawned++;
+        stage3EnemiesSpawned += 5;
     }
 }
 
-function defeatBoss2() {
-    console.log("Création du stage 3 après défaite du boss 2");
-    if (bossActive) return;
-   
-    bossActive = true;
-    bossHealth = 1000; // Plus de vie pour boss2
-   
-    document.getElementById("bossHealthBar").style.display = "block";
-    document.getElementById("bossHealthFill").style.width = "100%";
-   
-    boss = {
-        x: canvas.width / 2 - 150, // Ajusté pour la taille 2x
-        y: 50,
-        width: 150,
-        height: 150,
-        vx: 0.5, // Déplacement plus lent
-        vy: 0.5, // Déplacement plus lent
-        rotation: 0, // Ne sera pas utilisé pour boss2
-        movePattern: 0,
-        moveTimer: 0,
-        lastMoveChange: Date.now(),
-        isBoss2: true
-    };
-   
-    playSound(soundEffects.bossAppear);
-    enemies = [];
-   
-    // Afficher un message pour le boss 2
-    const stageTitle = document.getElementById("stageTitle");
-    stageTitle.textContent = "BOSS FINAL !";
-    stageTitle.style.display = "block";
-   
-    // Animation de fade-in
-    setTimeout(() => {
-        stageTitle.style.opacity = "1";
-       
-        // Animation de fade-out après 2 secondes
-        setTimeout(() => {
-            stageTitle.style.opacity = "0";
-           
-            // Masquer l'élément après la transition
-            setTimeout(() => {
-                stageTitle.style.display = "none";
-            }, 2000);
-        }, 2000);
-    }, 100);
-}
 
 function defeatBoss2() {
     console.log("Création du stage 3 après défaite du boss 2");
+   
+    // Jouer un son
+    playSound(soundEffects.bossDeath);
+    
+    // Créer un effet d'explosion
+    for (let i = 0; i < 150; i++) {
+        redPoints.push({
+            x: boss.x + Math.random() * boss.width,
+            y: boss.y + Math.random() * boss.height,
+            isExplosion: true,
+            vx: (Math.random() * 2 - 1) * 4,
+            vy: (Math.random() * 2 - 1) * 4,
+            life: 30 + Math.floor(Math.random() * 30),
+            color: ["red", "orange", "yellow", "white"][Math.floor(Math.random() * 4)]
+        });
+    }
    
     // Désactiver le boss
     bossActive = false;
@@ -495,9 +499,6 @@ function defeatBoss2() {
    
     // Réinitialiser l'opacité
     ctx.globalAlpha = 1.0;
-   
-    // Démarrer le stage 3
-    startStage3();
    
     // Donner un bonus de points
     enemiesKilled += 10;
@@ -519,30 +520,8 @@ function defeatBoss2() {
         }
     }
    
-    // Remplacer les images d'ennemis par les nouvelles
-    enemyImgs.forEach((img, i) => {
-        img.src = `/img/enemy${i + 10}.jpg`; // Utiliser enemy10 à enemy17
-    });
-   
-    // Afficher le titre de stage
-    const stageTitle = document.getElementById("stageTitle");
-    stageTitle.textContent = "STAGE 3: ZONE DE GUERRE";
-    stageTitle.style.display = "block";
-   
-    // Animation de fade-in
-    setTimeout(() => {
-        stageTitle.style.opacity = "1";
-       
-        // Animation de fade-out après 3 secondes
-        setTimeout(() => {
-            stageTitle.style.opacity = "0";
-           
-            // Masquer l'élément après la transition
-            setTimeout(() => {
-                stageTitle.style.display = "none";
-            }, 2000);
-        }, 3000);
-    }, 100);
+    // Démarrer le stage 3
+    startStage3();
    
     // Ajouter quelques power-ups
     bonusManager.addPowerUp(2);
@@ -550,6 +529,7 @@ function defeatBoss2() {
 }
 
 // Modifier la fonction de génération d'ennemis existante
+// CORRECTION 7: Améliorer la fonction generateEnemies pour intégrer le stage 3
 function generateEnemies() {
     if (gameManager.isPaused) return;
 
@@ -570,8 +550,8 @@ function generateEnemies() {
             y: Math.random() * (canvas.height / 3),
             width: 60,
             height: 60,
-            vx: (Math.random() * 2 - 1) * 2,
-            vy: Math.random() * 1.5,
+            vx: (Math.random() * 2 - 1) * 2 * enemySpeedMultiplier,
+            vy: Math.random() * 1.5 * enemySpeedMultiplier,
             type: Math.floor(Math.random() * 6)
         });
     }
@@ -1467,7 +1447,7 @@ thunderImgs.forEach((img, i) => img.src = `/img/thunder${i + 1}.jpg`);
                                 y: starship2.y,
                                 width: 5,
                                 height: 10,
-                                speed: 20,
+                                speed: 15,
                                 player: 2
                             });
                         }
@@ -1481,7 +1461,7 @@ thunderImgs.forEach((img, i) => img.src = `/img/thunder${i + 1}.jpg`);
                     case "KeyS": keyS = true; break;
                     case "KeyA": keyA = true; break;
                     case "KeyD": keyD = true; break;
-                    case "KeyE":
+                    case "KeyH":
                         keyE = true;
                         shooting3 = true;
                         if (!gameManager.isPaused && starship3) {
@@ -1490,7 +1470,7 @@ thunderImgs.forEach((img, i) => img.src = `/img/thunder${i + 1}.jpg`);
                                 y: starship3.y,
                                 width: 5,
                                 height: 10,
-                                speed: 20,
+                                speed: 15,
                                 player: 3
                             });
                         }
@@ -1858,8 +1838,8 @@ if (isMobile) {
                 starship3.y = Math.max(0, Math.min(canvas.height - starship3.height, starship3.y));
             }
         }
-
-        function handleKill(playerNumber) {
+// CORRECTION 6: S'assurer que la fonction handleKill gère correctement les stages
+function handleKill(playerNumber) {
     lastKillTime = Date.now();
     simultaneousKills++;
     enemiesKilled++;
@@ -1867,99 +1847,103 @@ if (isMobile) {
     document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
    
     // Compteur différent selon le stage
-  // Compteur différent selon le stage
-if (!isStage2) {
-    // Stage 1
-    if (enemiesKilled === 200 && !bossActive) {
-        createBoss();
-    }
-    // Ajouter cette condition pour faire apparaître le mini-boss
-    else if (enemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
-        createMiniBoss();
-    }
-} else {
-    // Stage 2
-    stage2EnemiesKilled++;
-    if (stage2EnemiesKilled === 200 && !bossActive) {
-        createBoss2();
-    }
-    // Ajouter aussi pour le stage 2
-    else if (stage2EnemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
-        createMiniBoss();
-    }
-}
-            if (isMultiplayer) {
-                switch (playerNumber) {
-                    case 1:
-                        const p1Kills = parseInt(document.getElementById("p1Kills").textContent) + 1;
-                        document.getElementById("p1Kills").textContent = p1Kills;
-                        const p1Points = parseInt(document.getElementById("p1Points").textContent) + 10;
-                        document.getElementById("p1Points").textContent = p1Points;
-                        break;
-                    case 2:
-                        const p2Kills = parseInt(document.getElementById("p2Kills").textContent) + 1;
-                        document.getElementById("p2Kills").textContent = p2Kills;
-                        const p2Points = parseInt(document.getElementById("p2Points").textContent) + 10;
-                        document.getElementById("p2Points").textContent = p2Points;
-                        break;
-                    case 3:
-                        const p3Kills = parseInt(document.getElementById("p3Kills").textContent) + 1;
-                        document.getElementById("p3Kills").textContent = p3Kills;
-                        const p3Points = parseInt(document.getElementById("p3Points").textContent) + 10;
-                        document.getElementById("p3Points").textContent = p3Points;
-                        break;
-                }
-            }
-
-            if (killsWithoutDeath === 20) {
-                playSound(soundEffects.brutal);
-            } else if (killsWithoutDeath === 30) {
-                playSound(soundEffects.super);
-            } else if (killsWithoutDeath === 40) {
-                playSound(soundEffects.master);
-            } else if (killsWithoutDeath === 60) {
-                playSound(soundEffects.awesome);
-            }
-
-            if (enemiesKilled % 30 === 0) {
-                bonusManager.addPowerUp(2);
-                playSound(soundEffects.king);
-            } else if (enemiesKilled % powerUpFrequency === 0) {
-                if (Math.random() < 0.5) {
-                    bonusManager.addPowerUp();
-                } else {
-                    bonusManager.addLife();
-                }
-            }
-
-            clearTimeout(killTimer);
-            killTimer = setTimeout(() => {
-                if (simultaneousKills === 2) {
-                    playSound(soundEffects.doubleKill);
-                } else if (simultaneousKills >= 3) {
-                    playSound(soundEffects.tripleKill);
-                }
-                simultaneousKills = 0;
-            }, 200);
+    if (!isStage2 && !isStage3) {
+        // Stage 1
+        if (enemiesKilled === 20 && !bossActive) {
+            createBoss();
         }
-        function createBoss2() {
+        else if (enemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
+            createMiniBoss();
+        }
+    } else if (isStage2 && !isStage3) {
+        // Stage 2
+        stage2EnemiesKilled++;
+        if (stage2EnemiesKilled === 20 && !bossActive) {
+            createBoss2();
+        }
+        else if (stage2EnemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
+            createMiniBoss();
+        }
+    } else if (isStage3) {
+        // Stage 3 - Peut-être ajouter une logique spécifique ici
+        if (enemiesKilled % 30 === 0 && !miniBossActive && !bossActive) {
+            createMiniBoss();
+        }
+    }
+
+    // Le reste de la fonction reste inchangé...
+    if (isMultiplayer) {
+        switch (playerNumber) {
+            case 1:
+                const p1Kills = parseInt(document.getElementById("p1Kills").textContent) + 1;
+                document.getElementById("p1Kills").textContent = p1Kills;
+                const p1Points = parseInt(document.getElementById("p1Points").textContent) + 10;
+                document.getElementById("p1Points").textContent = p1Points;
+                break;
+            case 2:
+                const p2Kills = parseInt(document.getElementById("p2Kills").textContent) + 1;
+                document.getElementById("p2Kills").textContent = p2Kills;
+                const p2Points = parseInt(document.getElementById("p2Points").textContent) + 10;
+                document.getElementById("p2Points").textContent = p2Points;
+                break;
+            case 3:
+                const p3Kills = parseInt(document.getElementById("p3Kills").textContent) + 1;
+                document.getElementById("p3Kills").textContent = p3Kills;
+                const p3Points = parseInt(document.getElementById("p3Points").textContent) + 10;
+                document.getElementById("p3Points").textContent = p3Points;
+                break;
+        }
+    }
+
+    if (killsWithoutDeath === 20) {
+        playSound(soundEffects.brutal);
+    } else if (killsWithoutDeath === 30) {
+        playSound(soundEffects.super);
+    } else if (killsWithoutDeath === 40) {
+        playSound(soundEffects.master);
+    } else if (killsWithoutDeath === 60) {
+        playSound(soundEffects.awesome);
+    }
+
+    if (enemiesKilled % 30 === 0) {
+        bonusManager.addPowerUp(2);
+        playSound(soundEffects.king);
+    } else if (enemiesKilled % powerUpFrequency === 0) {
+        if (Math.random() < 0.5) {
+            bonusManager.addPowerUp();
+        } else {
+            bonusManager.addLife();
+        }
+    }
+
+    clearTimeout(killTimer);
+    killTimer = setTimeout(() => {
+        if (simultaneousKills === 2) {
+            playSound(soundEffects.doubleKill);
+        } else if (simultaneousKills >= 3) {
+            playSound(soundEffects.tripleKill);
+        }
+        simultaneousKills = 0;
+    }, 200);
+}
+        // CORRECTION 5: Modification de createBoss2 pour définir correctement les propriétés du boss
+function createBoss2() {
     console.log("Création du boss 2");
     if (bossActive) return;
    
     bossActive = true;
-    bossHealth = 1000; // Plus de vie pour boss2
+    bossHealth = 100; // Santé raisonnable pour le boss du stage 2
    
     document.getElementById("bossHealthBar").style.display = "block";
     document.getElementById("bossHealthFill").style.width = "100%";
    
     boss = {
-        x: canvas.width / 2 - 150, // Ajusté pour la taille 2x
+        x: canvas.width / 2 - 75,
         y: 50,
-        width: 150,
-        height: 150,
-        vx: 0.5, // Déplacement plus lent
-        vy: 0.5, // Déplacement plus lent
-        rotation: 0, // Ne sera pas utilisé pour boss2
+        width: 75, // Taille réduite pour que la multiplication par 2 soit correcte
+        height: 75,
+        vx: 0.5,
+        vy: 0.5,
         movePattern: 0,
         moveTimer: 0,
         lastMoveChange: Date.now(),
@@ -1973,6 +1957,7 @@ if (!isStage2) {
     const stageTitle = document.getElementById("stageTitle");
     stageTitle.textContent = "BOSS FINAL !";
     stageTitle.style.display = "block";
+    stageTitle.style.opacity = "0";
    
     // Animation de fade-in
     setTimeout(() => {
@@ -2327,6 +2312,7 @@ function activatePowerUp(ship, powerUpType) {
     playSound(soundEffects.shoot);
 }
 
+// CORRECTION 4: Modifier la vérification du boss dans checkBossCollisions
 function checkBossCollisions() {
     if (!bossActive || !boss) return;
    
@@ -2357,27 +2343,31 @@ function checkBossCollisions() {
                 bossHealth--;
                
                 // Mettre à jour la barre de vie
-                document.getElementById("bossHealthFill").style.width = (bossHealth / (boss.isBoss2 ? 1000 : 500) * 100) + "%";
+                const maxHealth = boss.isBoss2 ? 100 : 500; // Correction importante ici
+                document.getElementById("bossHealthFill").style.width = (bossHealth / maxHealth * 100) + "%";
                
                 playSound(soundEffects.bossHit);
                
                 // Vérifier si le boss est détruit
                 if (bossHealth <= 0) {
-                    defeatBoss();
+                    if (boss.isBoss2) {
+                        defeatBoss2();
+                    } else {
+                        defeatBoss();
+                    }
                 }
             }
         }
     };
    
+    // Le reste de la fonction reste inchangé...
     checkPlayerBullets(starship);
     if (isMultiplayer && starship2) checkPlayerBullets(starship2);
     if (isTriplePlayer && starship3) checkPlayerBullets(starship3);
    
-    // Vérifier les collisions entre le boss et les joueurs
     const checkPlayerCollision = (player) => {
         if (!player || !player.isActive) return;
        
-        // Rectangle de collision pour le boss
         const bossRect = {
             x: boss.isBoss2 ? boss.x - boss.width/2 : boss.x,
             y: boss.isBoss2 ? boss.y - boss.height/2 : boss.y,
@@ -2389,7 +2379,6 @@ function checkBossCollisions() {
             player.lives--;
             updatePlayerStats();
             
-            // Ajouter une explosion visuelle quand le joueur est touché par le boss
             for (let k = 0; k < 20; k++) {
                 const angle = Math.random() * Math.PI * 2;
                 const speed = 1 + Math.random() * 2;
@@ -2414,7 +2403,7 @@ function checkBossCollisions() {
     if (isMultiplayer && starship2) checkPlayerCollision(starship2);
     if (isTriplePlayer && starship3) checkPlayerCollision(starship3);
 }
-        function defeatBoss() {
+function defeatBoss() {
     // Jouer un son
     playSound(soundEffects.bossDeath);
    
@@ -2436,17 +2425,7 @@ function checkBossCollisions() {
     // Réinitialiser l'opacité
     ctx.globalAlpha = 1.0;
    
-    // Activer le fond d'écran défilant avec un filtre pour améliorer la visibilité
-    backgroundActive = true;
-    const scrollingBg = document.getElementById("scrollingBackground");
-    scrollingBg.style.display = "block";
-    scrollingBg.style.filter = "brightness(0.7) contrast(1.2)"; // Assombrir le fond pour mieux voir
-   
-    // Passer au stage 2
-    isStage2 = true;
-    stage2EnemiesKilled = 0;
-
-    // Donner un bonus de points
+    // Bonus de points
     enemiesKilled += 10;
     document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
    
@@ -2466,30 +2445,46 @@ function checkBossCollisions() {
         }
     }
    
-    // Remplacer les images d'ennemis par les nouvelles
-    enemyImgs.forEach((img, i) => {
-        img.src = `/img/enemy${i + 7}.jpg`; // Utiliser enemy7 à enemy14
-    });
-   
-    // Afficher le titre de stage
-    const stageTitle = document.getElementById("stageTitle");
-    stageTitle.style.display = "block";
-   
-    // Animation de fade-in
-    setTimeout(() => {
-        stageTitle.style.opacity = "1";
-       
-        // Animation de fade-out après 3 secondes
+    if (!isStage2) {
+        // Activer le fond d'écran défilant pour le Stage 2
+        backgroundActive = true;
+        const scrollingBg = document.getElementById("scrollingBackground");
+        scrollingBg.style.display = "block";
+        
+        scrollingBg.style.filter = "none";
+        scrollingBg.style.backgroundSize = "contain";
+        scrollingBg.style.backgroundRepeat = "repeat-x";
+
+
+        // Passer au stage 2
+        isStage2 = true;
+        stage2EnemiesKilled = 0;
+
+        // Remplacer les images d'ennemis par les nouvelles (seulement pour le Stage 2)
+        enemyImgs.forEach((img, i) => {
+            img.src = `/img/enemy${i + 10}.jpg`; // enemy10 à enemy15
+        });
+
+        // Afficher le titre de stage
+        const stageTitle = document.getElementById("stageTitle");
+        stageTitle.style.display = "block";
+        
+        // Animation de fade-in
         setTimeout(() => {
-            stageTitle.style.opacity = "0";
-           
-            // Masquer l'élément après la transition
+            stageTitle.style.opacity = "1";
+            
+            // Animation de fade-out après 3 secondes
             setTimeout(() => {
-                stageTitle.style.display = "none";
-            }, 2000);
-        }, 3000);
-    }, 100);
-   
+                stageTitle.style.opacity = "0";
+                
+                // Masquer l'élément après la transition
+                setTimeout(() => {
+                    stageTitle.style.display = "none";
+                }, 2000);
+            }, 3000);
+        }, 100);
+    }
+
     // Ajouter quelques power-ups
     bonusManager.addPowerUp(2);
     bonusManager.addLife();
@@ -2533,7 +2528,7 @@ function updateMiniBoss() {
    
     // Tir toutes les 3 secondes
     const currentTime = Date.now();
-    if (currentTime - miniBoss.lastShootTime > 3000) {
+    if (currentTime - miniBoss.lastShootTime > 2000) {
         shootMiniBossBullets();
         miniBoss.lastShootTime = currentTime;
     }
@@ -2557,7 +2552,7 @@ function drawMiniBoss() {
     // Afficher la santé du mini-boss
     ctx.fillStyle = "white";
     ctx.font = "14px Arial";
-    ctx.fillText(miniBossHealth + "/50", miniBoss.x + miniBoss.width/2 - 20, miniBoss.y - 10);
+    ctx.fillText(miniBossHealth + "/100", miniBoss.x + miniBoss.width/2 - 20, miniBoss.y - 10);
     
     ctx.restore();
 }
@@ -2680,7 +2675,7 @@ function shootBullet() {
                 offsets: [0],
                 y: ship.y,
                 speed: 20,
-                color: "#FFFFFF" // Blanc
+                color: "#00FFFF" // Cyan
             },
             // Rangée 2 - Niveau 1
             {
@@ -2701,21 +2696,21 @@ function shootBullet() {
                 offsets: [-20, -10, 0, 10, 20],
                 y: ship.y - 8,
                 speed: 14,
-                color: "#FFFF00" // Jaune
+                color: "#00FFFF" // Cyan
             },
             // Rangée 5 - Niveau 4
             {
                 offsets: [-30, -20, -10, 0, 10, 20, 30],
                 y: ship.y - 12,
                 speed: 12,
-                color: "#00FF00" // Vert
+                color: "#FF00FF" // Magenta
             },
             // Rangée 6 - Niveau 5
             {
                 offsets: [-40, -30, -20, -10, 0, 10, 20, 30, 40],
                 y: ship.y - 16,
                 speed: 10,
-                color: "#FF8000" // Orange
+                color: "#00FFFF" // Cyan
             }
            
         ];
@@ -3249,7 +3244,7 @@ for (let k = 0; k < 100; k++) {  // Quelques particules d'explosion
         vy: Math.sin(angle) * speed,
         life: 30 + Math.floor(Math.random() * 20),
         isExplosion: true,  // Identifier comme particule d'explosion
-        color: ["yellow", "blue"][Math.floor(Math.random() * 3)]
+        color: ["fuchsia"][Math.floor(Math.random() * 3)]
     });
 }
 
@@ -3493,23 +3488,34 @@ for (let i = enemyBullets.length - 1; i >= 0; i--) {
     }
 }
 
+// CORRECTION 8: Améliorer la fonction update pour gérer les animations de fond
 function update(timestamp) {
     try {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-       
-        // Ne pas modifier globalAlpha ici pour préserver l'opacité définie dans createBoss
+
+        // Vérifier et mettre à jour l'animation du fond en fonction du stage
+        const scrollingBg = document.getElementById("scrollingBackground");
+        if (isStage3 && scrollingBg.style.display === "block") {
+            // S'assurer que le fond utilise l'animation verticale pour le stage 3
+            if (scrollingBg.style.animation !== "scrollBackgroundVertical 60s linear infinite") {
+                scrollingBg.style.animation = "scrollBackgroundVertical 60s linear infinite";
+            }
+        } else if (isStage2 && scrollingBg.style.display === "block") {
+            // S'assurer que le fond utilise l'animation horizontale pour le stage 2
+            if (scrollingBg.style.animation !== "rotateBackground 60s linear infinite") {
+                scrollingBg.style.animation = "rotateBackground 60s linear infinite";
+            }
+        }
 
         if (isMultiplayer) {
             updateMultiplayerControls();
         }
-// Mise à jour des particules de bouclier
-updateShieldParticles();
-        drawStarship();
-        drawShieldParticles(); // Dessiner les particules du bouclier
+
         // Mise à jour des particules de bouclier
-updateShieldParticles();
-drawShieldParticles(); // Dessiner les particules du bouclier
+        updateShieldParticles();
+        
+        drawStarship();
+        drawShieldParticles();
         updateStunEffects();
         updateAndDrawThunder();
         drawBullets();
@@ -3543,20 +3549,20 @@ drawShieldParticles(); // Dessiner les particules du bouclier
         console.error("Erreur dans la boucle de jeu:", error);
     }
 
-            const currentTime = Date.now();
-            const frameDelta = currentTime - (window.lastFrameTime || currentTime);
-            window.lastFrameTime = currentTime;
+    const currentTime = Date.now();
+    const frameDelta = currentTime - (window.lastFrameTime || currentTime);
+    window.lastFrameTime = currentTime;
 
-            if (frameDelta > 100) {
-                if (frameDelta > 300) {
-                    if (enemies.length > 15) enemies = enemies.slice(0, 15);
-                    if (enemyBullets.length > 20) enemyBullets = enemyBullets.slice(0, 20);
-                    if (redPoints.length > 50) redPoints = redPoints.slice(0, 50);
-                }
-            }
-
-            requestAnimationFrame(update);
+    if (frameDelta > 100) {
+        if (frameDelta > 300) {
+            if (enemies.length > 15) enemies = enemies.slice(0, 15);
+            if (enemyBullets.length > 20) enemyBullets = enemyBullets.slice(0, 20);
+            if (redPoints.length > 50) redPoints = redPoints.slice(0, 50);
         }
+    }
+
+    requestAnimationFrame(update);
+}
 
         // Initialisation
         window.addEventListener("resize", resizeCanvas);
