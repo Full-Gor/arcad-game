@@ -716,9 +716,9 @@ const soundEffects = {
 const volumes = {
     shoot: 0.3,
     hit: 1.0,
-    coin: 0.4,
-    king: 0.7,
-    perfect: 1.0,
+    coin: 0.3,
+    king: 0.6,
+    perfect: 0.4,
     doubleKill: 0.7,
     tripleKill: 0.5,
     humiliation: 1.0,
@@ -1849,7 +1849,7 @@ function handleKill(playerNumber) {
     // Compteur différent selon le stage
     if (!isStage2 && !isStage3) {
         // Stage 1
-        if (enemiesKilled === 20 && !bossActive) {
+        if (enemiesKilled === 200 && !bossActive) {
             createBoss();
         }
         else if (enemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
@@ -1858,15 +1858,15 @@ function handleKill(playerNumber) {
     } else if (isStage2 && !isStage3) {
         // Stage 2
         stage2EnemiesKilled++;
-        if (stage2EnemiesKilled === 20 && !bossActive) {
+        if (stage2EnemiesKilled === 200 && !bossActive) {
             createBoss2();
         }
-        else if (stage2EnemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
+        else if (stage2EnemiesKilled  === 50 && !miniBossActive && !bossActive) {
             createMiniBoss();
         }
     } else if (isStage3) {
         // Stage 3 - Peut-être ajouter une logique spécifique ici
-        if (enemiesKilled % 30 === 0 && !miniBossActive && !bossActive) {
+        if (enemiesKilled  === 30 && !miniBossActive && !bossActive) {
             createMiniBoss();
         }
     }
@@ -2450,7 +2450,7 @@ function defeatBoss() {
         backgroundActive = true;
         const scrollingBg = document.getElementById("scrollingBackground");
         scrollingBg.style.display = "block";
-        
+
         scrollingBg.style.filter = "none";
         scrollingBg.style.backgroundSize = "contain";
         scrollingBg.style.backgroundRepeat = "repeat-x";
