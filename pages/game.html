@@ -201,7 +201,7 @@
 }
 
 .shield-effect {
-    animation: shieldPulse 4s infinite linear;
+    animation: shieldPulse 10s infinite linear;
     border: 2px solid currentColor;
     border-radius: 50%;
     position: absolute;
@@ -382,6 +382,7 @@ let stage3Phase = 0;
 let stage3EnemyTypes = [10, 11, 12, 13, 14, 15, 16, 17]; // Types d'ennemis pour le stage 3
 let stage3CurrentEnemyType = 0;
 let stage3EnemiesSpawned = 0;
+let stage3EnemiesKilled = 0;
 
 // CORRECTION 3: Améliorer la fonction startStage3 pour assurer la transition correcte
 function startStage3() {
@@ -528,6 +529,86 @@ function defeatBoss2() {
     bonusManager.addLife();
 }
 
+
+function defeatBoss3() {
+    console.log("Défaite du boss 3");
+    
+    // Jouer un son
+    playSound(soundEffects.bossDeath);
+    
+    // Explosion massive
+    for (let i = 0; i < 300; i++) {
+        redPoints.push({
+            x: boss.x + Math.random() * boss.width,
+            y: boss.y + Math.random() * boss.height,
+            isExplosion: true,
+            vx: (Math.random() * 2 - 1) * 5,
+            vy: (Math.random() * 2 - 1) * 5,
+            life: 40 + Math.floor(Math.random() * 40),
+            color: ["red", "orange", "yellow", "white", "blue"][Math.floor(Math.random() * 5)]
+        });
+    }
+    
+    // Désactiver le boss
+    bossActive = false;
+    boss = null;
+    
+    // Cacher la barre de vie
+    document.getElementById("bossHealthBar").style.display = "none";
+    
+    // Bonus de points
+    enemiesKilled += 20;
+    document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
+    
+    // Bonus pour tous les joueurs actifs
+    if (isMultiplayer) {
+        const p1Points = parseInt(document.getElementById("p1Points").textContent) + 300;
+        document.getElementById("p1Points").textContent = p1Points;
+        
+        if (starship2 && starship2.isActive) {
+            const p2Points = parseInt(document.getElementById("p2Points").textContent) + 300;
+            document.getElementById("p2Points").textContent = p2Points;
+        }
+        
+        if (isTriplePlayer && starship3 && starship3.isActive) {
+            const p3Points = parseInt(document.getElementById("p3Points").textContent) + 300;
+            document.getElementById("p3Points").textContent = p3Points;
+        }
+    }
+    
+    // Donner beaucoup de bonus
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            bonusManager.addPowerUp(Math.floor(Math.random() * 3));
+            bonusManager.addLife();
+        }, i * 500);
+    }
+    
+    // Afficher un message de victoire
+    const stageTitle = document.getElementById("stageTitle");
+    stageTitle.textContent = "VICTOIRE TOTALE!";
+    stageTitle.style.color = "gold";
+    stageTitle.style.fontSize = "64px";
+    stageTitle.style.display = "block";
+    stageTitle.style.opacity = "0";
+    
+    // Animation de fade-in
+    setTimeout(() => {
+        stageTitle.style.opacity = "1";
+        
+        // Animation de fade-out après 5 secondes
+        setTimeout(() => {
+            stageTitle.style.opacity = "0";
+            
+            // Masquer l'élément après la transition
+            setTimeout(() => {
+                stageTitle.style.display = "none";
+                stageTitle.style.color = "#ff0000"; // Réinitialiser la couleur
+                stageTitle.style.fontSize = "48px"; // Réinitialiser la taille
+            }, 2000);
+        }, 5000);
+    }, 100);
+}
 // Modifier la fonction de génération d'ennemis existante
 // CORRECTION 7: Améliorer la fonction generateEnemies pour intégrer le stage 3
 function generateEnemies() {
@@ -558,6 +639,8 @@ function generateEnemies() {
 }
 const boss2Img = new Image();
 boss2Img.src = "/img/boss2.jpg";
+const boss3Img = new Image();
+boss3Img.src = "/img/boss3.png";
 
         // Détection des appareils mobiles
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -605,8 +688,8 @@ let thunderDirections = [
         let bossHitEffectTimer = 0;
         let backgroundActive = false;
         // Variables pour le mini-boss
-let miniBossActive = false;
-let miniBoss = null;
+        let miniBossActive = false;
+        let miniBosses = []; // Tableau pour stocker les mini-boss actifs
 const miniBossImg = new Image();
 miniBossImg.src = "/img/miniBoss.jpg";
 let miniBossHealth = 50;
@@ -1852,7 +1935,7 @@ function handleKill(playerNumber) {
         if (enemiesKilled === 200 && !bossActive) {
             createBoss();
         }
-        else if (enemiesKilled % 50 === 0 && !miniBossActive && !bossActive) {
+        else if (enemiesKilled % 30 === 0 && !miniBossActive && !bossActive) {
             createMiniBoss();
         }
     } else if (isStage2 && !isStage3) {
@@ -1861,12 +1944,21 @@ function handleKill(playerNumber) {
         if (stage2EnemiesKilled === 200 && !bossActive) {
             createBoss2();
         }
-        else if (stage2EnemiesKilled  === 50 && !miniBossActive && !bossActive) {
-            createMiniBoss();
+        else if (stage2EnemiesKilled % 15 === 0 && !miniBossActive && !bossActive) {
+            createMiniBoss(); // Apparaître plus fréquemment en stage 2
         }
     } else if (isStage3) {
-        // Stage 3 - Peut-être ajouter une logique spécifique ici
-        if (enemiesKilled  === 30 && !miniBossActive && !bossActive) {
+        // Stage 3
+        stage3EnemiesKilled++;
+        console.log("Ennemis tués en stage 3:", stage3EnemiesKilled);
+        
+        // Réduire le nombre requis pour faire apparaître le boss
+        if (stage3EnemiesKilled >= 200 && !bossActive) {
+            createBoss3();
+        }
+        
+        // Pour le mini-boss, on peut le faire apparaître plus tôt et plus fréquemment
+        if (stage3EnemiesKilled % 15 === 0 && !miniBossActive && !bossActive) {
             createMiniBoss();
         }
     }
@@ -1927,21 +2019,21 @@ function handleKill(playerNumber) {
     }, 200);
 }
         // CORRECTION 5: Modification de createBoss2 pour définir correctement les propriétés du boss
-function createBoss2() {
+        function createBoss2() {
     console.log("Création du boss 2");
     if (bossActive) return;
    
     bossActive = true;
-    bossHealth = 100; // Santé raisonnable pour le boss du stage 2
+    bossHealth = 500; // Santé pour le boss du stage 2
    
     document.getElementById("bossHealthBar").style.display = "block";
     document.getElementById("bossHealthFill").style.width = "100%";
    
     boss = {
-        x: canvas.width / 2 - 75,
+        x: canvas.width / 2 - 150, // Position ajustée pour centrer
         y: 50,
-        width: 75, // Taille réduite pour que la multiplication par 2 soit correcte
-        height: 75,
+        width: 250, // Taille augmentée
+        height: 250, // Taille augmentée
         vx: 0.5,
         vy: 0.5,
         movePattern: 0,
@@ -1952,7 +2044,7 @@ function createBoss2() {
    
     playSound(soundEffects.bossAppear);
     enemies = [];
-   
+    
     // Afficher un message pour le boss 2
     const stageTitle = document.getElementById("stageTitle");
     stageTitle.textContent = "BOSS FINAL !";
@@ -1974,6 +2066,135 @@ function createBoss2() {
         }, 2000);
     }, 100);
 }
+function createBoss3() {
+    console.log("Création du boss 3");
+    if (bossActive) return;
+   
+    bossActive = true;
+    bossHealth = 2000; // Santé élevée pour le boss du stage 3
+   
+    document.getElementById("bossHealthBar").style.display = "block";
+    document.getElementById("bossHealthFill").style.width = "100%";
+   
+    boss = {
+        x: canvas.width / 2 - 200, // Position centrée, ajustée pour la taille plus grande
+        y: 100, // Un peu plus bas que les autres boss
+        width: 450, // Deux fois plus large (200 -> 400)
+        height: 450, // Deux fois plus haut (200 -> 400)
+        vx: 0, // Ne se déplace pas horizontalement
+        vy: 0, // Ne se déplace pas verticalement
+        isBoss3: true, // Marqueur pour identifier que c'est le boss 3
+        shootCount: 0, // Compteur pour alterner entre les types de tirs
+        lastShootTime: Date.now(),
+        shootSide: 0 // 0 = les deux côtés, 1 = côté gauche, 2 = côté droit
+    };
+   
+    playSound(soundEffects.bossAppear);
+    enemies = []; // Vider les ennemis
+   
+    // Afficher un message pour le boss 3
+    const stageTitle = document.getElementById("stageTitle");
+    stageTitle.textContent = "BOSS FINAL 3: ANNIHILATEUR";
+    stageTitle.style.display = "block";
+    stageTitle.style.opacity = "0";
+   
+    // Animation de fade-in
+    setTimeout(() => {
+        stageTitle.style.opacity = "1";
+       
+        // Animation de fade-out après 3 secondes
+        setTimeout(() => {
+            stageTitle.style.opacity = "0";
+           
+            // Masquer l'élément après la transition
+            setTimeout(() => {
+                stageTitle.style.display = "none";
+            }, 2000);
+        }, 3000);
+    }, 100);
+}
+
+
+function updateBoss3() {
+    if (!bossActive || !boss || !boss.isBoss3 || gameManager.isPaused) return;
+    
+    // Le boss reste au centre, donc pas de mouvement
+    // Cependant, on s'assure qu'il reste bien centré en cas de redimensionnement
+    boss.x = canvas.width / 2 - boss.width / 2;
+    
+    // Tirs périodiques
+    const currentTime = Date.now();
+    if (currentTime - boss.lastShootTime > 500) { // Tir toutes les secondes
+        shootBoss3Bullets();
+        boss.lastShootTime = currentTime;
+        
+        // Changer le côté de tir toutes les 5 secondes (5 tirs)
+        if (boss.shootCount % 5 === 0) {
+            // Rotation des côtés: 0 -> 1 -> 2 -> 0 (les deux, gauche, droite)
+            boss.shootSide = (boss.shootSide + 1) % 3;
+        }
+    }
+}
+function shootBoss3Bullets() {
+    if (!bossActive || !boss || !boss.isBoss3) return;
+    
+    boss.shootCount++;
+    
+    // Tirs normaux - maintenant 32 directions (2 fois plus nombreux)
+    for (let i = 0; i < 32; i++) {
+        const angle = (i * 11.25) * Math.PI / 180; // 360/32 = 11.25 degrés
+        
+        // Déterminer si le tir est dans le bon côté selon le mode de tir actuel
+        let shouldShoot = true;
+        if (boss.shootSide === 1) { // côté gauche
+            shouldShoot = (angle >= Math.PI / 2 && angle <= 3 * Math.PI / 2);
+        } else if (boss.shootSide === 2) { // côté droit
+            shouldShoot = (angle <= Math.PI / 2 || angle >= 3 * Math.PI / 2);
+        }
+        
+        if (shouldShoot) {
+            const speed = 2; // Un peu plus rapide que boss2
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+           
+            enemyBullets.push({
+                x: boss.x + boss.width/2,
+                y: boss.y + boss.height/2,
+                width: 8,
+                height: 8,
+                speed: 0,
+                vx: vx,
+                vy: vy,
+                type: 1, // Type de balle différent (magenta)
+                isBoss3Bullet: true
+            });
+        }
+    }
+    
+    // Une fois sur deux, tirer trois grosses bullets de 40px (2 fois plus grand que l'original)
+    if (boss.shootCount % 2 === 0) {
+        // Tirer 3 grosses balles dans des directions aléatoires
+        for (let i = 0; i < 8; i++) {
+            const randomAngle = Math.random() * Math.PI * 2;
+            
+            enemyBullets.push({
+                x: boss.x + boss.width/2 - 20, // Centré (40px de diamètre)
+                y: boss.y + boss.height/2 - 20,
+                width: 30, // 40px de diamètre (2 fois plus grand que 20px)
+                height: 30,
+                speed: 0,
+                vx: Math.cos(randomAngle) * 1, // Plus rapide
+                vy: Math.sin(randomAngle) * 3,
+                type: 2, // Type de balle (gold)
+                isBoss3Bullet: true,
+                isLargeBullet: true
+            });
+        }
+    }
+    
+    playSound(soundEffects.shoot);
+}
+
 
 function activatePowerUp(ship, powerUpType) {
     if (powerUpType === 2) {
@@ -2138,7 +2359,7 @@ function activatePowerUp(ship, powerUpType) {
             if (bossActive) return;
            
             bossActive = true;
-            bossHealth = 500; // Augmentation de la résistance à 500
+            bossHealth = 200; // Augmentation de la résistance à 500
            
             document.getElementById("bossHealthBar").style.display = "block";
             document.getElementById("bossHealthFill").style.width = "100%";
@@ -2224,41 +2445,44 @@ function activatePowerUp(ship, powerUpType) {
    
     ctx.save();
    
-    // Augmenter l'opacité globale pour les boss (plus foncés)
-    ctx.globalAlpha = boss.isBoss2 ? 1 : 1;  // Pleine opacité
-   
-   
-   
-    // Rotation du boss seulement pour le premier boss
+    // Opacité normale
+    ctx.globalAlpha = 1;
+    
+    // Centrer le boss
     ctx.translate(boss.x + boss.width/2, boss.y + boss.height/2);
-    if (!boss.isBoss2) {
-        ctx.rotate(boss.rotation * Math.PI / 180);
-    }
-   
-    // Dessin du boss (boss 1 ou boss 2)
-    const bossImage = boss.isBoss2 ? boss2Img : bossImg;
-   
-    if (bossImage.complete) {
-        // Boss2 deux fois plus grand
-        if (boss.isBoss2) {
-            ctx.drawImage(bossImage, -boss.width, -boss.height, boss.width * 2, boss.height * 2);
+    
+    // Dessiner le boss selon son type
+    if (boss.isBoss3) {
+        // Boss 3 - pas de rotation
+        if (boss3Img.complete) {
+            ctx.drawImage(boss3Img, -boss.width/2, -boss.height/2, boss.width, boss.height);
         } else {
-            ctx.drawImage(bossImage, -boss.width/2, -boss.height/2, boss.width, boss.height);
+            // Image de secours
+            ctx.fillStyle = "blue";
+            ctx.fillRect(-boss.width/2, -boss.height/2, boss.width, boss.height);
+        }
+    } else if (boss.isBoss2) {
+        // Boss 2
+        if (boss2Img.complete) {
+            ctx.drawImage(boss2Img, -boss.width/2, -boss.height/2, boss.width, boss.height);
+        } else {
+            ctx.fillStyle = "purple";
+            ctx.fillRect(-boss.width/2, -boss.height/2, boss.width, boss.height);
         }
     } else {
-        // Image de secours si l'image du boss n'est pas chargée
-        ctx.fillStyle = boss.isBoss2 ? "purple" : "red";
-        if (boss.isBoss2) {
-            ctx.fillRect(-boss.width, -boss.height, boss.width * 2, boss.height * 2);
+        // Boss 1
+        ctx.rotate(boss.rotation * Math.PI / 180);
+        if (bossImg.complete) {
+            ctx.drawImage(bossImg, -boss.width/2, -boss.height/2, boss.width, boss.height);
         } else {
+            ctx.fillStyle = "red";
             ctx.fillRect(-boss.width/2, -boss.height/2, boss.width, boss.height);
         }
     }
    
     ctx.restore();
-    ctx.globalAlpha = 1.0; // Réinitialiser explicitement l'opacité globale
+    ctx.globalAlpha = 1.0; // Réinitialiser l'opacité
 }
-
         function shootBossBullets() {
     if (!bossActive || !boss) return;
    
@@ -2312,7 +2536,6 @@ function activatePowerUp(ship, powerUpType) {
     playSound(soundEffects.shoot);
 }
 
-// CORRECTION 4: Modifier la vérification du boss dans checkBossCollisions
 function checkBossCollisions() {
     if (!bossActive || !boss) return;
    
@@ -2323,12 +2546,12 @@ function checkBossCollisions() {
         for (let i = player.bullets.length - 1; i >= 0; i--) {
             const bullet = player.bullets[i];
            
-            // Rectangle de collision pour le boss ajusté selon le type
+            // Rectangle de collision ajusté selon le type de boss
             const bossRect = {
-                x: boss.isBoss2 ? boss.x - boss.width/2 : boss.x,
-                y: boss.isBoss2 ? boss.y - boss.height/2 : boss.y,
-                width: boss.isBoss2 ? boss.width * 2 : boss.width,
-                height: boss.isBoss2 ? boss.height * 2 : boss.height
+                x: boss.isBoss3 ? boss.x : (boss.isBoss2 ? boss.x - boss.width/2 : boss.x),
+                y: boss.isBoss3 ? boss.y : (boss.isBoss2 ? boss.y - boss.height/2 : boss.y),
+                width: boss.isBoss3 ? boss.width : (boss.isBoss2 ? boss.width * 2 : boss.width),
+                height: boss.isBoss3 ? boss.height : (boss.isBoss2 ? boss.height * 2 : boss.height)
             };
            
             if (checkCollision(bullet, bossRect)) {
@@ -2343,14 +2566,16 @@ function checkBossCollisions() {
                 bossHealth--;
                
                 // Mettre à jour la barre de vie
-                const maxHealth = boss.isBoss2 ? 100 : 500; // Correction importante ici
+                const maxHealth = boss.isBoss3 ? 2000 : (boss.isBoss2 ? 1500 : 500);
                 document.getElementById("bossHealthFill").style.width = (bossHealth / maxHealth * 100) + "%";
                
                 playSound(soundEffects.bossHit);
                
                 // Vérifier si le boss est détruit
                 if (bossHealth <= 0) {
-                    if (boss.isBoss2) {
+                    if (boss.isBoss3) {
+                        defeatBoss3();
+                    } else if (boss.isBoss2) {
                         defeatBoss2();
                     } else {
                         defeatBoss();
@@ -2360,19 +2585,20 @@ function checkBossCollisions() {
         }
     };
    
-    // Le reste de la fonction reste inchangé...
+    // Vérifications pour chaque joueur
     checkPlayerBullets(starship);
     if (isMultiplayer && starship2) checkPlayerBullets(starship2);
     if (isTriplePlayer && starship3) checkPlayerBullets(starship3);
    
+    // Collision entre le joueur et le boss
     const checkPlayerCollision = (player) => {
         if (!player || !player.isActive) return;
        
         const bossRect = {
-            x: boss.isBoss2 ? boss.x - boss.width/2 : boss.x,
-            y: boss.isBoss2 ? boss.y - boss.height/2 : boss.y,
-            width: boss.isBoss2 ? boss.width * 2 : boss.width,
-            height: boss.isBoss2 ? boss.height * 2 : boss.height
+            x: boss.isBoss3 ? boss.x : (boss.isBoss2 ? boss.x - boss.width/2 : boss.x),
+            y: boss.isBoss3 ? boss.y : (boss.isBoss2 ? boss.y - boss.height/2 : boss.y),
+            width: boss.isBoss3 ? boss.width : (boss.isBoss2 ? boss.width * 2 : boss.width),
+            height: boss.isBoss3 ? boss.height : (boss.isBoss2 ? boss.height * 2 : boss.height)
         };
        
         if (checkCollision(player, bossRect) && !player.shield) {
@@ -2494,71 +2720,90 @@ function createMiniBoss() {
     if (miniBossActive) return;
    
     miniBossActive = true;
-    miniBossHealth = 50;
+    miniBosses = []; // Réinitialiser le tableau
+    
+    // Créer deux mini-boss seulement pour les stages 2 et 3
+    const bossCount = (isStage2 || isStage3) ? 2 : 1;
+    
+    for (let i = 0; i < bossCount; i++) {
+        // Positionner les mini-boss à gauche et à droite
+        const xPosition = (i === 0) ? 
+            canvas.width / 4 - 50 :  // Premier mini-boss à gauche
+            canvas.width * 3/4 - 50; // Deuxième mini-boss à droite
+        
+        miniBosses.push({
+            x: xPosition,
+            y: 80,
+            width: 100,
+            height: 100,
+            vx: 0.5 * (i === 0 ? 1 : -1), // Direction opposée pour le deuxième
+            vy: 0.3,
+            health: 50, // Santé individuelle pour chaque mini-boss
+            lastShootTime: Date.now()
+        });
+    }
    
-    miniBoss = {
-        x: canvas.width / 2 - 50,
-        y: 80,
-        width: 100,
-        height: 100,
-        vx: 0.5, // Mouvement très lent
-        vy: 0.3,
-        lastShootTime: Date.now()
-    };
-   
-    // Jouer un son d'alerte pour l'apparition du mini-boss
+    // Jouer un son d'alerte pour l'apparition des mini-boss
     playSound(soundEffects.king);
 }
 
 // Fonction pour mettre à jour le mini-boss
 function updateMiniBoss() {
-    if (!miniBossActive || !miniBoss || gameManager.isPaused) return;
+    if (!miniBossActive || miniBosses.length === 0 || gameManager.isPaused) return;
    
-    // Mouvement lent
-    miniBoss.x += miniBoss.vx;
-    miniBoss.y += miniBoss.vy;
-   
-    // Rebondir aux bords
-    if (miniBoss.x <= 0 || miniBoss.x + miniBoss.width >= canvas.width) {
-        miniBoss.vx *= -1;
-    }
-    if (miniBoss.y <= 0 || miniBoss.y + miniBoss.height >= canvas.height / 2) {
-        miniBoss.vy *= -1;
-    }
-   
-    // Tir toutes les 3 secondes
-    const currentTime = Date.now();
-    if (currentTime - miniBoss.lastShootTime > 2000) {
-        shootMiniBossBullets();
-        miniBoss.lastShootTime = currentTime;
+    for (let i = 0; i < miniBosses.length; i++) {
+        const miniBoss = miniBosses[i];
+        
+        // Mouvement lent
+        miniBoss.x += miniBoss.vx;
+        miniBoss.y += miniBoss.vy;
+       
+        // Rebondir aux bords
+        if (miniBoss.x <= 0 || miniBoss.x + miniBoss.width >= canvas.width) {
+            miniBoss.vx *= -1;
+        }
+        if (miniBoss.y <= 0 || miniBoss.y + miniBoss.height >= canvas.height / 2) {
+            miniBoss.vy *= -1;
+        }
+       
+        // Tir toutes les 3 secondes
+        const currentTime = Date.now();
+        if (currentTime - miniBoss.lastShootTime > 2000) {
+            shootMiniBossBullets(miniBoss, i);
+            miniBoss.lastShootTime = currentTime;
+        }
     }
 }
 
 // Fonction pour dessiner le mini-boss
 function drawMiniBoss() {
-    if (!miniBossActive || !miniBoss) return;
+    if (!miniBossActive || miniBosses.length === 0) return;
    
-    ctx.save();
-    
-    // Dessiner le mini-boss
-    if (miniBossImg.complete) {
-        ctx.drawImage(miniBossImg, miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
-    } else {
-        // Image de secours si l'image n'est pas chargée
-        ctx.fillStyle = "orange";
-        ctx.fillRect(miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
+    for (let i = 0; i < miniBosses.length; i++) {
+        const miniBoss = miniBosses[i];
+        
+        ctx.save();
+        
+        // Dessiner le mini-boss
+        if (miniBossImg.complete) {
+            ctx.drawImage(miniBossImg, miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
+        } else {
+            // Image de secours si l'image n'est pas chargée
+            ctx.fillStyle = i === 0 ? "orange" : "yellow"; // Couleurs différentes pour les distinguer
+            ctx.fillRect(miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
+        }
+        
+        // Afficher la santé du mini-boss
+        ctx.fillStyle = "white";
+        ctx.font = "14px Arial";
+        ctx.fillText(miniBoss.health + "/50", miniBoss.x + miniBoss.width/2 - 20, miniBoss.y - 10);
+        
+        ctx.restore();
     }
-    
-    // Afficher la santé du mini-boss
-    ctx.fillStyle = "white";
-    ctx.font = "14px Arial";
-    ctx.fillText(miniBossHealth + "/100", miniBoss.x + miniBoss.width/2 - 20, miniBoss.y - 10);
-    
-    ctx.restore();
 }
 
 // Fonction pour les tirs du mini-boss
-function shootMiniBossBullets() {
+function shootMiniBossBullets(miniBoss, index) {
     if (!miniBossActive || !miniBoss) return;
     
     // Créer une rangée de 5 lasers rouges
@@ -2567,23 +2812,23 @@ function shootMiniBossBullets() {
             x: miniBoss.x + (miniBoss.width / 5) * i,
             y: miniBoss.y + miniBoss.height,
             width: 5, // Largeur 5px
-            height: 20, // Longueur 20px
+            height: 30, // Longueur 20px
             speed: 3, // Vitesse des lasers
-            color: "red", // Couleur rouge
+            color: index === 0 ? "red" : "orange", // Couleur différente selon le mini-boss
             isMiniBossBullet: true // Pour l'identifier
         });
     }
     
     // Ajouter une boule rouge qui suit les lasers
     setTimeout(function() {
-        // Créer une boule rouge au centre du mini-boss
+        // Créer une boule au centre du mini-boss
         enemyBullets.push({
             x: miniBoss.x + (miniBoss.width / 2) - 5, // Centré (10px de diamètre)
             y: miniBoss.y + miniBoss.height,
             width: 30, // Diamètre 10px
             height: 10, // Forme circulaire
             speed: 5, // Un peu plus lent que les lasers
-            color: "red", // Couleur rouge
+            color: index === 0 ? "red" : "orange", // Couleur différente selon le mini-boss
             isMiniBossBullet: true, // Pour l'identifier
             isRedBall: true // Pour identifier spécifiquement la boule
         });
@@ -2593,68 +2838,93 @@ function shootMiniBossBullets() {
 }
 // Fonction pour vérifier les collisions avec le mini-boss
 function checkMiniBossCollisions() {
-    if (!miniBossActive || !miniBoss) return;
+    if (!miniBossActive || miniBosses.length === 0) return;
    
-    // Vérifier les collisions avec les balles des joueurs
+    // Pour chaque joueur actif...
     [starship, starship2, starship3].filter(Boolean).forEach(player => {
         if (!player.isActive) return;
         
-        for (let i = player.bullets.length - 1; i >= 0; i--) {
-            const bullet = player.bullets[i];
+        // Pour chaque mini-boss...
+        for (let i = miniBosses.length - 1; i >= 0; i--) {
+            const miniBoss = miniBosses[i];
             
-            if (checkCollision(bullet, miniBoss)) {
-                // Supprimer la balle
-                player.bullets.splice(i, 1);
+            // Vérifier les collisions avec les balles
+            for (let j = player.bullets.length - 1; j >= 0; j--) {
+                const bullet = player.bullets[j];
                 
-                // Réduire la santé du mini-boss
-                miniBossHealth--;
-                
-                // Son de coup
-                playSound(soundEffects.hit);
-                
-                // Vérifier si le mini-boss est détruit
-                if (miniBossHealth <= 0) {
-                    defeatMiniBoss();
+                if (checkCollision(bullet, miniBoss)) {
+                    // Supprimer la balle
+                    player.bullets.splice(j, 1);
+                    
+                    // Réduire la santé du mini-boss
+                    miniBoss.health--;
+                    
+                    // Son de coup
+                    playSound(soundEffects.hit);
+                    
+                    // Vérifier si ce mini-boss est détruit
+                    if (miniBoss.health <= 0) {
+                        // Créer un effet d'explosion
+                        for (let k = 0; k < 50; k++) {
+                            redPoints.push({
+                                x: miniBoss.x + Math.random() * miniBoss.width,
+                                y: miniBoss.y + Math.random() * miniBoss.height,
+                                isExplosion: true,
+                                vx: (Math.random() * 2 - 1) * 2,
+                                vy: (Math.random() * 2 - 1) * 2,
+                                life: 20 + Math.floor(Math.random() * 10),
+                                color: ["red", "orange", "yellow"][Math.floor(Math.random() * 3)]
+                            });
+                        }
+                        
+                        // Supprimer ce mini-boss
+                        miniBosses.splice(i, 1);
+                        
+                        // Points pour le joueur
+                        coins += 15;
+                        document.getElementById("coinsCount").textContent = coins.toFixed(1);
+                        
+                        // Si tous les mini-boss sont détruits, désactiver complètement
+                        if (miniBosses.length === 0) {
+                            defeatMiniBoss();
+                        }
+                        
+                        break;
+                    }
                 }
             }
-        }
-        
-        // Vérifier si le joueur touche le mini-boss
-        if (checkCollision(player, miniBoss)) {
-            if (!player.shield) {
-                player.lives--;
-                updatePlayerStats();
-                
-                if (player.lives <= 0) {
-                    playerDeath(player);
+            
+            // Vérifier si le mini-boss existe encore (il pourrait avoir été détruit)
+            if (i >= miniBosses.length) continue;
+            
+            // Vérifier si le joueur touche le mini-boss
+            if (checkCollision(player, miniBosses[i])) {
+                if (!player.shield) {
+                    player.lives--;
+                    updatePlayerStats();
+                    
+                    if (player.lives <= 0) {
+                        playerDeath(player);
+                    }
                 }
             }
         }
     });
 }
-
 // Fonction pour la défaite du mini-boss
 function defeatMiniBoss() {
     // Jouer un son
     playSound(soundEffects.perfect);
    
-    // Créer un effet d'explosion
-    for (let i = 0; i < 100; i++) {
-        redPoints.push({
-            x: miniBoss.x + Math.random() * miniBoss.width,
-            y: miniBoss.y + Math.random() * miniBoss.height
-        });
-    }
-   
     // Désactiver le mini-boss
     miniBossActive = false;
-    miniBoss = null;
+    miniBosses = [];
    
     // Bonus points
     coins += 30;
     document.getElementById("coinsCount").textContent = coins.toFixed(1);
     
-    // Donner un power-up
+    // Donner des power-ups
     bonusManager.addPowerUp();
     bonusManager.addLife();
 }
@@ -3412,6 +3682,7 @@ for (let i = enemyBullets.length - 1; i >= 0; i--) {
             playSound(soundEffects.gameOver);
 
             setTimeout(() => {
+                window.location.href = '/pages/garage.html';
                 gameOverContainer.style.display = "none";
                 gameOverMessage.style.display = "none";
                 continueCounter.style.display = "block";
@@ -3532,6 +3803,10 @@ function update(timestamp) {
 
         if (bossActive) {
             updateBoss();
+            
+            if (bossActive && boss && boss.isBoss3) {
+    updateBoss3();
+}
             drawBoss();
             checkBossCollisions();
         }
