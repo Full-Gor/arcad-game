@@ -862,14 +862,6 @@ function createAssistantShip() {
         isEntering: true, // Phase d'entrée
         moveDirection: 1, // Direction de mouvement horizontal (1 = droite, -1 = gauche)
         moveTimer: 0, // Timer pour le changement de direction
-             // Propriétés du bouclier
-             shield: {
-            radius: 50, // Rayon du bouclier (distance depuis le vaisseau)
-            isVisible: false, // Initialement invisible
-            visibilityTimer: 0, // Timer pour la visibilité
-            visibilityDuration: 30 // Durée de la visibilité en frames
-        }
-    
     };
     
     // Activer le vaisseau assistant
@@ -904,108 +896,151 @@ function createAssistantShip() {
 function updateAndDrawAssistantShip() {
     if (!assistantShipActive || !assistantShip || gameManager.isPaused) return;
     
-    // Code existant...
-    
-    // Mettre à jour le timer de visibilité du bouclier
-    if (assistantShip.shield.isVisible) {
-        assistantShip.shield.visibilityTimer--;
-        if (assistantShip.shield.visibilityTimer <= 0) {
-            assistantShip.shield.isVisible = false;
+    // PHASE 1: ENTRÉE
+    if (assistantShip.isEntering) {
+        // Monter à l'écran
+        assistantShip.y -= assistantShip.speed;
+        
+        // Vérifier si la position cible est atteinte
+        if (assistantShip.y <= assistantShip.targetY) {
+            assistantShip.y = assistantShip.targetY;
+            assistantShip.isEntering = false;
         }
-    }
-    
-    // Vérifier les collisions des balles ennemies avec le bouclier
-    for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        const bullet = enemyBullets[i];
+    } 
+    // PHASE 2: MOUVEMENT
+    else {
+        // Déplacement latéral
+        assistantShip.x += assistantShip.moveDirection * 2;
         
-        // Calculer le centre du vaisseau assistant
-        const centerX = assistantShip.x + assistantShip.width / 2;
-        const centerY = assistantShip.y + assistantShip.height / 2;
+        // Inverser la direction si le vaisseau atteint les bords
+        if (assistantShip.x <= 0 || assistantShip.x + assistantShip.width >= canvas.width) {
+            assistantShip.moveDirection *= -1;
+        }
         
-        // Calculer le centre de la balle
-        const bulletCenterX = bullet.x + bullet.width / 2;
-        const bulletCenterY = bullet.y + bullet.height / 2;
-        
-        // Calculer la distance entre les centres
-        const dx = bulletCenterX - centerX;
-        const dy = bulletCenterY - centerY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Si la balle est dans le rayon du bouclier
-        if (distance < assistantShip.shield.radius) {
-            // Rendre le bouclier visible
-            assistantShip.shield.isVisible = true;
-            assistantShip.shield.visibilityTimer = assistantShip.shield.visibilityDuration;
-            
-            // Supprimer la balle ennemie
-            enemyBullets.splice(i, 1);
-            
-            // Effet visuel de l'impact
-            for (let j = 0; j < 5; j++) {
-                redPoints.push({
-                    x: bulletCenterX + (Math.random() * 10 - 5),
-                    y: bulletCenterY + (Math.random() * 10 - 5),
-                    isExplosion: true,
-                    vx: (Math.random() * 2 - 1) * 2,
-                    vy: (Math.random() * 2 - 1) * 2,
-                    life: 10 + Math.floor(Math.random() * 5),
-                    color: "#04fbac" // Couleur verte pour correspondre au vaisseau
-                });
+        // Changement aléatoire de direction
+        assistantShip.moveTimer++;
+        if (assistantShip.moveTimer > 120) { // Environ toutes les 2 secondes
+            if (Math.random() < 0.3) { // 30% de chance de changer
+                assistantShip.moveDirection *= -1;
             }
+            assistantShip.moveTimer = 0;
+        }
+        
+        // Tirer automatiquement
+        const currentTime = Date.now();
+        if (currentTime - assistantShip.lastShootTime > assistantShip.shootInterval) {
+            // Créer une nouvelle balle
+            assistantShip.bullets.push({
+                x: assistantShip.x + assistantShip.width / 2 - 2,
+                y: assistantShip.y,
+                width: 4,
+                height: 10,
+                speed: 15,
+                color: "#04fbac" // Couleur verte
+            });
             
-            // Jouer un son
-            playSound(soundEffects.hit);
+            // Mettre à jour le temps du dernier tir
+            assistantShip.lastShootTime = currentTime;
+            
+            // Jouer un son (volume réduit pour ne pas être envahissant)
+            soundEffects.shoot.volume = 0.1;
+            soundEffects.shoot.play().catch(() => {});
+            soundEffects.shoot.volume = volumes.shoot; // Restaurer le volume normal
         }
     }
     
-    // Code existant pour le dessin du vaisseau...
-    
-    // Dessiner le bouclier (demi-cercle) s'il est visible
-    if (assistantShip.shield.isVisible) {
-        const centerX = assistantShip.x + assistantShip.width / 2;
-        const centerY = assistantShip.y + assistantShip.height / 2;
-        const radius = assistantShip.shield.radius;
+    // Mettre à jour les balles du vaisseau assistant
+    for (let i = assistantShip.bullets.length - 1; i >= 0; i--) {
+        const bullet = assistantShip.bullets[i];
         
-        ctx.save();
+        // Déplacer la balle
+        bullet.y -= bullet.speed;
         
-        // Créer un dégradé pour le bouclier
-        const gradient = ctx.createRadialGradient(
-            centerX, centerY, radius * 0.7,
-            centerX, centerY, radius
-        );
-        gradient.addColorStop(0, "rgba(4, 251, 172, 0.1)"); // Vert transparent
-        gradient.addColorStop(0.7, "rgba(4, 251, 172, 0.3)"); // Plus opaque
-        gradient.addColorStop(1, "rgba(4, 251, 172, 0.7)"); // Encore plus opaque
+        // Vérifier les collisions avec les ennemis
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            const enemy = enemies[j];
+            
+            if (checkCollision(bullet, enemy)) {
+                // Supprimer la balle
+                assistantShip.bullets.splice(i, 1);
+                
+                // Créer un effet d'explosion
+                for (let k = 0; k < 10; k++) {
+                    redPoints.push({
+                        x: enemy.x + Math.random() * enemy.width,
+                        y: enemy.y + Math.random() * enemy.height,
+                        isExplosion: true,
+                        vx: (Math.random() * 2 - 1) * 2,
+                        vy: (Math.random() * 2 - 1) * 2,
+                        life: 15 + Math.floor(Math.random() * 10),
+                        color: ["red", "orange", "yellow"][Math.floor(Math.random() * 3)]
+                    });
+                }
+                
+                // Supprimer l'ennemi
+                enemies.splice(j, 1);
+                
+                // Augmenter le score
+                enemiesKilled++;
+                document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
+                
+                // Son
+                playSound(soundEffects.hit);
+                
+                // Sortir de la boucle si la balle a été supprimée
+                break;
+            }
+        }
         
-        ctx.fillStyle = gradient;
-        ctx.globalAlpha = 0.7;
-        
-        // Dessiner un demi-cercle (dôme)
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, Math.PI, 0, false); // Demi-cercle supérieur
-        ctx.lineTo(centerX + radius, centerY); // Ligne droite en bas
-        ctx.lineTo(centerX - radius, centerY); // Ligne droite en bas
-        ctx.closePath();
-        ctx.fill();
-        
-        // Contour du bouclier
-        ctx.strokeStyle = "#04fbac";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, Math.PI, 0, false);
-        ctx.stroke();
-        
-        // Effet de pulsation
-        const pulseSize = radius * (1 + Math.sin(Date.now() * 0.01) * 0.05);
-        ctx.globalAlpha = 0.2;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, pulseSize, Math.PI, 0, false);
-        ctx.stroke();
-        
-        ctx.restore();
+        // Supprimer les balles qui sortent de l'écran
+        if (bullet.y < 0 && i < assistantShip.bullets.length) {
+            assistantShip.bullets.splice(i, 1);
+        }
     }
     
-    // Reste du code...
+    // DESSIN DU VAISSEAU ASSISTANT
+    if (assistantShipImg.complete) {
+        ctx.drawImage(
+            assistantShipImg,
+            assistantShip.x,
+            assistantShip.y,
+            assistantShip.width,
+            assistantShip.height
+        );
+        
+        // Effet de propulsion
+        if (Math.random() > 0.5) {
+            ctx.fillStyle = "#04fbac"; // Couleur verte
+            ctx.beginPath();
+            ctx.moveTo(assistantShip.x + 15, assistantShip.y + assistantShip.height);
+            ctx.lineTo(assistantShip.x + 25, assistantShip.y + assistantShip.height + 10);
+            ctx.lineTo(assistantShip.x + 35, assistantShip.y + assistantShip.height);
+            ctx.fill();
+        }
+    } else {
+        // Dessin de secours si l'image n'est pas chargée
+        ctx.fillStyle = "#04fbac";
+        ctx.fillRect(assistantShip.x, assistantShip.y, assistantShip.width, assistantShip.height);
+    }
+    
+    // DESSIN DES BALLES
+    for (const bullet of assistantShip.bullets) {
+        ctx.fillStyle = bullet.color;
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+    }
+}
+function activateThunder(ship) {
+    // Si c'est déjà actif, on ajoute juste un éclair de plus
+    if (thunderActive) {
+        thunderCount = Math.min(thunderCount + 1, 3); // Maximum 3 éclairs
+    } else {
+        thunderActive = true;
+        thunderCount = 1;
+        thunderStartTime = Date.now();
+    }
+    
+    // Jouer un son pour l'éclair
+    playSound(soundEffects.king);
 }
 
 function updateAndDrawThunder() {
