@@ -3550,8 +3550,10 @@ for (let k = 0; k < 10; k++) {
                         }
                     }
                 }
+// Modification de la section de collision avec les balles ennemies dans la fonction checkCollisions
+// Remplacer le bloc existant par celui-ci:
 
-         // Collisions avec les balles ennemies
+// Collisions avec les balles ennemies
 for (let i = enemyBullets.length - 1; i >= 0; i--) {
     const bullet = enemyBullets[i];
     if (checkCollision(player, bullet)) {
@@ -3559,30 +3561,12 @@ for (let i = enemyBullets.length - 1; i >= 0; i--) {
         enemyBullets.splice(i, 1);
 
         if (!player.shield) {
-            player.lives--;
-            killsWithoutDeath = 0;
-            updatePlayerStats();
-            
-            // Si c'est la dernière vie (mort du joueur), explosion massive
-            if (player.lives <= 0) {
-                // Grande explosion finale (beaucoup plus de particules)
-                for (let k = 0; k < 1000; k++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = 2 + Math.random() * 4; // Plus rapide
-                    redPoints.push({
-                        x: player.x + player.width/2,
-                        y: player.y + player.height/2,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        life: 30 + Math.floor(Math.random() * 30), // Plus longue durée
-                        isExplosion: true,
-                        color: ["purple", "yellow", "grey"][Math.floor(Math.random() * 4)]
-                    });
-                }
-                playerDeath(player);
-            } else {
-                // Explosion normale quand touché mais pas encore mort
-                for (let k = 0; k < 100; k++) {
+            // Réduire le niveau de power-up avant de perdre une vie
+            if (player.powerUpLevel > 0) {
+                player.powerUpLevel = Math.max(0, player.powerUpLevel - 1);
+                
+                // Effet visuel léger pour indiquer la perte du power-up
+                for (let k = 0; k < 20; k++) {
                     const angle = Math.random() * Math.PI * 2;
                     const speed = 1 + Math.random() * 2;
                     redPoints.push({
@@ -3590,10 +3574,49 @@ for (let i = enemyBullets.length - 1; i >= 0; i--) {
                         y: player.y + player.height/2,
                         vx: Math.cos(angle) * speed,
                         vy: Math.sin(angle) * speed,
-                        life: 15 + Math.floor(Math.random() * 10),
+                        life: 10 + Math.floor(Math.random() * 5),
                         isExplosion: true,
-                        color: ["grey","yellow"][Math.floor(Math.random() * 3)]
+                        color: "cyan" // Couleur cyan pour indiquer la perte de power-up
                     });
+                }
+            } else {
+                // Si plus de power-up, perdre une vie
+                player.lives--;
+                killsWithoutDeath = 0;
+                updatePlayerStats();
+                
+                // Si c'est la dernière vie (mort du joueur), explosion massive
+                if (player.lives <= 0) {
+                    // Grande explosion finale
+                    for (let k = 0; k < 1000; k++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 2 + Math.random() * 4;
+                        redPoints.push({
+                            x: player.x + player.width/2,
+                            y: player.y + player.height/2,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            life: 30 + Math.floor(Math.random() * 30),
+                            isExplosion: true,
+                            color: ["purple", "yellow", "grey"][Math.floor(Math.random() * 4)]
+                        });
+                    }
+                    playerDeath(player);
+                } else {
+                    // Explosion normale quand touché mais pas encore mort
+                    for (let k = 0; k < 100; k++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 1 + Math.random() * 2;
+                        redPoints.push({
+                            x: player.x + player.width/2,
+                            y: player.y + player.height/2,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            life: 15 + Math.floor(Math.random() * 10),
+                            isExplosion: true,
+                            color: ["grey","yellow"][Math.floor(Math.random() * 3)]
+                        });
+                    }
                 }
             }
         }
