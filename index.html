@@ -120,6 +120,15 @@
             height: 100%;
             object-fit: cover;
         }
+        .menu-option[href*="starship-battle-3v3"] {
+    border-color: #FF7F50;  /* Orange vif */
+    color: #FF7F50;
+}
+
+.menu-option[href*="starship-battle-3v3"]:hover {
+    background: #FF7F50;
+    color: #000;
+}
     </style>
 </head>
 <body>
@@ -132,6 +141,7 @@
             <a href="/pages/garage.html" class="menu-option">1 JOUEUR</a>
             <a href="/pages/garage.html?players=2" class="menu-option">2 JOUEURS</a>
             <a href="/pages/garage.html?players=3" class="menu-option">3 JOUEURS</a>
+            <a href="/pages/versus.html" class="menu-option">VERSUS</a>
             <button class="menu-option" data-href="/pages/option.html">Option</button>
             <button class="menu-option" data-href="/pages/garage.html">GARRAGE</button>
         </div>

@@ -372,6 +372,7 @@
         let fpsTimer = 0;
         const fpsLimit = 60;
         const frameDuration = 1000 / fpsLimit;
+        let redPointsTotal = 0; // Compteur global pour les points rouges collectés
         // Variables pour le stage 2
 let isStage2 = false;
 let stage2EnemiesKilled = 0;
@@ -669,17 +670,17 @@ let thunderDirections = [
         let stars = [];
 let starImg = new Image();
 starImg.src = "/img/star.png"; // Créez ou obtenez une image d'étoile
+
 // Variables pour le tir spécial
 let specialShotAvailable = false;
 let specialBullets = [];
 let specialShotReady = false;
 let enemiesDestroyedWithoutHit = 0;
-// Variables pour le vaisseau assistant
-let assistantShipActive = false;
-let assistantShip = null;
-let redPointsTotal = 0; // Compteur total de points rouges collectés
-const assistantShipImg = new Image();
-assistantShipImg.src = "/img/starship7.jpg";
+
+// Variables pour les vaisseaux assistants
+let assistantShips = []; // Tableau qui contiendra tous les vaisseaux assistants
+let redPointsForNextAssistant = 50; // Points rouges nécessaires pour le prochain assistant
+let nextAssistantShipIndex = 1; // Index pour alterner entre les différentes images
         let enemiesKilled = 0;
         let playerLives = 3;
         let simultaneousKills = 0;
@@ -847,25 +848,54 @@ const shieldParticles = {
   suspensionCount: 15 // Nombre de particules en suspension
 };
 
+// Modifiez la fonction createAssistantShip pour initialiser correctement les propriétés
 function createAssistantShip() {
-    // Créer le vaisseau assistant
-    assistantShip = {
-        x: Math.random() * (canvas.width - 100) + 50, // Position X aléatoire
+    // Déterminer l'image à utiliser pour ce vaisseau assistant
+    const imgIndex = nextAssistantShipIndex;
+    nextAssistantShipIndex = (nextAssistantShipIndex % 6) + 1; // Alterne entre 1-6
+    
+    const assistantShipImgSrc = `/img/starship${imgIndex}.jpg`;
+    const assistantShipImg = new Image();
+    assistantShipImg.src = assistantShipImgSrc;
+    
+    // Calculer une position X aléatoire pour le nouveau vaisseau
+    const randomPosition = Math.random() * (canvas.width - 150) + 50;
+    
+    // Créer le nouvel objet vaisseau assistant
+    const newAssistantShip = {
+        x: randomPosition,
         y: canvas.height + 50, // Commence en dehors de l'écran (en bas)
-        targetY: canvas.height - 150, // Position Y cible
+        targetY: canvas.height - 150 - (assistantShips.length * 20), // Position Y cible initiale (étagée)
         width: 50,
         height: 50,
         lastShootTime: 0,
-        shootInterval: 500, // Intervalle de tir en millisecondes
+        shootInterval: 500 + (assistantShips.length * 100), // Intervalle de tir (plus lent pour chaque nouveau)
+        originalShootInterval: 500 + (assistantShips.length * 100),
         bullets: [],
-        speed: 3, // Vitesse de déplacement
-        isEntering: true, // Phase d'entrée
-        moveDirection: 1, // Direction de mouvement horizontal (1 = droite, -1 = gauche)
-        moveTimer: 0, // Timer pour le changement de direction
+        speed: 3,
+        isEntering: true,
+        moveDirection: Math.random() < 0.5 ? 1 : -1, // Direction de mouvement aléatoire
+        moveTimer: Math.random() * Math.PI * 2, // Décalage de phase pour éviter mouvement synchronisé
+        health: 3,
+        isHit: false,
+        powerUpLevel: 0,
+        imageIndex: imgIndex, // Stocker l'index de l'image
+        image: assistantShipImg, // Stocker l'image directement
+        
+        // Propriétés du bouclier
+        shield: {
+            active: false,
+            radius: 40,
+            timer: 0,
+            duration: 3000
+        }
     };
     
-    // Activer le vaisseau assistant
-    assistantShipActive = true;
+    // Ajouter le nouveau vaisseau au tableau
+    assistantShips.push(newAssistantShip);
+    
+    // Définir le seuil pour le prochain assistant
+    redPointsForNextAssistant += 50;
     
     // Effet d'annonce
     const assistantMessage = document.createElement("div");
@@ -882,7 +912,7 @@ function createAssistantShip() {
     assistantMessage.style.textAlign = "center";
     assistantMessage.style.zIndex = "100";
     assistantMessage.style.textShadow = "0 0 10px #04fbac";
-    assistantMessage.textContent = "RENFORT SPATIAL ACTIVÉ!";
+    assistantMessage.textContent = `VAISSEAU ASSISTANT ${assistantShips.length} ACTIVÉ!`;
     document.body.appendChild(assistantMessage);
     
     // Jouer un son
@@ -893,141 +923,426 @@ function createAssistantShip() {
         document.body.removeChild(assistantMessage);
     }, 3000);
 }
-function updateAndDrawAssistantShip() {
-    if (!assistantShipActive || !assistantShip || gameManager.isPaused) return;
+// Fonction principale qui gère tous les vaisseaux assistants
+function updateAndDrawAssistantShips() {
+    // Vérifier si on doit créer un nouvel assistant
+    if (redPointsTotal >= redPointsForNextAssistant) {
+        createAssistantShip();
+    }
     
-    // PHASE 1: ENTRÉE
+    // Mettre à jour et dessiner chaque vaisseau assistant
+    for (let i = assistantShips.length - 1; i >= 0; i--) {
+        updateAndDrawSingleAssistantShip(assistantShips[i], i);
+    }
+}
+
+// Fonction pour définir la couleur de chaque vaisseau assistant selon son image
+function getAssistantColor(imageIndex, asRGB = false) {
+    const colors = {
+        1: asRGB ? "rgb(200, 50, 50)" : "#c83232", // Rouge pour starship1
+        2: asRGB ? "rgb(50, 50, 200)" : "#3232c8", // Bleu pour starship2
+        3: asRGB ? "rgb(50, 200, 50)" : "#32c832", // Vert pour starship3
+        4: asRGB ? "rgb(200, 200, 50)" : "#c8c832", // Jaune pour starship4
+        5: asRGB ? "rgb(200, 50, 200)" : "#c832c8", // Magenta pour starship5
+        6: asRGB ? "rgb(50, 200, 200)" : "#32c8c8", // Cyan pour starship6
+        7: asRGB ? "rgb(4, 251, 172)" : "#04fbac"   // Couleur par défaut
+    };
+    
+    return colors[imageIndex] || colors[7]; // Retourne la couleur ou une couleur par défaut
+}
+
+// Fonction pour définir la couleur des balles de chaque vaisseau assistant
+function getAssistantBulletColor(imageIndex) {
+    const colors = {
+        1: "#ff8080", // Rouge clair pour starship1
+        2: "#8080ff", // Bleu clair pour starship2
+        3: "#80ff80", // Vert clair pour starship3
+        4: "#ffff80", // Jaune clair pour starship4
+        5: "#ff80ff", // Magenta clair pour starship5
+        6: "#80ffff", // Cyan clair pour starship6
+        7: "#04fbac"  // Couleur par défaut
+    };
+    
+    return colors[imageIndex] || colors[7]; // Retourne la couleur ou une couleur par défaut
+}
+
+// Fonction helper pour afficher un texte flottant
+function showFloatingText(text, x, y, color) {
+    // Créer un élément texte
+    const textElement = document.createElement("div");
+    textElement.style.position = "absolute";
+    textElement.style.left = x + "px";
+    textElement.style.top = y + "px";
+    textElement.style.color = color;
+    textElement.style.fontWeight = "bold";
+    textElement.style.fontSize = "16px";
+    textElement.style.textShadow = "0 0 5px #000";
+    textElement.style.zIndex = "999";
+    textElement.style.pointerEvents = "none";
+    textElement.textContent = text;
+    document.body.appendChild(textElement);
+    
+    // Animation
+    let opacity = 1.0;
+    let posY = y;
+    
+    const animateText = () => {
+        opacity -= 0.02;
+        posY -= 1;
+        
+        textElement.style.opacity = opacity;
+        textElement.style.top = posY + "px";
+        
+        if (opacity > 0) {
+            requestAnimationFrame(animateText);
+        } else {
+            document.body.removeChild(textElement);
+        }
+    };
+    
+    requestAnimationFrame(animateText);
+}
+
+function updateAndDrawSingleAssistantShip(assistantShip, index) {
+    if (!assistantShip || gameManager.isPaused) return;
+    
+    // Phase de mise à jour - gestion du mouvement et du comportement du vaisseau assistant
+    
+    // Si l'animation d'entrée est active, déplacer le vaisseau du bas vers la position cible
     if (assistantShip.isEntering) {
-        // Monter à l'écran
         assistantShip.y -= assistantShip.speed;
         
-        // Vérifier si la position cible est atteinte
+        // Si la position cible est atteinte, terminer la phase d'entrée
         if (assistantShip.y <= assistantShip.targetY) {
             assistantShip.y = assistantShip.targetY;
             assistantShip.isEntering = false;
         }
-    } 
-    // PHASE 2: MOUVEMENT
-    else {
-        // Déplacement latéral
-        assistantShip.x += assistantShip.moveDirection * 2;
+    } else {
+        // Mouvement régulier - d'un côté à l'autre
+        assistantShip.moveTimer += 0.01;
         
-        // Inverser la direction si le vaisseau atteint les bords
-        if (assistantShip.x <= 0 || assistantShip.x + assistantShip.width >= canvas.width) {
+        // Déplacer la position basée sur une onde sinusoïdale pour un mouvement fluide
+        assistantShip.x += Math.sin(assistantShip.moveTimer) * 2 * assistantShip.moveDirection;
+        
+        // S'assurer que le vaisseau reste dans les limites de l'écran
+        if (assistantShip.x < 0) {
+            assistantShip.x = 0;
+            assistantShip.moveDirection *= -1;
+        } else if (assistantShip.x + assistantShip.width > canvas.width) {
+            assistantShip.x = canvas.width - assistantShip.width;
             assistantShip.moveDirection *= -1;
         }
         
-        // Changement aléatoire de direction
-        assistantShip.moveTimer++;
-        if (assistantShip.moveTimer > 120) { // Environ toutes les 2 secondes
-            if (Math.random() < 0.3) { // 30% de chance de changer
-                assistantShip.moveDirection *= -1;
-            }
-            assistantShip.moveTimer = 0;
+        // Changer de direction aléatoirement de temps en temps
+        if (Math.random() < 0.005) {
+            assistantShip.moveDirection *= -1;
         }
         
-        // Tirer automatiquement
+        // Tirer automatiquement des balles
         const currentTime = Date.now();
         if (currentTime - assistantShip.lastShootTime > assistantShip.shootInterval) {
-            // Créer une nouvelle balle
-            assistantShip.bullets.push({
-                x: assistantShip.x + assistantShip.width / 2 - 2,
-                y: assistantShip.y,
-                width: 4,
-                height: 10,
-                speed: 15,
-                color: "#04fbac" // Couleur verte
-            });
+            // Le nombre de balles dépend du niveau de powerUp
+            const bulletConfigs = [
+                [{ offset: 0 }], // Niveau 0: une balle au centre
+                [{ offset: -8 }, { offset: 8 }], // Niveau 1: deux balles
+                [{ offset: -16 }, { offset: 0 }, { offset: 16 }] // Niveau 2+: trois balles
+            ];
             
-            // Mettre à jour le temps du dernier tir
+            // Choisir la configuration en fonction du niveau de powerUp
+            const config = bulletConfigs[Math.min(assistantShip.powerUpLevel, 2)];
+            
+            // Créer les balles selon la configuration
+            for (let bulletCfg of config) {
+                const bulletSize = 4;
+                const bullet = {
+                    x: assistantShip.x + assistantShip.width / 2 - bulletSize / 2 + bulletCfg.offset,
+                    y: assistantShip.y,
+                    width: bulletSize,
+                    height: bulletSize,
+                    speed: 12,
+                    // Couleur différente selon l'index du vaisseau
+                    color: getAssistantBulletColor(assistantShip.imageIndex),
+                    player: 1, // Associé au joueur 1 pour la détection de collision
+                    isAssistantBullet: true
+                };
+                
+                starship.bullets.push(bullet);
+            }
+            
             assistantShip.lastShootTime = currentTime;
-            
-            // Jouer un son (volume réduit pour ne pas être envahissant)
-            soundEffects.shoot.volume = 0.1;
-            soundEffects.shoot.play().catch(() => {});
-            soundEffects.shoot.volume = volumes.shoot; // Restaurer le volume normal
+        }
+        
+        // Mettre à jour le timer du bouclier
+        if (assistantShip.shield.active) {
+            if (Date.now() - assistantShip.shield.timer > assistantShip.shield.duration) {
+                assistantShip.shield.active = false;
+            }
         }
     }
     
-    // Mettre à jour les balles du vaisseau assistant
-    for (let i = assistantShip.bullets.length - 1; i >= 0; i--) {
-        const bullet = assistantShip.bullets[i];
+    // Vérifier les collisions avec les balles ennemies
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const bullet = enemyBullets[i];
+        if (!bullet) continue;
         
-        // Déplacer la balle
-        bullet.y -= bullet.speed;
-        
-        // Vérifier les collisions avec les ennemis
-        for (let j = enemies.length - 1; j >= 0; j--) {
-            const enemy = enemies[j];
+        // Vérifier la collision
+        if (checkCollision(assistantShip, bullet)) {
+            // Supprimer la balle ennemie
+            enemyBullets.splice(i, 1);
             
-            if (checkCollision(bullet, enemy)) {
-                // Supprimer la balle
-                assistantShip.bullets.splice(i, 1);
+            // Ne prendre des dégâts que si le bouclier n'est pas actif
+            if (!assistantShip.shield.active) {
+                // Effet visuel de touche
+                assistantShip.isHit = true;
                 
-                // Créer un effet d'explosion
-                for (let k = 0; k < 10; k++) {
+                // Réduire la santé
+                assistantShip.health--;
+                
+                // Jouer un son
+                playSound(soundEffects.hit);
+                
+                // Effets de particules
+                for (let j = 0; j < 10; j++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 2;
                     redPoints.push({
-                        x: enemy.x + Math.random() * enemy.width,
-                        y: enemy.y + Math.random() * enemy.height,
+                        x: assistantShip.x + assistantShip.width/2 + Math.cos(angle) * 10,
+                        y: assistantShip.y + assistantShip.height/2 + Math.sin(angle) * 10,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 10 + Math.floor(Math.random() * 5),
                         isExplosion: true,
-                        vx: (Math.random() * 2 - 1) * 2,
-                        vy: (Math.random() * 2 - 1) * 2,
-                        life: 15 + Math.floor(Math.random() * 10),
-                        color: ["red", "orange", "yellow"][Math.floor(Math.random() * 3)]
+                        color: getAssistantColor(assistantShip.imageIndex)
                     });
                 }
                 
-                // Supprimer l'ennemi
-                enemies.splice(j, 1);
-                
-                // Augmenter le score
-                enemiesKilled++;
-                document.getElementById("enemiesKilledCount").innerText = enemiesKilled;
-                
-                // Son
-                playSound(soundEffects.hit);
-                
-                // Sortir de la boucle si la balle a été supprimée
-                break;
+                // Vérifier si le vaisseau est détruit
+                if (assistantShip.health <= 0) {
+                    // Créer une explosion finale
+                    for (let j = 0; j < 30; j++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 1 + Math.random() * 3;
+                        redPoints.push({
+                            x: assistantShip.x + Math.random() * assistantShip.width,
+                            y: assistantShip.y + Math.random() * assistantShip.height,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            life: 20 + Math.floor(Math.random() * 10),
+                            isExplosion: true,
+                            color: ["yellow", "orange", "white"][Math.floor(Math.random() * 3)]
+                        });
+                    }
+                    
+                    // Supprimer ce vaisseau assistant du tableau
+                    assistantShips.splice(index, 1);
+                    
+                    // Jouer un son de destruction
+                    playSound(soundEffects.bossDeath);
+                    
+                    return; // Sortir de la fonction car le vaisseau est détruit
+                }
+            } else {
+                // Si le bouclier est actif, créer un effet visuel de "rebond"
+                const angle = Math.random() * Math.PI * 2;
+                for (let j = 0; j < 5; j++) {
+                    redPoints.push({
+                        x: bullet.x,
+                        y: bullet.y,
+                        vx: Math.cos(angle + j * Math.PI/4) * 2,
+                        vy: Math.sin(angle + j * Math.PI/4) * 2,
+                        life: 10,
+                        isExplosion: true,
+                        color: "cyan"
+                    });
+                }
             }
-        }
-        
-        // Supprimer les balles qui sortent de l'écran
-        if (bullet.y < 0 && i < assistantShip.bullets.length) {
-            assistantShip.bullets.splice(i, 1);
         }
     }
     
-    // DESSIN DU VAISSEAU ASSISTANT
-    if (assistantShipImg.complete) {
+    // Vérifier les collisions avec les power-ups
+    for (let i = bonusManager.powerUps.length - 1; i >= 0; i--) {
+        const powerUp = bonusManager.powerUps[i];
+        if (!powerUp) continue;
+        
+        if (checkCollision(assistantShip, powerUp)) {
+            // Analyser le type de power-up et appliquer l'effet approprié
+            if (powerUp.type === 0) { // Type 0 - Éclair
+                // Activer le bouclier
+                assistantShip.shield.active = true;
+                assistantShip.shield.timer = Date.now();
+                assistantShip.shield.duration = 5000; // 5 secondes de bouclier
+                
+                // Message
+                showFloatingText("BOUCLIER!", assistantShip.x, assistantShip.y - 20, "#00ffff");
+            } else if (powerUp.type === 1) { // Type 1 - Amélioration d'armes
+                // Augmenter le niveau de puissance des tirs
+                assistantShip.powerUpLevel = Math.min(2, assistantShip.powerUpLevel + 1);
+                
+                // Augmenter la cadence de tir
+                assistantShip.shootInterval = Math.max(200, assistantShip.originalShootInterval - (assistantShip.powerUpLevel * 100));
+                
+                // Message
+                showFloatingText("ARMES +1", assistantShip.x, assistantShip.y - 20, "#ff00ff");
+            } else if (powerUp.type === 2) { // Type 2 - Power-up spécial
+                // Effet spécial: déclenchement du bouclier + amélioration d'armes
+                assistantShip.shield.active = true;
+                assistantShip.shield.timer = Date.now();
+                assistantShip.shield.duration = 8000; // 8 secondes de bouclier
+                
+                assistantShip.powerUpLevel = 2; // Niveau maximal
+                assistantShip.shootInterval = 200; // Tir rapide
+                
+                // Message
+                showFloatingText("POWER-UP COMPLET!", assistantShip.x, assistantShip.y - 20, "#ffffff");
+            }
+            
+            // Jouer un son
+            playSound(soundEffects.coin);
+            
+            // Supprimer le power-up
+            bonusManager.powerUps.splice(i, 1);
+            
+            // Effet visuel
+            for (let j = 0; j < 15; j++) {
+                const angle = Math.random() * Math.PI * 2;
+                redPoints.push({
+                    x: assistantShip.x + assistantShip.width/2,
+                    y: assistantShip.y + assistantShip.height/2,
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    life: 15,
+                    isExplosion: true,
+                    color: getAssistantColor(assistantShip.imageIndex)
+                });
+            }
+        }
+    }
+    
+    // Vérifier les collisions avec les vies supplémentaires
+    for (let i = bonusManager.lives.length - 1; i >= 0; i--) {
+        const life = bonusManager.lives[i];
+        if (!life) continue;
+        
+        if (checkCollision(assistantShip, life)) {
+            // Augmenter la santé du vaisseau assistant
+            assistantShip.health = Math.min(5, assistantShip.health + 1);
+            
+            // Jouer un son
+            playSound(soundEffects.perfect);
+            
+            // Message
+            showFloatingText("VIE +1", assistantShip.x, assistantShip.y - 20, "#ff0000");
+            
+            // Supprimer la vie
+            bonusManager.lives.splice(i, 1);
+            
+            // Effet visuel
+            for (let j = 0; j < 15; j++) {
+                const angle = Math.random() * Math.PI * 2;
+                redPoints.push({
+                    x: assistantShip.x + assistantShip.width/2,
+                    y: assistantShip.y + assistantShip.height/2,
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    life: 15,
+                    isExplosion: true,
+                    color: "red"
+                });
+            }
+        }
+    }
+    
+    // Phase de dessin - rendu du vaisseau assistant et de ses effets
+    
+    // Dessiner le vaisseau assistant
+    ctx.save();
+    
+    // Appliquer des effets visuels si le vaisseau a été touché
+    if (assistantShip.isHit) {
+        ctx.globalAlpha = 0.7;
+        assistantShip.isHit = false;
+    }
+    
+    // Dessiner l'image du vaisseau
+    if (assistantShip.image && assistantShip.image.complete) {
         ctx.drawImage(
-            assistantShipImg,
+            assistantShip.image,
             assistantShip.x,
             assistantShip.y,
             assistantShip.width,
             assistantShip.height
         );
-        
-        // Effet de propulsion
-        if (Math.random() > 0.5) {
-            ctx.fillStyle = "#04fbac"; // Couleur verte
-            ctx.beginPath();
-            ctx.moveTo(assistantShip.x + 15, assistantShip.y + assistantShip.height);
-            ctx.lineTo(assistantShip.x + 25, assistantShip.y + assistantShip.height + 10);
-            ctx.lineTo(assistantShip.x + 35, assistantShip.y + assistantShip.height);
-            ctx.fill();
-        }
     } else {
-        // Dessin de secours si l'image n'est pas chargée
-        ctx.fillStyle = "#04fbac";
-        ctx.fillRect(assistantShip.x, assistantShip.y, assistantShip.width, assistantShip.height);
+        // Solution de secours si l'image n'est pas chargée
+        ctx.fillStyle = getAssistantColor(assistantShip.imageIndex);
+        ctx.fillRect(
+            assistantShip.x,
+            assistantShip.y,
+            assistantShip.width,
+            assistantShip.height
+        );
     }
     
-    // DESSIN DES BALLES
-    for (const bullet of assistantShip.bullets) {
-        ctx.fillStyle = bullet.color;
-        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+    // Dessiner le bouclier s'il est actif
+    if (assistantShip.shield.active) {
+        ctx.beginPath();
+        ctx.arc(
+            assistantShip.x + assistantShip.width / 2,
+            assistantShip.y + assistantShip.height / 2,
+            assistantShip.shield.radius,
+            0,
+            Math.PI * 2
+        );
+        
+        // Créer un dégradé pour le bouclier basé sur la couleur du vaisseau
+        const shieldColor = getAssistantColor(assistantShip.imageIndex, true);
+        const gradient = ctx.createRadialGradient(
+            assistantShip.x + assistantShip.width / 2,
+            assistantShip.y + assistantShip.height / 2,
+            assistantShip.shield.radius * 0.7,
+            assistantShip.x + assistantShip.width / 2,
+            assistantShip.y + assistantShip.height / 2,
+            assistantShip.shield.radius
+        );
+        
+        gradient.addColorStop(0, shieldColor.replace("rgb", "rgba").replace(")", ", 0.1)"));
+        gradient.addColorStop(0.7, shieldColor.replace("rgb", "rgba").replace(")", ", 0.3)"));
+        gradient.addColorStop(1, shieldColor.replace("rgb", "rgba").replace(")", ", 0.5)"));
+        
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        // Ajouter une bordure au bouclier
+        ctx.strokeStyle = shieldColor.replace("rgb", "rgba").replace(")", ", 0.8)");
+        ctx.lineWidth = 2;
+        ctx.stroke();
     }
+    
+    // Dessiner l'indicateur de santé
+    for (let i = 0; i < assistantShip.health; i++) {
+        ctx.fillStyle = getAssistantColor(assistantShip.imageIndex);
+        ctx.fillRect(
+            assistantShip.x + (i * 12),
+            assistantShip.y - 10,
+            10,
+            5
+        );
+    }
+    
+    // Dessiner l'indicateur de niveau de puissance si > 0
+    if (assistantShip.powerUpLevel > 0) {
+        ctx.fillStyle = "#ff00ff";
+        for (let i = 0; i < assistantShip.powerUpLevel; i++) {
+            ctx.fillRect(
+                assistantShip.x + (i * 12),
+                assistantShip.y - 20,
+                10,
+                5
+            );
+        }
+    }
+    
+    ctx.restore();
 }
 function activateThunder(ship) {
     // Si c'est déjà actif, on ajoute juste un éclair de plus
@@ -2253,21 +2568,22 @@ if (isMobile) {
         )
     );
 }
-        function checkCollision(rect1, rect2) {
-            if (!rect1 || !rect2 ||
-                typeof rect1.x !== 'number' || typeof rect1.y !== 'number' ||
-                typeof rect2.x !== 'number' || typeof rect2.y !== 'number') {
-                return false;
-            }
+function checkCollision(rect1, rect2) {
+    // Vérification que les objets existent et ont des coordonnées valides
+    if (!rect1 || !rect2 ||
+        typeof rect1.x !== 'number' || typeof rect1.y !== 'number' ||
+        typeof rect2.x !== 'number' || typeof rect2.y !== 'number' ||
+        typeof rect1.width !== 'number' || typeof rect1.height !== 'number' ||
+        typeof rect2.width !== 'number' || typeof rect2.height !== 'number') {
+        return false;
+    }
 
-            const overlapX = Math.max(0, Math.min(rect1.x + rect1.width, rect2.x + rect2.width) -
-                               Math.max(rect1.x, rect2.x));
-            const overlapY = Math.max(0, Math.min(rect1.y + rect1.height, rect2.y + rect2.height) -
-                               Math.max(rect1.y, rect2.y));
-
-            return overlapX > 0 && overlapY > 0;
-        }
-
+    // Utilisation de la méthode AABB (Axis-Aligned Bounding Box) plus précise
+    return (rect1.x < rect2.x + rect2.width &&
+            rect1.x + rect1.width > rect2.x &&
+            rect1.y < rect2.y + rect2.height &&
+            rect1.y + rect1.height > rect2.y);
+}
         function updatePlayerStats() {
             if (isMultiplayer) {
                 document.getElementById("playerStats").style.display = "block";
@@ -2901,6 +3217,322 @@ function activatePowerUp(ship, powerUpType) {
 
    
    
+}
+
+// Ajoutez cette fonction à votre code JavaScript pour corriger l'erreur
+function updateAndDrawAssistantShip() {
+    if (!assistantShipActive || !assistantShip || gameManager.isPaused) return;
+    
+    // Phase de mise à jour - gestion du mouvement et du comportement du vaisseau assistant
+    
+    // Si l'animation d'entrée est active, déplacer le vaisseau du bas vers la position cible
+    if (assistantShip.isEntering) {
+        assistantShip.y -= assistantShip.speed;
+        
+        // Si la position cible est atteinte, terminer la phase d'entrée
+        if (assistantShip.y <= assistantShip.targetY) {
+            assistantShip.y = assistantShip.targetY;
+            assistantShip.isEntering = false;
+        }
+    } else {
+        // Mouvement régulier - d'un côté à l'autre
+        assistantShip.moveTimer += 0.01;
+        
+        // Déplacer la position basée sur une onde sinusoïdale pour un mouvement fluide
+        assistantShip.x += Math.sin(assistantShip.moveTimer) * 2 * assistantShip.moveDirection;
+        
+        // S'assurer que le vaisseau reste dans les limites de l'écran
+        if (assistantShip.x < 0) {
+            assistantShip.x = 0;
+            assistantShip.moveDirection *= -1;
+        } else if (assistantShip.x + assistantShip.width > canvas.width) {
+            assistantShip.x = canvas.width - assistantShip.width;
+            assistantShip.moveDirection *= -1;
+        }
+        
+        // Changer de direction aléatoirement de temps en temps
+        if (Math.random() < 0.005) {
+            assistantShip.moveDirection *= -1;
+        }
+        
+        // Tirer automatiquement des balles
+        const currentTime = Date.now();
+        if (currentTime - assistantShip.lastShootTime > assistantShip.shootInterval) {
+            // Créer 3 balles depuis le vaisseau assistant
+            for (let i = -1; i <= 1; i++) {
+                const bulletSize = 4;
+                const bullet = {
+                    x: assistantShip.x + assistantShip.width / 2 - bulletSize / 2 + (i * 8),
+                    y: assistantShip.y,
+                    width: bulletSize,
+                    height: bulletSize,
+                    speed: 12,
+                    color: "#FFFF00", // Balles jaunes pour le vaisseau assistant
+                    player: 1, // Associé au joueur 1 pour la détection de collision
+                    isAssistantBullet: true
+                };
+                
+                starship.bullets.push(bullet);
+            }
+            
+            assistantShip.lastShootTime = currentTime;
+        }
+        
+        // Activer le bouclier aléatoirement
+        if (!assistantShip.shield.active && Math.random() < 0.001) {
+            assistantShip.shield.active = true;
+            assistantShip.shield.timer = Date.now();
+        }
+        
+        // Mettre à jour le timer du bouclier
+        if (assistantShip.shield.active) {
+            if (Date.now() - assistantShip.shield.timer > assistantShip.shield.duration) {
+                assistantShip.shield.active = false;
+            }
+        }
+    }
+    
+    // Phase de dessin - rendu du vaisseau assistant et de ses effets
+    
+    // Dessiner le vaisseau assistant
+    ctx.save();
+    
+    // Appliquer des effets visuels si le vaisseau a été touché
+    if (assistantShip.isHit) {
+        ctx.globalAlpha = 0.7;
+        assistantShip.isHit = false;
+    }
+    
+    // Dessiner l'image du vaisseau
+    if (assistantShipImg.complete) {
+        ctx.drawImage(
+            assistantShipImg,
+            assistantShip.x,
+            assistantShip.y,
+            assistantShip.width,
+            assistantShip.height
+        );
+    } else {
+        // Solution de secours si l'image n'est pas chargée
+        ctx.fillStyle = "#FFFF00";
+        ctx.fillRect(
+            assistantShip.x,
+            assistantShip.y,
+            assistantShip.width,
+            assistantShip.height
+        );
+    }
+    
+    // Dessiner le bouclier s'il est actif
+    if (assistantShip.shield.active) {
+        ctx.beginPath();
+        ctx.arc(
+            assistantShip.x + assistantShip.width / 2,
+            assistantShip.y + assistantShip.height / 2,
+            assistantShip.shield.radius,
+            0,
+            Math.PI * 2
+        );
+        
+        // Créer un dégradé pour le bouclier
+        const gradient = ctx.createRadialGradient(
+            assistantShip.x + assistantShip.width / 2,
+            assistantShip.y + assistantShip.height / 2,
+            assistantShip.shield.radius * 0.7,
+            assistantShip.x + assistantShip.width / 2,
+            assistantShip.y + assistantShip.height / 2,
+            assistantShip.shield.radius
+        );
+        
+        gradient.addColorStop(0, "rgba(255, 255, 128, 0.1)");
+        gradient.addColorStop(0.7, "rgba(255, 255, 128, 0.3)");
+        gradient.addColorStop(1, "rgba(255, 255, 128, 0.5)");
+        
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        // Ajouter une bordure au bouclier
+        ctx.strokeStyle = "rgba(255, 255, 128, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+    // Ajoutez ces modifications à la fonction updateAndDrawAssistantShip
+// vers la fin de la partie "Phase de mise à jour"
+
+// Vérifier les collisions avec les balles ennemies
+for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    const bullet = enemyBullets[i];
+    if (!bullet) continue;
+    
+    // Créer une zone de collision pour le vaisseau assistant
+    const assistantRect = {
+        x: assistantShip.x,
+        y: assistantShip.y,
+        width: assistantShip.width,
+        height: assistantShip.height
+    };
+    
+    // Vérifier la collision
+    if (checkCollision(assistantRect, bullet)) {
+        // Supprimer la balle ennemie
+        enemyBullets.splice(i, 1);
+        
+        // Ne prendre des dégâts que si le bouclier n'est pas actif
+        if (!assistantShip.shield.active) {
+            // Effet visuel de touche
+            assistantShip.isHit = true;
+            
+            // Réduire la santé
+            assistantShip.health--;
+            
+            // Jouer un son
+            playSound(soundEffects.hit);
+            
+            // Effets de particules
+            for (let j = 0; j < 10; j++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 2;
+                redPoints.push({
+                    x: assistantShip.x + assistantShip.width/2 + Math.cos(angle) * 10,
+                    y: assistantShip.y + assistantShip.height/2 + Math.sin(angle) * 10,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 10 + Math.floor(Math.random() * 5),
+                    isExplosion: true,
+                    color: "yellow" // Couleur jaune pour le vaisseau assistant
+                });
+            }
+            
+            // Vérifier si le vaisseau est détruit
+            if (assistantShip.health <= 0) {
+                // Créer une explosion finale
+                for (let j = 0; j < 30; j++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3;
+                    redPoints.push({
+                        x: assistantShip.x + Math.random() * assistantShip.width,
+                        y: assistantShip.y + Math.random() * assistantShip.height,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 20 + Math.floor(Math.random() * 10),
+                        isExplosion: true,
+                        color: ["yellow", "orange", "white"][Math.floor(Math.random() * 3)]
+                    });
+                }
+                
+                // Désactiver le vaisseau assistant
+                assistantShipActive = false;
+                
+                // Jouer un son de destruction
+                playSound(soundEffects.explosion || soundEffects.hit);
+                
+                return; // Sortir de la fonction car le vaisseau est détruit
+            }
+        } else {
+            // Si le bouclier est actif, créer un effet visuel de "rebond"
+            const angle = Math.random() * Math.PI * 2;
+            for (let j = 0; j < 5; j++) {
+                redPoints.push({
+                    x: bullet.x,
+                    y: bullet.y,
+                    vx: Math.cos(angle + j * Math.PI/4) * 2,
+                    vy: Math.sin(angle + j * Math.PI/4) * 2,
+                    life: 10,
+                    isExplosion: true,
+                    color: "cyan"
+                });
+            }
+        }
+    }
+}
+
+// Vérifier les collisions avec les power-ups
+for (let i = bonusManager.powerUps.length - 1; i >= 0; i--) {
+    const powerUp = bonusManager.powerUps[i];
+    if (!powerUp) continue;
+    
+    if (checkCollision(assistantShip, powerUp)) {
+        // Absorber le power-up
+        if (powerUp.type === 0) {
+            // Éclair - activer le bouclier du vaisseau assistant
+            assistantShip.shield.active = true;
+            assistantShip.shield.timer = Date.now();
+            
+            // Allonger la durée du bouclier
+            assistantShip.shield.duration = 5000; // 5 secondes
+        } else if (powerUp.type === 1) {
+            // Tir amélioré - augmenter la cadence de tir
+            assistantShip.shootInterval = Math.max(200, assistantShip.shootInterval - 100);
+        } else if (powerUp.type === 2) {
+            // Bonus de vie
+            assistantShip.health = Math.min(5, assistantShip.health + 1);
+        }
+        
+        // Jouer un son
+        playSound(soundEffects.coin);
+        
+        // Supprimer le power-up
+        bonusManager.powerUps.splice(i, 1);
+        
+        // Effet visuel
+        for (let j = 0; j < 15; j++) {
+            const angle = Math.random() * Math.PI * 2;
+            redPoints.push({
+                x: assistantShip.x + assistantShip.width/2,
+                y: assistantShip.y + assistantShip.height/2,
+                vx: Math.cos(angle) * 2,
+                vy: Math.sin(angle) * 2,
+                life: 15,
+                isExplosion: true,
+                color: ["cyan", "yellow", "white"][Math.floor(Math.random() * 3)]
+            });
+        }
+    }
+}
+
+// Vérifier également les collisions avec les vies supplémentaires
+for (let i = bonusManager.lives.length - 1; i >= 0; i--) {
+    const life = bonusManager.lives[i];
+    if (!life) continue;
+    
+    if (checkCollision(assistantShip, life)) {
+        // Augmenter la santé du vaisseau assistant
+        assistantShip.health = Math.min(5, assistantShip.health + 1);
+        
+        // Jouer un son
+        playSound(soundEffects.perfect);
+        
+        // Supprimer la vie
+        bonusManager.lives.splice(i, 1);
+        
+        // Effet visuel
+        for (let j = 0; j < 15; j++) {
+            const angle = Math.random() * Math.PI * 2;
+            redPoints.push({
+                x: assistantShip.x + assistantShip.width/2,
+                y: assistantShip.y + assistantShip.height/2,
+                vx: Math.cos(angle) * 2,
+                vy: Math.sin(angle) * 2,
+                life: 15,
+                isExplosion: true,
+                color: "red"
+            });
+        }
+    }
+}
+    
+    // Dessiner l'indicateur de santé
+    for (let i = 0; i < assistantShip.health; i++) {
+        ctx.fillStyle = "#04fbac";
+        ctx.fillRect(
+            assistantShip.x + (i * 15),
+            assistantShip.y - 10,
+            10,
+            5
+        );
+    }
+    
+    ctx.restore();
 }
         function updateBoss() {
             if (!bossActive || !boss || gameManager.isPaused) return;
@@ -3938,11 +4570,12 @@ function drawRedPoints() {
                         document.getElementById("coinsCount").textContent = coins.toFixed(1);
                         playSound(soundEffects.coin);
                         starship.redPointsCollected++;
+                        redPointsTotal++; // Compteur global pour les nouveaux assistants
                         // Incrémenter le compteur total de points rouges
 redPointsTotal++;
 
 // Vérifier si 500 points rouges ont été collectés
-if (redPointsTotal >= 50 && !assistantShipActive) {
+if (redPointsTotal >= 200 && !assistantShipActive) {
     createAssistantShip();
 }
                         
@@ -4005,14 +4638,16 @@ function activateShield(player, duration = 10000) {
     shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(p => p.player !== player.player);
   }, duration);
 }
-        function checkCollisions() {
-            if (!gameIsRunning || gameManager.isPaused) return;
+function checkCollisions() {
+    // Ne pas vérifier les collisions uniquement si le jeu est explicitement en pause
+    if (gameManager.isPaused) return;
 
-            if (enemies.length > 40) enemies = enemies.slice(0, 40);
-            if (enemyBullets.length > 60) enemyBullets = enemyBullets.slice(0, 60);
+    // Limiter la taille des tableaux pour éviter les problèmes de performance
+    if (enemies.length > 40) enemies = enemies.slice(0, 40);
+    if (enemyBullets.length > 60) enemyBullets = enemyBullets.slice(0, 60);
 
-            const checkPlayerCollisions = (player, playerNumber) => {
-                if (!player || !player.isActive) return;
+    const checkPlayerCollisions = (player, playerNumber) => {
+        if (!player || !player.isActive) return;
 
                 // Collisions balles-ennemis
                 for (let i = enemies.length - 1; i >= 0; i--) {
@@ -4344,7 +4979,7 @@ function update(timestamp) {
         updateAndDrawStars();
         checkSpecialShotAvailability();
 updateAndDrawSpecialShot();
-updateAndDrawAssistantShip()
+updateAndDrawAssistantShips()
 
         // Mettre à jour et dessiner le mini-boss
         if (miniBossActive) {
