@@ -83,40 +83,37 @@
 
         .point-counter {
             position: absolute;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: bold;
             z-index: 20;
             display: flex;
             align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 2px solid;
         }
 
         #team1Points {
-            top: 15px;
+            top: 60px;
             right: 15px;
             color: #04fbac;
+            border-color: #04fbac;
+            box-shadow: 0 0 20px rgba(4, 251, 172, 0.5);
         }
 
         #team2Points {
-            bottom: 15px;
+            bottom: 60px;
             right: 15px;
             color: #FF7F50;
+            border-color: #FF7F50;
+            box-shadow: 0 0 20px rgba(255, 127, 80, 0.5);
         }
 
-        .point-icon {
-            width: 12px;
-            height: 12px;
-            margin-right: 5px;
-            border-radius: 50%;
-        }
-
-        #team1Points .point-icon {
-            background-color: #04fbac;
-            box-shadow: 0 0 5px #04fbac;
-        }
-
-        #team2Points .point-icon {
-            background-color: #FF7F50;
-            box-shadow: 0 0 5px #FF7F50;
+        .point-label {
+            margin-right: 10px;
+            font-size: 14px;
+            opacity: 0.8;
         }
 
         #gameOverMessage {
@@ -136,65 +133,101 @@
 
         @keyframes shieldPulse {
             0% {
-                transform: scale(1) rotate(0deg);
-                opacity: 0.6;
-                box-shadow: 0 0 15px currentColor, inset 0 0 10px currentColor;
+                transform: scale(1);
+                opacity: 0.3;
             }
             50% {
-                transform: scale(1.1) rotate(180deg);
-                opacity: 0.8;
-                box-shadow: 0 0 25px currentColor, inset 0 0 20px currentColor;
+                transform: scale(1.1);
+                opacity: 0.6;
             }
             100% {
-                transform: scale(1) rotate(360deg);
-                opacity: 0.6;
-                box-shadow: 0 0 15px currentColor, inset 0 0 10px currentColor;
+                transform: scale(1);
+                opacity: 0.3;
             }
         }
 
-        .shield-effect {
-            animation: shieldPulse 10s infinite linear;
-            border: 2px solid currentColor;
-            border-radius: 50%;
+        @keyframes energyFlow {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .shield-container {
             position: absolute;
             pointer-events: none;
-            z-index: 900;
-            background: radial-gradient(circle at center, transparent 60%, currentColor 100%);
+            z-index: 15;
         }
 
-        .shield-effect::before, .shield-effect::after {
-            content: '';
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            right: -10px;
-            bottom: -10px;
-            border: 1px solid currentColor;
-            border-radius: 50%;
-            animation: shieldPulse 3s infinite linear reverse;
-            opacity: 0.5;
-        }
-
-        .shield-effect::after {
-            top: -5px;
-            left: -5px;
-            right: -5px;
-            bottom: -5px;
-            border: 1px dashed currentColor;
-            animation-duration: 5s;
-            animation-direction: normal;
-        }
-
-        @keyframes particleBlink {
-            0%, 100% { opacity: 0.2; }
-            50% { opacity: 1; }
-        }
-
-        .shield-particle {
+        .shield-layer {
             position: absolute;
             border-radius: 50%;
-            pointer-events: none;
-            animation: particleBlink 1s infinite alternate;
+            border: 2px solid;
+            animation: shieldPulse 2s infinite ease-in-out;
+        }
+
+        .energy-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px dashed;
+            animation: energyFlow 3s infinite linear;
+        }
+
+        @keyframes vortexSpin {
+            0% {
+                transform: rotate(0deg) scale(0.8);
+                opacity: 0;
+            }
+            20% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% {
+                transform: rotate(720deg) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        .vortex {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, transparent 30%, #9400D3 60%, #4B0082 100%);
+            animation: vortexSpin 15s linear;
+            z-index: 8;
+            box-shadow: 0 0 50px #9400D3, inset 0 0 50px #4B0082;
+        }
+
+        @keyframes lifeBlink {
+            0%, 100% { opacity: 1; filter: brightness(1); }
+            50% { opacity: 0.5; filter: brightness(1.5); }
+        }
+
+        .life-blink-red {
+            animation: lifeBlink 0.5s infinite;
+            filter: hue-rotate(0deg) !important;
+        }
+
+        .life-blink-blue {
+            animation: lifeBlink 0.5s infinite;
+            filter: hue-rotate(240deg) !important;
+        }
+
+        .powerup-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 25;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -213,12 +246,12 @@
     </div>
 
     <div id="team1Points" class="point-counter">
-        <div class="point-icon"></div>
-        <span>0</span>
+        <span class="point-label">ÉNERGIE:</span>
+        <span>0 / 50</span>
     </div>
     <div id="team2Points" class="point-counter">
-        <div class="point-icon"></div>
-        <span>0</span>
+        <span class="point-label">ÉNERGIE:</span>
+        <span>0 / 50</span>
     </div>
 
     <div id="gameOverMessage"></div>
@@ -245,28 +278,36 @@
         };
 
         const shieldConfig = {
-            particleCount: 25,
-            particles: [],
-            colors1: ["#04fbac", "#00ffff", "#0088ff", "#80ffff"],
-            colors2: ["#FF7F50", "#ffcc80", "#ff8844", "#ffaa66"],
-            minSize: 2,
-            maxSize: 5,
-            minSpeed: 0.02,
-            maxSpeed: 0.05
+            particleCount: 40,
+            minRadius: 30,
+            maxRadius: 35,
+            particleSpeed: 0.02,
+            energyLayers: 3
         };
 
+        // Chargement des images
         const team1Ship = new Image();
         team1Ship.src = '/img/starship1.jpg';
         const team2Ship = new Image();
         team2Ship.src = '/img/starship2.jpg';
-        const team1Ship3 = new Image();
-        team1Ship3.src = '/img/starship3.jpg';
-        const team1Ship4 = new Image();
-        team1Ship4.src = '/img/starship4.jpg';
-        const team2Ship5 = new Image();
-        team2Ship5.src = '/img/starship5.jpg';
-        const team2Ship6 = new Image();
-        team2Ship6.src = '/img/starship6.jpg';
+        
+        // Support ships alternating pool
+        const supportShipImages = [];
+        for (let i = 3; i <= 7; i++) {
+            const img = new Image();
+            img.src = `/img/starship${i}.jpg`;
+            supportShipImages.push(img);
+        }
+
+        // Power-ups
+        const powerUpImages = {
+            basic: new Image(),
+            powerUp1: new Image(),
+            powerUp2: new Image()
+        };
+        powerUpImages.basic.src = '/img/powerUp.jpg';
+        powerUpImages.powerUp1.src = '/img/powerUp1.jpg';
+        powerUpImages.powerUp2.src = '/img/powerUp2.jpg';
 
         const teamConfig = {
             team1: {
@@ -289,7 +330,10 @@
                         shield: false,
                         shieldStartTime: 0,
                         shieldDuration: 10000,
-                        canGeneratePoints: true
+                        canGeneratePoints: true,
+                        powerUpType: 'normal',
+                        powerUpEndTime: 0,
+                        isPlayer: true
                     },
                     {
                         x: canvas.width * 0.3,
@@ -297,11 +341,11 @@
                         width: 49,
                         height: 49,
                         lives: 10,
-                        image: team1Ship3,
+                        image: supportShipImages[0],
                         rotation: Math.PI,
                         shootCooldown: 0,
-                        velocityX: (Math.random() - 0.5) * 4,
-                        velocityY: (Math.random() - 0.5) * 4,
+                        velocityX: 2,
+                        velocityY: 1,
                         points: 0,
                         impacts: 0,
                         active: true,
@@ -310,7 +354,11 @@
                         shieldDuration: 10000,
                         canGeneratePoints: false,
                         lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000
+                        directionChangeInterval: 2000,
+                        aiMode: 'aggressive',
+                        targetShip: null,
+                        isPlayer: false,
+                        shipImageIndex: 0
                     },
                     {
                         x: canvas.width * 0.7,
@@ -318,11 +366,11 @@
                         width: 49,
                         height: 49,
                         lives: 10,
-                        image: team1Ship4,
+                        image: supportShipImages[1],
                         rotation: Math.PI,
                         shootCooldown: 0,
-                        velocityX: (Math.random() - 0.5) * 4,
-                        velocityY: (Math.random() - 0.5) * 4,
+                        velocityX: -2,
+                        velocityY: 1.5,
                         points: 0,
                         impacts: 0,
                         active: true,
@@ -331,7 +379,11 @@
                         shieldDuration: 10000,
                         canGeneratePoints: false,
                         lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000
+                        directionChangeInterval: 2000,
+                        aiMode: 'defensive',
+                        dodgeCooldown: 0,
+                        isPlayer: false,
+                        shipImageIndex: 1
                     }
                 ]
             },
@@ -355,7 +407,10 @@
                         shield: false,
                         shieldStartTime: 0,
                         shieldDuration: 10000,
-                        canGeneratePoints: true
+                        canGeneratePoints: true,
+                        powerUpType: 'normal',
+                        powerUpEndTime: 0,
+                        isPlayer: true
                     },
                     {
                         x: canvas.width * 0.3,
@@ -363,11 +418,11 @@
                         width: 49,
                         height: 49,
                         lives: 10,
-                        image: team2Ship5,
+                        image: supportShipImages[2],
                         rotation: 0,
                         shootCooldown: 0,
-                        velocityX: (Math.random() - 0.5) * 4,
-                        velocityY: (Math.random() - 0.5) * 4,
+                        velocityX: 2,
+                        velocityY: -1,
                         points: 0,
                         impacts: 0,
                         active: true,
@@ -376,7 +431,11 @@
                         shieldDuration: 10000,
                         canGeneratePoints: false,
                         lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000
+                        directionChangeInterval: 2000,
+                        aiMode: 'aggressive',
+                        targetShip: null,
+                        isPlayer: false,
+                        shipImageIndex: 2
                     },
                     {
                         x: canvas.width * 0.7,
@@ -384,11 +443,11 @@
                         width: 49,
                         height: 49,
                         lives: 10,
-                        image: team2Ship6,
+                        image: supportShipImages[3],
                         rotation: 0,
                         shootCooldown: 0,
-                        velocityX: (Math.random() - 0.5) * 4,
-                        velocityY: (Math.random() - 0.5) * 4,
+                        velocityX: -2,
+                        velocityY: -1.5,
                         points: 0,
                         impacts: 0,
                         active: true,
@@ -397,7 +456,11 @@
                         shieldDuration: 10000,
                         canGeneratePoints: false,
                         lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000
+                        directionChangeInterval: 2000,
+                        aiMode: 'defensive',
+                        dodgeCooldown: 0,
+                        isPlayer: false,
+                        shipImageIndex: 3
                     }
                 ]
             }
@@ -438,7 +501,14 @@
             barriers: [],
             barrierTimer: 0,
             floatingPoints: [],
-            floatingLives: []
+            floatingLives: [],
+            powerUps: [],
+            vortexes: [],
+            lastVortexTime: 0,
+            vortexInterval: 15000,
+            lastShipSwap: Date.now(),
+            shipSwapInterval: 15000,
+            shieldEffects: []
         };
 
         const keys = {};
@@ -590,21 +660,109 @@
             );
         }
 
+        function findNearestEnemy(ship, team) {
+            const enemyTeam = team === 'team1' ? 'team2' : 'team1';
+            let nearestEnemy = null;
+            let minDistance = Infinity;
+
+            teamConfig[enemyTeam].ships.forEach(enemy => {
+                if (enemy.active) {
+                    const dx = enemy.x - ship.x;
+                    const dy = enemy.y - ship.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestEnemy = enemy;
+                    }
+                }
+            });
+
+            return nearestEnemy;
+        }
+
+        function predictBulletPath(ship, team) {
+            const enemyBullets = team === 'team1' ? gameState.team2Bullets : gameState.team1Bullets;
+            let nearestThreat = null;
+            let minTime = Infinity;
+
+            enemyBullets.forEach(bullet => {
+                const dx = ship.x - bullet.x;
+                const dy = ship.y - bullet.y;
+                const timeToImpact = Math.abs(dy / bullet.vy);
+                
+                if (timeToImpact < minTime && Math.abs(dx) < ship.width && dy * bullet.vy < 0) {
+                    minTime = timeToImpact;
+                    nearestThreat = bullet;
+                }
+            });
+
+            return { threat: nearestThreat, timeToImpact: minTime };
+        }
+
         function moveEnemyShip(ship, team) {
             if (!ship.active) return;
             if (ship.shootCooldown > 0) ship.shootCooldown--;
 
             const currentTime = Date.now();
-            if (currentTime - ship.lastDirectionChange > ship.directionChangeInterval) {
-                ship.velocityX = (Math.random() - 0.5) * 4;
-                ship.velocityY = (Math.random() - 0.5) * 4;
-                ship.lastDirectionChange = currentTime;
+            
+            if (ship.aiMode === 'aggressive') {
+                // Mode agressif : poursuite active des ennemis
+                const target = findNearestEnemy(ship, team);
+                if (target) {
+                    const dx = target.x - ship.x;
+                    const dy = target.y - ship.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 100) {
+                        ship.velocityX = (dx / distance) * 3;
+                        ship.velocityY = (dy / distance) * 2;
+                    }
+                    
+                    // Tir prédictif
+                    if (Math.abs(dx) < 50 && ship.shootCooldown <= 0) {
+                        shootBullet(ship, team);
+                        ship.shootCooldown = 10;
+                    }
+                }
+            } else if (ship.aiMode === 'defensive') {
+                // Mode défensif : évitement des balles
+                const threatInfo = predictBulletPath(ship, team);
+                if (threatInfo.threat && threatInfo.timeToImpact < 30) {
+                    if (ship.dodgeCooldown <= 0) {
+                        ship.velocityX = (Math.random() > 0.5 ? 1 : -1) * 5;
+                        ship.dodgeCooldown = 30;
+                    }
+                } else {
+                    // Mouvement en zigzag
+                    if (currentTime - ship.lastDirectionChange > ship.directionChangeInterval) {
+                        ship.velocityX = (Math.random() - 0.5) * 4;
+                        ship.velocityY = (Math.random() - 0.5) * 3;
+                        ship.lastDirectionChange = currentTime;
+                    }
+                }
+                
+                if (ship.dodgeCooldown > 0) ship.dodgeCooldown--;
+                
+                // Tir opportuniste
+                const target = findNearestEnemy(ship, team);
+                if (target && Math.abs(target.x - ship.x) < 100 && ship.shootCooldown <= 0 && Math.random() < 0.3) {
+                    shootBullet(ship, team);
+                    ship.shootCooldown = 20;
+                }
             }
 
             ship.x += ship.velocityX;
             ship.y += ship.velocityY;
 
             const midPoint = canvas.height / 2;
+            if (ship.x <= ship.width/2 || ship.x >= canvas.width - ship.width/2) {
+                ship.velocityX *= -1;
+            }
+            if ((team === 'team1' && (ship.y <= ship.height/2 || ship.y >= midPoint - ship.height/2)) ||
+                (team === 'team2' && (ship.y <= midPoint + ship.height/2 || ship.y >= canvas.height - ship.height/2))) {
+                ship.velocityY *= -1;
+            }
+
             ship.x = Math.max(ship.width/2, Math.min(canvas.width - ship.width/2, ship.x));
             ship.y = Math.max(
                 team === 'team1' ? ship.height/2 : midPoint + ship.height/2,
@@ -614,9 +772,10 @@
                 )
             );
 
-            if (ship.shootCooldown <= 0 && Math.random() < 0.05) {
-                shootBullet(ship, team);
-                ship.shootCooldown = 15;
+            // Changement périodique de mode
+            if (currentTime - ship.lastDirectionChange > 5000) {
+                ship.aiMode = ship.aiMode === 'aggressive' ? 'defensive' : 'aggressive';
+                ship.lastDirectionChange = currentTime;
             }
         }
 
@@ -625,19 +784,219 @@
             const bulletSpeed = 10;
             const bulletColor = team === 'team1' ? '#04fbac' : '#FF7F50';
             
-            const newBullet = {
-                x: ship.x,
-                y: ship.y,
-                color: bulletColor,
-                team: team
-            };
+            if (ship.powerUpType === 'normal') {
+                const newBullet = {
+                    x: ship.x,
+                    y: ship.y,
+                    color: bulletColor,
+                    team: team,
+                    vy: team === 'team1' ? bulletSpeed : -bulletSpeed,
+                    vx: 0
+                };
+                
+                if (team === 'team1') {
+                    gameState.team1Bullets.push(newBullet);
+                } else {
+                    gameState.team2Bullets.push(newBullet);
+                }
+            } else if (ship.powerUpType === 'triple') {
+                // Tir triple
+                for (let i = -1; i <= 1; i++) {
+                    const newBullet = {
+                        x: ship.x + i * 20,
+                        y: ship.y,
+                        color: bulletColor,
+                        team: team,
+                        vy: team === 'team1' ? bulletSpeed : -bulletSpeed,
+                        vx: i * 0.5
+                    };
+                    
+                    if (team === 'team1') {
+                        gameState.team1Bullets.push(newBullet);
+                    } else {
+                        gameState.team2Bullets.push(newBullet);
+                    }
+                }
+            }
+        }
 
-            newBullet.vy = team === 'team1' ? bulletSpeed : -bulletSpeed;
+        function createPowerUp() {
+            if (Math.random() < 0.01) {
+                const types = ['basic', 'powerUp1', 'powerUp2'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                const powerUp = {
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    type: type,
+                    size: 30,
+                    active: true,
+                    createdTime: Date.now(),
+                    lifeTime: 10000
+                };
+                gameState.powerUps.push(powerUp);
+            }
+        }
 
-            if (team === 'team1') {
-                gameState.team1Bullets.push(newBullet);
-            } else {
-                gameState.team2Bullets.push(newBullet);
+        function updatePowerUps() {
+            gameState.powerUps = gameState.powerUps.filter(powerUp => {
+                if (Date.now() - powerUp.createdTime > powerUp.lifeTime) {
+                    return false;
+                }
+
+                ['team1', 'team2'].forEach(team => {
+                    teamConfig[team].ships.forEach(ship => {
+                        if (ship.active && ship.isPlayer) {
+                            const dx = ship.x - powerUp.x;
+                            const dy = ship.y - powerUp.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            if (distance < 30) {
+                                if (powerUp.type === 'basic') {
+                                    ship.powerUpType = 'normal';
+                                } else if (powerUp.type === 'powerUp1') {
+                                    ship.powerUpType = 'triple';
+                                } else if (powerUp.type === 'powerUp2') {
+                                    ship.powerUpType = 'spread';
+                                }
+                                ship.powerUpEndTime = Date.now() + 15000;
+                                powerUp.active = false;
+                            }
+                        }
+                    });
+                });
+
+                return powerUp.active;
+            });
+
+            ['team1', 'team2'].forEach(team => {
+                teamConfig[team].ships.forEach(ship => {
+                    if (ship.powerUpEndTime && Date.now() > ship.powerUpEndTime) {
+                        ship.powerUpType = 'normal';
+                        ship.powerUpEndTime = 0;
+                    }
+                });
+            });
+        }
+
+        function createVortex() {
+            const currentTime = Date.now();
+            if (currentTime - gameState.lastVortexTime > gameState.vortexInterval) {
+                const vortex = {
+                    x: Math.random() * (canvas.width - 100) + 50,
+                    y: Math.random() * (canvas.height - 100) + 50,
+                    size: 100,
+                    active: true,
+                    createdTime: currentTime,
+                    lifeTime: 15000
+                };
+                gameState.vortexes.push(vortex);
+                gameState.lastVortexTime = currentTime;
+
+                // Créer l'élément visuel du vortex
+                const vortexElement = document.createElement('div');
+                vortexElement.className = 'vortex';
+                vortexElement.style.left = (vortex.x - 50) + 'px';
+                vortexElement.style.top = (vortex.y - 50) + 'px';
+                vortexElement.id = `vortex-${currentTime}`;
+                document.body.appendChild(vortexElement);
+                vortex.element = vortexElement;
+            }
+        }
+
+        function updateVortexes() {
+            gameState.vortexes = gameState.vortexes.filter(vortex => {
+                if (Date.now() - vortex.createdTime > vortex.lifeTime) {
+                    if (vortex.element) {
+                        vortex.element.remove();
+                    }
+                    return false;
+                }
+
+                ['team1', 'team2'].forEach(team => {
+                    teamConfig[team].ships.forEach(ship => {
+                        if (ship.active) {
+                            const dx = ship.x - vortex.x;
+                            const dy = ship.y - vortex.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            if (distance < 40) {
+                                // Téléportation aléatoire dans le camp du vaisseau
+                                const midPoint = canvas.height / 2;
+                                if (team === 'team1') {
+                                    ship.x = Math.random() * (canvas.width - 100) + 50;
+                                    ship.y = Math.random() * (midPoint - 100) + 50;
+                                } else {
+                                    ship.x = Math.random() * (canvas.width - 100) + 50;
+                                    ship.y = midPoint + Math.random() * (midPoint - 100) + 50;
+                                }
+                                // Effet visuel de téléportation
+                                createTeleportEffect(vortex.x, vortex.y);
+                                createTeleportEffect(ship.x, ship.y);
+                            }
+                        }
+                    });
+                });
+
+                return true;
+            });
+        }
+
+        function createTeleportEffect(x, y) {
+            for (let i = 0; i < 30; i++) {
+                const angle = (Math.PI * 2 * i) / 30;
+                const speed = 2 + Math.random() * 3;
+                gameState.floatingPoints.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 3 + Math.random() * 3,
+                    color: '#9400D3',
+                    opacity: 1,
+                    life: 500,
+                    isEffect: true
+                });
+            }
+        }
+
+        function swapSupportShips() {
+            const currentTime = Date.now();
+            if (currentTime - gameState.lastShipSwap > gameState.shipSwapInterval) {
+                ['team1', 'team2'].forEach(team => {
+                    teamConfig[team].ships.forEach(ship => {
+                        if (!ship.isPlayer && ship.active) {
+                            // Changement d'image de vaisseau
+                            const oldIndex = ship.shipImageIndex;
+                            let newIndex;
+                            do {
+                                newIndex = Math.floor(Math.random() * supportShipImages.length);
+                            } while (newIndex === oldIndex);
+                            
+                            ship.shipImageIndex = newIndex;
+                            ship.image = supportShipImages[newIndex];
+                            
+                            // Effet visuel de changement
+                            createSwapEffect(ship.x, ship.y);
+                        }
+                    });
+                });
+                gameState.lastShipSwap = currentTime;
+            }
+        }
+
+        function createSwapEffect(x, y) {
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 2;
+                gameState.floatingPoints.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 2 + Math.random() * 2,
+                    color: '#FFFF00',
+                    opacity: 1,
+                    life: 300,
+                    isEffect: true
+                });
             }
         }
 
@@ -721,18 +1080,20 @@
         function updateBullets() {
             gameState.team1Bullets = gameState.team1Bullets.filter(bullet => {
                 bullet.y += bullet.vy;
+                bullet.x += bullet.vx || 0;
                 if (checkBulletBarrierCollision(bullet)) {
                     return false;
                 }
-                return bullet.y > 0 && bullet.y < canvas.height;
+                return bullet.y > 0 && bullet.y < canvas.height && bullet.x > 0 && bullet.x < canvas.width;
             });
 
             gameState.team2Bullets = gameState.team2Bullets.filter(bullet => {
                 bullet.y += bullet.vy;
+                bullet.x += bullet.vx || 0;
                 if (checkBulletBarrierCollision(bullet)) {
                     return false;
                 }
-                return bullet.y > 0 && bullet.y < canvas.height;
+                return bullet.y > 0 && bullet.y < canvas.height && bullet.x > 0 && bullet.x < canvas.width;
             });
         }
 
@@ -766,10 +1127,11 @@
                     x: x,
                     y: y,
                     vy: vy,
-                    size: 100,
+                    size: 30,
                     targetTeam: isTop ? 'team1' : 'team2',
                     image: new Image(),
-                    active: true
+                    active: true,
+                    blinkClass: isTop ? 'life-blink-red' : 'life-blink-blue'
                 });
                 gameState.floatingLives[gameState.floatingLives.length - 1].image.src = '/img/lives.jpg';
             }
@@ -814,7 +1176,7 @@
                         if (distance < 30) {
                             if (ship.canGeneratePoints) {
                                 ship.points += 1;
-                                document.querySelector(`#${targetTeam}Points span`).textContent = teamConfig[targetTeam].ships[0].points;
+                                document.querySelector(`#${targetTeam}Points span`).textContent = `${ship.points} / 50`;
                             }
                             if (ship.points >= 50 && !ship.shield) {
                                 activateShield(ship);
@@ -861,11 +1223,11 @@
         function updateShields() {
             ['team1', 'team2'].forEach(team => {
                 teamConfig[team].ships.forEach(ship => {
-                    if (ship.shield && Date.now() - ship.shieldStartTime > ship.shieldDuration) {
-                        ship.shield = false;
-                        const shieldEffect = document.getElementById(`shield-effect-${team}-${ship.image.src}`);
-                        if (shieldEffect) {
-                            shieldEffect.remove();
+                    if (ship.shield) {
+                        updateShieldEffect(ship, team);
+                        if (Date.now() - ship.shieldStartTime > ship.shieldDuration) {
+                            ship.shield = false;
+                            removeShieldEffect(ship, team);
                         }
                     }
                 });
@@ -890,6 +1252,17 @@
             gameState.floatingLives.forEach(life => {
                 if (life.image.complete) {
                     ctx.save();
+                    if (life.blinkClass === 'life-blink-red') {
+                        ctx.filter = 'hue-rotate(0deg) brightness(1.2)';
+                        if (Math.sin(Date.now() / 100) > 0) {
+                            ctx.globalAlpha = 0.5;
+                        }
+                    } else {
+                        ctx.filter = 'hue-rotate(240deg) brightness(1.2)';
+                        if (Math.sin(Date.now() / 100) > 0) {
+                            ctx.globalAlpha = 0.5;
+                        }
+                    }
                     ctx.drawImage(
                         life.image,
                         life.x - life.size / 2,
@@ -898,12 +1271,23 @@
                         life.size
                     );
                     ctx.restore();
-                } else {
+                }
+            });
+        }
+
+        function drawPowerUps() {
+            gameState.powerUps.forEach(powerUp => {
+                const img = powerUpImages[powerUp.type];
+                if (img.complete) {
                     ctx.save();
-                    ctx.fillStyle = life.targetTeam === 'team1' ? '#04fbac' : '#FF7F50';
-                    ctx.beginPath();
-                    ctx.arc(life.x, life.y, life.size / 2, 0, Math.PI * 2);
-                    ctx.fill();
+                    ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 200) * 0.2;
+                    ctx.drawImage(
+                        img,
+                        powerUp.x - powerUp.size / 2,
+                        powerUp.y - powerUp.size / 2,
+                        powerUp.size,
+                        powerUp.size
+                    );
                     ctx.restore();
                 }
             });
@@ -957,76 +1341,121 @@
             ship.shieldStartTime = Date.now();
             ship.points = 0;
 
-            const team = ship === teamConfig.team1.ships[0] ? 'team1' : ship === teamConfig.team2.ships[0] ? 'team2' : ship.image.src.includes('team1') ? 'team1' : 'team2';
+            const team = getShipTeam(ship);
             if (ship === teamConfig[team].ships[0]) {
-                document.querySelector(`#${team}Points span`).textContent = ship.points;
+                document.querySelector(`#${team}Points span`).textContent = `${ship.points} / 50`;
             }
 
-            let shieldEffect = document.getElementById(`shield-effect-${team}-${ship.image.src}`);
-            if (!shieldEffect) {
-                shieldEffect = document.createElement("div");
-                shieldEffect.id = `shield-effect-${team}-${ship.image.src}`;
-                shieldEffect.className = "shield-effect";
-                shieldEffect.style.width = (ship.width + 21) + "px";
-                shieldEffect.style.height = (ship.height + 21) + "px";
-                document.body.appendChild(shieldEffect);
-            }
-
-            shieldEffect.style.color = team === 'team1' ? "#04fbac" : "#FF7F50";
-            shieldEffect.style.left = (ship.x - (ship.width + 21) / 2) + "px";
-            shieldEffect.style.top = (ship.y - (ship.height + 21) / 2) + "px";
-
-            createShieldParticles(ship);
-
-            const shieldMessage = document.createElement("div");
-            shieldMessage.textContent = `${team.toUpperCase()} SHIELD ACTIVATED!`;
-            shieldMessage.style.position = "absolute";
-            shieldMessage.style.color = team === 'team1' ? "#04fbac" : "#FF7F50";
-            shieldMessage.style.fontSize = "24px";
-            shieldMessage.style.left = "50%";
-            shieldMessage.style.top = team === 'team1' ? "20%" : "80%";
-            shieldMessage.style.transform = "translateX(-50%)";
-            shieldMessage.style.zIndex = "1000";
-            document.body.appendChild(shieldMessage);
-
-            setTimeout(() => {
-                shieldMessage.remove();
-            }, 2000);
+            createShieldEffect(ship, team);
         }
 
-        function createShieldParticles(ship) {
-            const team = ship === teamConfig.team1.ships[0] || ship.image.src.includes('starship3') || ship.image.src.includes('starship4') ? 'team1' : 'team2';
-            const colors = team === 'team1' ? shieldConfig.colors1 : shieldConfig.colors2;
-
-            for (let i = 0; i < shieldConfig.particleCount; i++) {
-                const particle = document.createElement("div");
-                particle.className = "shield-particle";
-                particle.style.width = `${Math.random() * (shieldConfig.maxSize - shieldConfig.minSize) + shieldConfig.minSize}px`;
-                particle.style.height = particle.style.width;
-                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-                document.body.appendChild(particle);
-
-                shieldConfig.particles.push({
-                    element: particle,
-                    angle: Math.random() * Math.PI * 2,
-                    speed: Math.random() * (shieldConfig.maxSpeed - shieldConfig.minSpeed) + shieldConfig.minSpeed,
-                    radius: ship.width / 2 + 10.5,
-                    ship: ship
-                });
-            }
-
-            function updateParticles() {
-                shieldConfig.particles = shieldConfig.particles.filter(p => p.ship.shield);
-                shieldConfig.particles.forEach(p => {
-                    p.angle += p.speed;
-                    p.element.style.left = (p.ship.x + Math.cos(p.angle) * p.radius - parseFloat(p.element.style.width) / 2) + "px";
-                    p.element.style.top = (p.ship.y + Math.sin(p.angle) * p.radius - parseFloat(p.element.style.height) / 2) + "px";
-                });
-                if (shieldConfig.particles.length > 0) {
-                    requestAnimationFrame(updateParticles);
+        function getShipTeam(ship) {
+            for (let team of ['team1', 'team2']) {
+                if (teamConfig[team].ships.includes(ship)) {
+                    return team;
                 }
             }
-            updateParticles();
+            return null;
+        }
+
+        function createShieldEffect(ship, team) {
+            const shieldId = `shield-${team}-${Date.now()}`;
+            ship.shieldId = shieldId;
+
+            const container = document.createElement('div');
+            container.className = 'shield-container';
+            container.id = shieldId;
+            container.style.width = (ship.width + 40) + 'px';
+            container.style.height = (ship.height + 40) + 'px';
+            document.body.appendChild(container);
+
+            const baseColor = team === 'team1' ? '#04fbac' : '#FF7F50';
+            const colors = team === 'team1' ? 
+                ['#04fbac', '#00ffff', '#0088ff', '#80ffff'] : 
+                ['#FF7F50', '#ffcc80', '#ff8844', '#ffaa66'];
+
+            // Création de plusieurs couches d'énergie
+            for (let i = 0; i < shieldConfig.energyLayers; i++) {
+                const layer = document.createElement('div');
+                layer.className = 'shield-layer';
+                layer.style.width = '100%';
+                layer.style.height = '100%';
+                layer.style.borderColor = colors[i % colors.length];
+                layer.style.animationDelay = `${i * 0.2}s`;
+                layer.style.animationDuration = `${2 + i * 0.3}s`;
+                container.appendChild(layer);
+
+                const ring = document.createElement('div');
+                ring.className = 'energy-ring';
+                ring.style.width = `${100 + i * 10}%`;
+                ring.style.height = `${100 + i * 10}%`;
+                ring.style.left = `${-i * 5}%`;
+                ring.style.top = `${-i * 5}%`;
+                ring.style.borderColor = colors[(i + 1) % colors.length];
+                ring.style.animationDuration = `${3 - i * 0.5}s`;
+                ring.style.animationDirection = i % 2 === 0 ? 'normal' : 'reverse';
+                container.appendChild(ring);
+            }
+
+            // Particules d'énergie
+            const shieldParticles = [];
+            for (let i = 0; i < shieldConfig.particleCount; i++) {
+                const particle = {
+                    angle: Math.random() * Math.PI * 2,
+                    speed: shieldConfig.particleSpeed + Math.random() * 0.01,
+                    radius: shieldConfig.minRadius + Math.random() * (shieldConfig.maxRadius - shieldConfig.minRadius),
+                    size: 2 + Math.random() * 3,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    pulsePhase: Math.random() * Math.PI * 2
+                };
+                shieldParticles.push(particle);
+            }
+
+            gameState.shieldEffects.push({
+                ship: ship,
+                container: container,
+                particles: shieldParticles,
+                team: team
+            });
+        }
+
+        function updateShieldEffect(ship, team) {
+            const effect = gameState.shieldEffects.find(e => e.ship === ship);
+            if (!effect) return;
+
+            effect.container.style.left = (ship.x - parseInt(effect.container.style.width) / 2) + 'px';
+            effect.container.style.top = (ship.y - parseInt(effect.container.style.height) / 2) + 'px';
+        }
+
+        function removeShieldEffect(ship, team) {
+            const effectIndex = gameState.shieldEffects.findIndex(e => e.ship === ship);
+            if (effectIndex !== -1) {
+                const effect = gameState.shieldEffects[effectIndex];
+                effect.container.remove();
+                gameState.shieldEffects.splice(effectIndex, 1);
+            }
+        }
+
+        function drawShieldParticles() {
+            gameState.shieldEffects.forEach(effect => {
+                effect.particles.forEach(particle => {
+                    particle.angle += particle.speed;
+                    const x = effect.ship.x + Math.cos(particle.angle) * particle.radius;
+                    const y = effect.ship.y + Math.sin(particle.angle) * particle.radius;
+                    
+                    const pulseFactor = 0.5 + Math.sin(Date.now() / 200 + particle.pulsePhase) * 0.5;
+                    
+                    ctx.save();
+                    ctx.globalAlpha = 0.6 + pulseFactor * 0.4;
+                    ctx.fillStyle = particle.color;
+                    ctx.shadowColor = particle.color;
+                    ctx.shadowBlur = 10 + pulseFactor * 10;
+                    ctx.beginPath();
+                    ctx.arc(x, y, particle.size * (0.5 + pulseFactor * 0.5), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            });
         }
 
         function checkCollisions() {
@@ -1161,6 +1590,21 @@
                             ship.height
                         );
                         ctx.restore();
+                        
+                        // Indicateur de power-up
+                        if (ship.powerUpType !== 'normal' && ship.isPlayer) {
+                            ctx.save();
+                            ctx.fillStyle = '#FFFF00';
+                            ctx.font = '12px Arial';
+                            ctx.textAlign = 'center';
+                            const timeLeft = Math.ceil((ship.powerUpEndTime - Date.now()) / 1000);
+                            ctx.fillText(
+                                `Power: ${timeLeft}s`,
+                                ship.x,
+                                ship.y + ship.height/2 + 15
+                            );
+                            ctx.restore();
+                        }
                     } else {
                         ctx.fillStyle = '#04fbac';
                         ctx.fillRect(
@@ -1199,6 +1643,21 @@
                             ship.height
                         );
                         ctx.restore();
+                        
+                        // Indicateur de power-up
+                        if (ship.powerUpType !== 'normal' && ship.isPlayer) {
+                            ctx.save();
+                            ctx.fillStyle = '#FFFF00';
+                            ctx.font = '12px Arial';
+                            ctx.textAlign = 'center';
+                            const timeLeft = Math.ceil((ship.powerUpEndTime - Date.now()) / 1000);
+                            ctx.fillText(
+                                `Power: ${timeLeft}s`,
+                                ship.x,
+                                ship.y + ship.height/2 + 15
+                            );
+                            ctx.restore();
+                        }
                     } else {
                         ctx.fillStyle = '#FF7F50';
                         ctx.fillRect(
@@ -1241,6 +1700,11 @@
                 createFloatingLives();
                 updateFloatingLives();
                 updateShields();
+                createPowerUp();
+                updatePowerUps();
+                createVortex();
+                updateVortexes();
+                swapSupportShips();
             }
 
             drawBarriers();
@@ -1249,6 +1713,8 @@
             updateFloatingPoints();
             drawFloatingPoints();
             drawFloatingLives();
+            drawPowerUps();
+            drawShieldParticles();
 
             requestAnimationFrame(gameLoop);
         }
@@ -1277,8 +1743,8 @@
         function resetPoints() {
             teamConfig.team1.ships.forEach(ship => ship.points = 0);
             teamConfig.team2.ships.forEach(ship => ship.points = 0);
-            document.querySelector('#team1Points span').textContent = '0';
-            document.querySelector('#team2Points span').textContent = '0';
+            document.querySelector('#team1Points span').textContent = '0 / 50';
+            document.querySelector('#team2Points span').textContent = '0 / 50';
             gameState.floatingPoints = [];
         }
 
@@ -1305,70 +1771,58 @@
             
             const midPoint = canvas.height / 2;
             
+            // Reset all ships
+            ['team1', 'team2'].forEach(team => {
+                teamConfig[team].ships.forEach((ship, index) => {
+                    ship.lives = 10;
+                    ship.impacts = 0;
+                    ship.points = 0;
+                    ship.active = true;
+                    ship.shield = false;
+                    ship.powerUpType = 'normal';
+                    ship.powerUpEndTime = 0;
+                    ship.shootCooldown = 0;
+                    
+                    if (!ship.isPlayer) {
+                        ship.velocityX = (Math.random() - 0.5) * 4;
+                        ship.velocityY = (Math.random() - 0.5) * 4;
+                        ship.lastDirectionChange = Date.now();
+                        ship.aiMode = Math.random() > 0.5 ? 'aggressive' : 'defensive';
+                    }
+                });
+            });
+            
             teamConfig.team1.ships[0].x = canvas.width * 0.5;
             teamConfig.team1.ships[0].y = midPoint * 0.5;
-            teamConfig.team1.ships[0].lives = 10;
-            teamConfig.team1.ships[0].impacts = 0;
-            teamConfig.team1.ships[0].points = 0;
-            teamConfig.team1.ships[0].active = true;
-            teamConfig.team1.ships[0].shield = false;
             teamConfig.team1.ships[1].x = canvas.width * 0.3;
             teamConfig.team1.ships[1].y = midPoint * 0.3;
-            teamConfig.team1.ships[1].lives = 10;
-            teamConfig.team1.ships[1].impacts = 0;
-            teamConfig.team1.ships[1].points = 0;
-            teamConfig.team1.ships[1].active = true;
-            teamConfig.team1.ships[1].shield = false;
-            teamConfig.team1.ships[1].velocityX = (Math.random() - 0.5) * 4;
-            teamConfig.team1.ships[1].velocityY = (Math.random() - 0.5) * 4;
-            teamConfig.team1.ships[1].lastDirectionChange = Date.now();
             teamConfig.team1.ships[2].x = canvas.width * 0.7;
             teamConfig.team1.ships[2].y = midPoint * 0.7;
-            teamConfig.team1.ships[2].lives = 10;
-            teamConfig.team1.ships[2].impacts = 0;
-            teamConfig.team1.ships[2].points = 0;
-            teamConfig.team1.ships[2].active = true;
-            teamConfig.team1.ships[2].shield = false;
-            teamConfig.team1.ships[2].velocityX = (Math.random() - 0.5) * 4;
-            teamConfig.team1.ships[2].velocityY = (Math.random() - 0.5) * 4;
-            teamConfig.team1.ships[2].lastDirectionChange = Date.now();
             
             teamConfig.team2.ships[0].x = canvas.width * 0.5;
             teamConfig.team2.ships[0].y = midPoint * 1.5;
-            teamConfig.team2.ships[0].lives = 10;
-            teamConfig.team2.ships[0].impacts = 0;
-            teamConfig.team2.ships[0].points = 0;
-            teamConfig.team2.ships[0].active = true;
-            teamConfig.team2.ships[0].shield = false;
             teamConfig.team2.ships[1].x = canvas.width * 0.3;
             teamConfig.team2.ships[1].y = midPoint * 1.3;
-            teamConfig.team2.ships[1].lives = 10;
-            teamConfig.team2.ships[1].impacts = 0;
-            teamConfig.team2.ships[1].points = 0;
-            teamConfig.team2.ships[1].active = true;
-            teamConfig.team2.ships[1].shield = false;
-            teamConfig.team2.ships[1].velocityX = (Math.random() - 0.5) * 4;
-            teamConfig.team2.ships[1].velocityY = (Math.random() - 0.5) * 4;
-            teamConfig.team2.ships[1].lastDirectionChange = Date.now();
             teamConfig.team2.ships[2].x = canvas.width * 0.7;
             teamConfig.team2.ships[2].y = midPoint * 1.7;
-            teamConfig.team2.ships[2].lives = 10;
-            teamConfig.team2.ships[2].impacts = 0;
-            teamConfig.team2.ships[2].points = 0;
-            teamConfig.team2.ships[2].active = true;
-            teamConfig.team2.ships[2].shield = false;
-            teamConfig.team2.ships[2].velocityX = (Math.random() - 0.5) * 4;
-            teamConfig.team2.ships[2].velocityY = (Math.random() - 0.5) * 4;
-            teamConfig.team2.ships[2].lastDirectionChange = Date.now();
             
-            document.querySelector('#team1Points span').textContent = '0';
-            document.querySelector('#team2Points span').textContent = '0';
+            document.querySelector('#team1Points span').textContent = '0 / 50';
+            document.querySelector('#team2Points span').textContent = '0 / 50';
             
             gameState.team1Bullets = [];
             gameState.team2Bullets = [];
             gameState.barriers = [];
             gameState.floatingPoints = [];
             gameState.floatingLives = [];
+            gameState.powerUps = [];
+            gameState.vortexes = [];
+            gameState.lastVortexTime = Date.now();
+            gameState.lastShipSwap = Date.now();
+            
+            // Nettoyer les effets visuels
+            document.querySelectorAll('.vortex').forEach(v => v.remove());
+            document.querySelectorAll('.shield-container').forEach(s => s.remove());
+            gameState.shieldEffects = [];
             
             initializeLives();
         }
@@ -1376,17 +1830,38 @@
         Promise.all([
             new Promise(resolve => team1Ship.onload = resolve),
             new Promise(resolve => team2Ship.onload = resolve),
-            new Promise(resolve => team1Ship3.onload = resolve),
-            new Promise(resolve => team1Ship4.onload = resolve),
-            new Promise(resolve => team2Ship5.onload = resolve),
-            new Promise(resolve => team2Ship6.onload = resolve)
+            ...supportShipImages.map(img => new Promise(resolve => img.onload = resolve)),
+            new Promise(resolve => powerUpImages.basic.onload = resolve),
+            new Promise(resolve => powerUpImages.powerUp1.onload = resolve),
+            new Promise(resolve => powerUpImages.powerUp2.onload = resolve)
         ]).then(() => {
             gameState.barrierTimer = Date.now();
             createBarrier();
-            document.querySelector('#team1Points span').textContent = teamConfig.team1.ships[0].points;
-            document.querySelector('#team2Points span').textContent = teamConfig.team2.ships[0].points;
+            document.querySelector('#team1Points span').textContent = `${teamConfig.team1.ships[0].points} / 50`;
+            document.querySelector('#team2Points span').textContent = `${teamConfig.team2.ships[0].points} / 50`;
             gameLoop();
         });
     </script>
 </body>
 </html>
+                
+                    }
+                }
+            } else if (ship.powerUpType === 'spread') {
+                // Tir en éventail rotatif
+                const angleBase = Date.now() / 100;
+                for (let i = 0; i < 5; i++) {
+                    const angle = angleBase + (i * Math.PI / 4);
+                    const newBullet = {
+                        x: ship.x,
+                        y: ship.y,
+                        color: bulletColor,
+                        team: team,
+                        vy: team === 'team1' ? bulletSpeed * Math.cos(angle) : -bulletSpeed * Math.cos(angle),
+                        vx: bulletSpeed * Math.sin(angle) * 0.5
+                    };
+                    
+                    if (team === 'team1') {
+                        gameState.team1Bullets.push(newBullet);
+                    } else {
+                        gameState.team2Bullets.push(newBullet);
