@@ -299,10 +299,11 @@
 <body>
     <!-- Interface utilisateur -->
     <span id="coinsCount">0</span>
-    <div class="stats">
-        Vies: <span id="livesCount">3</span><br>
-        Ennemis tués: <span id="enemiesKilledCount">0</span>
-    </div>
+   <div class="stats">
+    Vies: <span id="livesCount">3</span><br>
+    Ennemis tués: <span id="enemiesKilledCount">0</span><br>
+    Points rouges: <span id="redPointsCount">0</span>/100
+</div>
 
     <!-- Fond d'écran défilant -->
     <div id="scrollingBackground" class="scrolling-background" style="display: none;"></div>
@@ -850,6 +851,8 @@ const shieldParticles = {
 
 // Modifiez la fonction createAssistantShip pour initialiser correctement les propriétés
 function createAssistantShip() {
+    // Limiter à 6 assistants maximum
+    if (assistantShips.length >= 6) return;
     // Déterminer l'image à utiliser pour ce vaisseau assistant
     const imgIndex = nextAssistantShipIndex;
     nextAssistantShipIndex = (nextAssistantShipIndex % 6) + 1; // Alterne entre 1-6
@@ -1009,8 +1012,13 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
     // Phase de mise à jour - gestion du mouvement et du comportement du vaisseau assistant
     
     // Si l'animation d'entrée est active, déplacer le vaisseau du bas vers la position cible
-    if (assistantShip.isEntering) {
-        assistantShip.y -= assistantShip.speed;
+   if (assistantShip.isEntering) {
+    assistantShip.y -= assistantShip.speed;
+    
+    // Limiter targetY pour éviter le chevauchement
+    const minY = 100; // Position minimale en Y
+    const maxY = canvas.height - 200; // Position maximale en Y
+    assistantShip.targetY = Math.max(minY, Math.min(maxY, assistantShip.targetY));
         
         // Si la position cible est atteinte, terminer la phase d'entrée
         if (assistantShip.y <= assistantShip.targetY) {
@@ -1802,8 +1810,8 @@ function activateSpecialShot() {
         width: 1, // Taille initiale
         height: 1, // Taille initiale
         targetSize: 200, // Taille finale (diamètre)
-        speed: 1, // Vitesse de déplacement (lente)
-        growthRate: 1, // Vitesse de croissance
+        speed: 3, // Vitesse de déplacement (lente)
+        growthRate: 2, // Vitesse de croissance
         isGrowing: true, // En phase de croissance
         damage: 50, // Dégâts élevés
         color: "cyan" // Couleur de base
@@ -4570,6 +4578,8 @@ function drawRedPoints() {
                         document.getElementById("coinsCount").textContent = coins.toFixed(1);
                         playSound(soundEffects.coin);
                         starship.redPointsCollected++;
+                        // Mettre à jour l'affichage
+document.getElementById("redPointsCount").textContent = starship.redPointsCollected;
                         redPointsTotal++; // Compteur global pour les nouveaux assistants
                         // Incrémenter le compteur total de points rouges
 redPointsTotal++;
@@ -4579,10 +4589,14 @@ if (redPointsTotal >= 200 && !assistantShipActive) {
     createAssistantShip();
 }
                         
-                        if (starship.redPointsCollected >= 200) {
-                            activateShield(starship);
-                            starship.redPointsCollected = 0;
-                        }
+                    if (starship.redPointsCollected >= 20) {
+    console.log("Activation du bouclier pour le joueur 1 - Points: " + starship.redPointsCollected);
+    activateShield(starship);
+    starship.redPointsCollected = 0; // Réinitialiser le compteur
+    
+    // Afficher le compteur réinitialisé
+    console.log("Compteur réinitialisé à : " + starship.redPointsCollected);
+}
                         
                         return false; // supprime ce point
                     }
@@ -4626,17 +4640,74 @@ function activateShield(player, duration = 10000) {
   createShieldParticles(player);
   
   // Nettoyer tout timeout existant
-  if (player.shieldTimeout) clearTimeout(player.shieldTimeout);
-  
-  // Désactiver le bouclier après la durée spécifiée
-  player.shieldTimeout = setTimeout(() => {
+ // Désactiver le bouclier après la durée spécifiée
+player.shieldTimeout = setTimeout(() => {
     player.shield = false;
-    if (shieldEffect) shieldEffect.remove();
+    console.log(`Bouclier désactivé pour le joueur ${player.player}`);
     
-    // Supprimer les particules associées à ce joueur
-    shieldParticles.particles = shieldParticles.particles.filter(p => p.player !== player.player);
-    shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(p => p.player !== player.player);
-  }, duration);
+    // Message visuel de fin de bouclier
+    const endMessage = document.createElement("div");
+    endMessage.style.position = "absolute";
+    endMessage.style.left = "50%";
+    endMessage.style.top = "30%";
+    endMessage.style.transform = "translate(-50%, -50%)";
+    endMessage.style.color = "red";
+    endMessage.style.fontSize = "20px";
+    endMessage.style.fontWeight = "bold";
+    endMessage.style.textShadow = "0 0 10px red";
+    endMessage.style.zIndex = "1000";
+    endMessage.textContent = `BOUCLIER TERMINÉ - JOUEUR ${player.player}`;
+    document.body.appendChild(endMessage);
+    
+    setTimeout(() => {
+        if (endMessage && endMessage.parentNode) {
+            endMessage.parentNode.removeChild(endMessage);
+        }
+    }, 1500);
+}, duration);
+// Vérifier aussi pour le joueur 2
+if (isMultiplayer && starship2 && starship2.isActive) {
+    // [Le code existant pour le joueur 2]
+    
+    if (distance < 30) {
+        coins += 0.5;
+        document.getElementById("coinsCount").textContent = coins.toFixed(1);
+        playSound(soundEffects.coin);
+        starship2.redPointsCollected++;
+        redPointsTotal++;
+        
+        // Vérifier l'activation du bouclier
+        if (starship2.redPointsCollected >= 100) {
+            console.log("Activation du bouclier pour le joueur 2");
+            activateShield(starship2);
+            starship2.redPointsCollected = 0;
+        }
+        
+        return false;
+    }
+}
+
+// Et pareil pour le joueur 3
+if (isTriplePlayer && starship3 && starship3.isActive) {
+    // [Le code existant pour le joueur 3]
+    
+    if (distance < 30) {
+        coins += 0.5;
+        document.getElementById("coinsCount").textContent = coins.toFixed(1);
+        playSound(soundEffects.coin);
+        starship3.redPointsCollected++;
+        redPointsTotal++;
+        
+        // Vérifier l'activation du bouclier
+        if (starship3.redPointsCollected >= 100) {
+            console.log("Activation du bouclier pour le joueur 3");
+            activateShield(starship3);
+            starship3.redPointsCollected = 0;
+        }
+        
+        return false;
+    }
+}
 }
 function checkCollisions() {
     // Ne pas vérifier les collisions uniquement si le jeu est explicitement en pause
