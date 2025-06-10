@@ -1,4 +1,49 @@
-<!DOCTYPE html>
+function updateLaserTraits() {
+            const currentTime = Date.now();
+            gameState.laserTraits = gameState.laserTraits.filter(trait => {
+                const elapsed = currentTime - trait.createdAt;
+                
+                // Fade out progressif pendant les dernières 500ms
+                if (elapsed > trait.duration - 500) {
+                    trait.opacity = Math.max(0, 1 - ((elapsed - (trait.duration - 500)) / 500));
+                }
+                
+                return elapsed < trait.duration;
+            });
+        }        // Générer un trait laser
+        function generateLaserTrait() {
+            if (!isHost) return;
+            
+            const width = 30 + Math.random() * 20; // Entre 30 et 50px
+            const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
+            const midPoint = canvas.height / 2;
+            
+            const trait = {
+                x: Math.random() * (canvas.width - width),
+                y: isPlayerZone === 0 ? 
+                    Math.random() * (midPoint - 50) : 
+                    midPoint + Math.random() * (canvas.height / 2 - 50),
+                width: width,
+                height: 3,
+                createdAt: Date.now(),
+                duration: 3000, // 3 secondes
+                color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
+                opacity: 1,
+                id: Date.now() + Math.random()
+            };
+            
+            gameState.laserTraits.push(trait);
+        }        document.getElementById('joinGame').addEventListener('click', function() {
+            const peerID = document.getElementById('joinGameInput').value.trim();
+            if (peerID) {
+                console.log('Connexion à:', peerID);
+                const conn = peer.connect(peerID);
+                setupConnection(conn);
+                isHost = false;
+                myPlayerIndex = 1;
+                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
+            }
+        });<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -215,6 +260,25 @@
             z-index: 900;
             background: radial-gradient(circle at center, transparent 60%, currentColor 100%);
         }
+
+        #resetButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #ff6600;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 100;
+            display: none;
+        }
+
+        #resetButton:hover {
+            background: #ff8800;
+        }
     </style>
 </head>
 <body>
@@ -273,6 +337,7 @@
         Contrôles: Souris (mouvement + clic gauche), WASD + G (J1) / Flèches + Espace (J2)
     </div>
     <canvas id="gameCanvas" style="display: none;"></canvas>
+    <button id="resetButton" onclick="resetGame()">Réinitialiser</button>
 
     <script>
         console.log("🚀 Démarrage Starship Battle...");
@@ -341,6 +406,7 @@
             ],
             powerUps: [],
             redPoints: [],
+            laserTraits: [], // Nouveaux traits laser
             paused: false,
             gameOver: false,
             winner: null
@@ -540,16 +606,16 @@
             });
         });
 
-        document.getElementById('joinGame').addEventListener('click', function() {
-            const peerID = document.getElementById('joinGameInput').value.trim();
-            if (peerID) {
-                console.log('Connexion à:', peerID);
-                const conn = peer.connect(peerID);
-                setupConnection(conn);
-                isHost = false;
-                myPlayerIndex = 1;
-                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
-            }
+        document.getElementById('joinGameInput').addEventListener('keydown', function(e) {
+            e.stopPropagation();
+        });
+        
+        document.getElementById('joinGameInput').addEventListener('keyup', function(e) {
+            e.stopPropagation();
+        });
+        
+        document.getElementById('joinGameInput').addEventListener('paste', function(e) {
+            e.stopPropagation();
         });
 
         // Démarrage du jeu
@@ -562,17 +628,25 @@
             document.getElementById('networkStatus').style.display = 'block';
             document.querySelector('.divider').style.display = 'block';
             document.getElementById('controlInfo').style.display = 'block';
+            document.getElementById('resetButton').style.display = 'block';
             
             gameStarted = true;
             initializeGame();
             
-            // Générer des power-ups périodiquement (seulement par l'hôte)
+            // Générer des power-ups et traits laser périodiquement (seulement par l'hôte)
             if (isHost) {
                 setInterval(() => {
                     if (gameState.powerUps.length < 3) {
                         generatePowerUp();
                     }
                 }, 5000);
+                
+                // Générer des traits laser périodiquement
+                setInterval(() => {
+                    if (gameState.laserTraits.length < 6) {
+                        generateLaserTrait();
+                    }
+                }, 2000);
             }
             
             gameLoop();
@@ -781,6 +855,8 @@
             const powerUp = {
                 x: Math.random() * (canvas.width - 40),
                 y: Math.random() * (canvas.height - 40),
+                vx: (Math.random() - 0.5) * 2, // Vitesse horizontale
+                vy: (Math.random() - 0.5) * 2, // Vitesse verticale
                 width: 40,
                 height: 40,
                 type: Math.floor(Math.random() * 3),
@@ -804,7 +880,7 @@
         }
 
         // Activation du bouclier
-        function activateShield(player, duration = 10000) {
+        function activateShield(player, duration = 5000) { // Changé à 5 secondes
             if (!player || !player.active) return;
             
             player.shield = true;
@@ -814,8 +890,9 @@
             
             player.shieldTimeout = setTimeout(() => {
                 player.shield = false;
-                shieldParticles.particles = shieldParticles.particles.filter(p => p.playerIndex !== player.playerIndex);
-                shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(p => p.playerIndex !== player.playerIndex);
+                const playerIndex = gameState.players.indexOf(player);
+                shieldParticles.particles = shieldParticles.particles.filter(p => p.playerIndex !== playerIndex);
+                shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(p => p.playerIndex !== playerIndex);
             }, duration);
         }
 
@@ -859,7 +936,7 @@
 
         // Création d'un vaisseau assistant
         function createAssistantShip(player, imgIndex = null) {
-            if (player.assistantShips.length >= 6) return;
+            if (player.assistantShips.length >= 3) return; // Limité à 3 assistants
             
             const playerIndex = gameState.players.indexOf(player);
             if (imgIndex === null) {
@@ -916,6 +993,20 @@
             if (!isHost) return;
             
             gameState.powerUps = gameState.powerUps.filter(powerUp => {
+                // Mouvement
+                powerUp.x += powerUp.vx || 0;
+                powerUp.y += powerUp.vy || 0;
+                
+                // Rebond sur les bords
+                if (powerUp.x <= 0 || powerUp.x >= canvas.width - powerUp.width) {
+                    powerUp.vx = -(powerUp.vx || 0);
+                    powerUp.x = Math.max(0, Math.min(canvas.width - powerUp.width, powerUp.x));
+                }
+                if (powerUp.y <= 0 || powerUp.y >= canvas.height - powerUp.height) {
+                    powerUp.vy = -(powerUp.vy || 0);
+                    powerUp.y = Math.max(0, Math.min(canvas.height - powerUp.height, powerUp.y));
+                }
+                
                 // Animation de rotation
                 powerUp.rotation = (powerUp.rotation || 0) + 0.05;
                 return true;
@@ -955,8 +1046,8 @@
                                 });
                             }
                             
-                            // Activation du bouclier tous les 100 points
-                            if (player.redPointsCollected >= 100) {
+                            // Activation du bouclier tous les 50 points
+                            if (player.redPointsCollected >= 50) {
                                 activateShield(player);
                                 player.redPointsCollected = 0;
                                 document.getElementById(`p${index + 1}RedPoints`).textContent = player.redPointsCollected;
@@ -969,8 +1060,8 @@
                                 }
                             }
                             
-                            // Création d'assistant tous les 50 points
-                            if (player.redPointsCollected % 50 === 0 && player.redPointsCollected > 0) {
+                            // Création d'assistant tous les 25 points
+                            if (player.redPointsCollected % 25 === 0 && player.redPointsCollected > 0) {
                                 createAssistantShip(player);
                             }
                             
@@ -1024,7 +1115,7 @@
                     if (currentTime - assistant.lastShootTime > assistant.shootInterval) {
                         const bullet = {
                             x: assistant.x + assistant.width / 2,
-                            y: assistant.y,
+                            y: assistant.y + (assistant.playerIndex === 0 ? assistant.height : 0),
                             width: 4,
                             height: 4,
                             vy: assistant.playerIndex === 0 ? 8 : -8,
@@ -1039,6 +1130,13 @@
                     }
                     
                     return assistant.health > 0;
+                });
+                
+                // Si un assistant est détruit et qu'il y en a moins de 3, en créer un nouveau
+                gameState.players.forEach(player => {
+                    if (player.assistantShips.length < 3 && player.redPointsCollected >= 25) {
+                        createAssistantShip(player);
+                    }
                 });
             });
         }
@@ -1104,7 +1202,9 @@
                     });
                     
                     // Collisions avec les assistants
-                    player.assistantShips.forEach(assistant => {
+                    for (let k = player.assistantShips.length - 1; k >= 0; k--) {
+                        const assistant = player.assistantShips[k];
+                        
                         opponent.bullets = opponent.bullets.filter(bullet => {
                             const dx = Math.abs(bullet.x - assistant.x - assistant.width/2);
                             const dy = Math.abs(bullet.y - assistant.y - assistant.height/2);
@@ -1115,7 +1215,7 @@
                                     
                                     if (assistant.health <= 0) {
                                         // Explosion
-                                        for (let k = 0; k < 30; k++) {
+                                        for (let l = 0; l < 30; l++) {
                                             gameState.redPoints.push({
                                                 x: assistant.x + assistant.width/2,
                                                 y: assistant.y + assistant.height/2,
@@ -1123,6 +1223,9 @@
                                                 vy: (Math.random() - 0.5) * 8
                                             });
                                         }
+                                        
+                                        // Retirer l'assistant détruit
+                                        player.assistantShips.splice(k, 1);
                                     }
                                 }
                                 
@@ -1132,7 +1235,7 @@
                             
                             return true;
                         });
-                    });
+                    }
                 }
             }
             
@@ -1255,12 +1358,28 @@
             document.getElementById('gameOverMessage').innerHTML = '';
             document.getElementById('p1RedPoints').textContent = '0';
             document.getElementById('p2RedPoints').textContent = '0';
+            document.getElementById('team1Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 50';
+            document.getElementById('team2Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 50';
             
             initializeLives();
         }
 
         // Fonctions de rendu
         function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dessiner les traits laser
+            gameState.laserTraits.forEach(trait => {
+                ctx.save();
+                ctx.globalAlpha = trait.opacity;
+                ctx.fillStyle = trait.color;
+                ctx.shadowColor = trait.color;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(trait.x, trait.y, trait.width, trait.height);
+                ctx.restore();
+            });
+            
+            // Dessiner les power-ups() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Dessiner les power-ups
