@@ -377,8 +377,6 @@
         starshipImg.src = "../img/starship7.jpg";
         const starship2Img = new Image();
         starship2Img.src = "../img/starship6.jpg";
-        const bulletImg = new Image();
-        bulletImg.src = "../img/bullets1.jpg";
         const powerUpImgs = [new Image(), new Image(), new Image()];
         powerUpImgs[0].src = "../img/powerUp.jpg";
         powerUpImgs[1].src = "../img/powerUp1.jpg";
@@ -640,6 +638,9 @@
         });
 
         // Gestion des entrées
+        let lastShootTime = 0;
+        const shootCooldown = 100; // 100ms entre chaque tir
+        
         function handleLocalPlayerInput() {
             if (!gameStarted || gameState.paused) return;
             
@@ -654,9 +655,19 @@
             const isInPlayerZone = myPlayerIndex === 0 ? mouse.y < midPoint : mouse.y > midPoint;
             
             if (isInPlayerZone) {
-                if (Math.abs(player.x - mouse.x) > 2 || Math.abs(player.y - mouse.y) > 2) {
-                    player.x = mouse.x;
-                    player.y = mouse.y;
+                const targetX = mouse.x;
+                const targetY = mouse.y;
+                
+                // Contraintes pour rester dans sa zone
+                const minY = myPlayerIndex === 0 ? player.height/2 : midPoint + player.height/2;
+                const maxY = myPlayerIndex === 0 ? midPoint - player.height/2 : canvas.height - player.height/2;
+                
+                const clampedX = Math.max(player.width/2, Math.min(canvas.width - player.width/2, targetX));
+                const clampedY = Math.max(minY, Math.min(maxY, targetY));
+                
+                if (Math.abs(player.x - clampedX) > 2 || Math.abs(player.y - clampedY) > 2) {
+                    player.x = clampedX;
+                    player.y = clampedY;
                     moved = true;
                 }
                 
@@ -675,17 +686,19 @@
             if (keys[controls.down]) { player.y += speed; moved = true; }
             if (keys[controls.shoot]) shot = true;
 
-            // Contraintes
-            const minY = myPlayerIndex === 0 ? player.height/2 : midPoint + player.height/2;
-            const maxY = myPlayerIndex === 0 ? midPoint - player.height/2 : canvas.height - player.height/2;
+            // Contraintes après mouvement clavier
+            const midPointY = canvas.height / 2;
+            const minY = myPlayerIndex === 0 ? player.height/2 : midPointY + player.height/2;
+            const maxY = myPlayerIndex === 0 ? midPointY - player.height/2 : canvas.height - player.height/2;
             
             player.x = Math.max(player.width/2, Math.min(canvas.width - player.width/2, player.x));
             player.y = Math.max(minY, Math.min(maxY, player.y));
 
-            // Tir
-            if (shot && (!player.lastShootTime || Date.now() - player.lastShootTime > 100)) {
+            // Tir avec cooldown
+            const currentTime = Date.now();
+            if (shot && currentTime - lastShootTime > shootCooldown) {
                 shootBullet(player, myPlayerIndex);
-                player.lastShootTime = Date.now();
+                lastShootTime = currentTime;
             }
 
             // Synchronisation réseau
@@ -747,7 +760,7 @@
             
             sendMessage({
                 type: 'bulletFired',
-                bullets: player.bullets.slice(-row.offsets.length * numRows),
+                bullets: player.bullets.slice(-rowsToUse.reduce((sum, r) => sum + r.offsets.length, 0)),
                 playerIndex: playerIndex
             });
             
@@ -1387,16 +1400,25 @@
                     );
                 }
                 
-                // Vaisseau
+                // Vaisseau avec rotation appropriée
                 const img = index === 0 ? starshipImg : starship2Img;
                 if (img.complete) {
+                    ctx.save();
+                    ctx.translate(player.x, player.y);
+                    
+                    // Rotation de 180 degrés pour le joueur du haut (index 0)
+                    if (index === 0) {
+                        ctx.rotate(Math.PI);
+                    }
+                    
                     ctx.drawImage(
                         img,
-                        player.x - player.width/2,
-                        player.y - player.height/2,
+                        -player.width/2,
+                        -player.height/2,
                         player.width,
                         player.height
                     );
+                    ctx.restore();
                 } else {
                     ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
                     ctx.fillRect(
