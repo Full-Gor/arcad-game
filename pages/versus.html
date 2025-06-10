@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Starship Battle 1v1</title>
+    <title>Starship Battle Versus - Online</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -29,6 +30,70 @@
             z-index: 10;
         }
 
+        #connectionPanel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #04fbac;
+            color: white;
+            text-align: center;
+            z-index: 1000;
+            min-width: 400px;
+        }
+
+        #connectionPanel h2 {
+            color: #04fbac;
+            margin-bottom: 20px;
+        }
+
+        #connectionPanel input {
+            padding: 10px;
+            margin: 10px;
+            border: 2px solid #04fbac;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 16px;
+            width: 200px;
+        }
+
+        #connectionPanel button {
+            padding: 12px 24px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #04fbac;
+            color: black;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #connectionPanel button:hover {
+            background: #FF7F50;
+            transform: scale(1.05);
+        }
+
+        #connectionPanel button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #myPeerID {
+            background: rgba(4, 251, 172, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+
         #scoreBoard {
             position: absolute;
             top: 10px;
@@ -44,12 +109,6 @@
             align-items: center;
         }
 
-        .team-score img {
-            width: 30px;
-            height: 30px;
-            margin-right: 10px;
-        }
-
         .lives-container {
             display: flex;
             align-items: center;
@@ -60,25 +119,8 @@
             width: 20px;
             height: 20px;
             margin-right: 5px;
-            background: url('/img/lives.jpg') no-repeat center/contain;
-        }
-
-        #controlInfo {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            color: white;
-            font-size: 12px;
-            z-index: 20;
-        }
-
-        .barrier {
-            position: absolute;
-            height: 8px;
-            background: linear-gradient(to right, #FFA500, #FFFF00, #FFA500);
-            z-index: 5;
-            box-shadow: 0 0 10px #FFA500;
-            border-radius: 4px;
+            background: red;
+            border-radius: 50%;
         }
 
         .point-counter {
@@ -99,7 +141,6 @@
             right: 15px;
             color: #04fbac;
             border-color: #04fbac;
-            box-shadow: 0 0 20px rgba(4, 251, 172, 0.5);
         }
 
         #team2Points {
@@ -107,13 +148,6 @@
             right: 15px;
             color: #FF7F50;
             border-color: #FF7F50;
-            box-shadow: 0 0 20px rgba(255, 127, 80, 0.5);
-        }
-
-        .point-label {
-            margin-right: 10px;
-            font-size: 14px;
-            opacity: 0.8;
         }
 
         #gameOverMessage {
@@ -131,100 +165,22 @@
             display: none;
         }
 
-        @keyframes shieldPulse {
-            0% {
-                transform: scale(1);
-                opacity: 0.3;
-            }
-            50% {
-                transform: scale(1.1);
-                opacity: 0.6;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 0.3;
-            }
-        }
-
-        @keyframes energyFlow {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .shield-container {
+        #controlInfo {
             position: absolute;
-            pointer-events: none;
-            z-index: 15;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            font-size: 12px;
+            z-index: 20;
         }
 
-        .shield-layer {
-            position: absolute;
-            border-radius: 50%;
-            border: 2px solid;
-            animation: shieldPulse 2s infinite ease-in-out;
-        }
-
-        .energy-ring {
-            position: absolute;
-            border-radius: 50%;
-            border: 1px dashed;
-            animation: energyFlow 3s infinite linear;
-        }
-
-        @keyframes vortexSpin {
-            0% {
-                transform: rotate(0deg) scale(0.8);
-                opacity: 0;
-            }
-            20% {
-                opacity: 1;
-            }
-            80% {
-                opacity: 1;
-            }
-            100% {
-                transform: rotate(720deg) scale(1.2);
-                opacity: 0;
-            }
-        }
-
-        .vortex {
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: radial-gradient(circle at center, transparent 30%, #9400D3 60%, #4B0082 100%);
-            animation: vortexSpin 15s linear;
-            z-index: 8;
-            box-shadow: 0 0 50px #9400D3, inset 0 0 50px #4B0082;
-        }
-
-        @keyframes lifeBlink {
-            0%, 100% { opacity: 1; filter: brightness(1); }
-            50% { opacity: 0.5; filter: brightness(1.5); }
-        }
-
-        .life-blink-red {
-            animation: lifeBlink 0.5s infinite;
-            filter: hue-rotate(0deg) !important;
-        }
-
-        .life-blink-blue {
-            animation: lifeBlink 0.5s infinite;
-            filter: hue-rotate(240deg) !important;
-        }
-
-        .powerup-indicator {
+        #networkStatus {
             position: absolute;
             top: 10px;
-            right: 10px;
-            color: white;
+            left: 10px;
+            color: #04fbac;
             font-size: 14px;
-            z-index: 25;
+            z-index: 20;
             background: rgba(0, 0, 0, 0.7);
             padding: 5px 10px;
             border-radius: 5px;
@@ -232,239 +188,287 @@
     </style>
 </head>
 <body>
-    <div id="scoreBoard">
+    <!-- Panneau de connexion -->
+    <div id="connectionPanel">
+        <h2>🚀 Starship Battle Online</h2>
+        <div id="myPeerID">
+            Votre ID: <span id="peerIdSpan">Connexion...</span>
+            <button id="copyIdBtn" style="display: none; margin-left: 10px; padding: 5px 10px; background: #04fbac; color: black; border: none; border-radius: 3px; cursor: pointer;">📋 Copier</button>
+        </div>
+        
+        <div>
+            <h3>Créer une partie</h3>
+            <button id="hostGame" disabled>Héberger une partie</button>
+        </div>
+        
+        <div>
+            <h3>Rejoindre une partie</h3>
+            <input type="text" id="joinGameInput" placeholder="Entrez l'ID de votre adversaire">
+            <br>
+            <button id="joinGame">Rejoindre</button>
+        </div>
+        
+        <div id="connectionStatus">En attente de connexion...</div>
+    </div>
+
+    <!-- Interface de jeu -->
+    <div id="scoreBoard" style="display: none;">
         <div class="team-score team1">
-            <img src="/img/starship1.jpg" alt="Team 1">
+            <span>Joueur 1: </span>
             <span id="team1Score">0</span>
             <div id="team1Lives" class="lives-container"></div>
         </div>
         <div class="team-score team2">
-            <img src="/img/starship2.jpg" alt="Team 2">
+            <span>Joueur 2: </span>
             <span id="team2Score">0</span>
             <div id="team2Lives" class="lives-container"></div>
         </div>
     </div>
 
-    <div id="team1Points" class="point-counter">
-        <span class="point-label">ÉNERGIE:</span>
-        <span>0 / 50</span>
+    <div id="team1Points" class="point-counter" style="display: none;">
+        <span>ÉNERGIE: 0 / 50</span>
     </div>
-    <div id="team2Points" class="point-counter">
-        <span class="point-label">ÉNERGIE:</span>
-        <span>0 / 50</span>
+    <div id="team2Points" class="point-counter" style="display: none;">
+        <span>ÉNERGIE: 0 / 50</span>
+    </div>
+
+    <div id="networkStatus" style="display: none;">
+        <span id="statusText">Connecté</span>
     </div>
 
     <div id="gameOverMessage"></div>
 
-    <div class="divider"></div>
-    <div id="controlInfo">
-        Contrôles: Souris (mouvement + clic gauche), Clavier (WASD + G / Flèches + Espace), Manette
+    <div class="divider" style="display: none;"></div>
+    <div id="controlInfo" style="display: none;">
+        Contrôles: Souris (mouvement + clic gauche), WASD + G (J1) / Flèches + Espace (J2)
     </div>
-    <canvas id="gameCanvas"></canvas>
+    <canvas id="gameCanvas" style="display: none;"></canvas>
 
     <script>
+        console.log("🚀 Démarrage Starship Battle...");
+
+        // Variables globales
+        let peer = null;
+        let connection = null;
+        let isHost = false;
+        let gameStarted = false;
+        let myPlayerIndex = 0;
+        let networkLatency = 0;
+
+        // Configuration du jeu
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const barrierConfig = {
-            minWidth: 50,
-            maxWidth: 200,
-            height: 10,
-            deployTime: 1000,
-            lifeTime: 4000
-        };
-
-        const shieldConfig = {
-            particleCount: 40,
-            minRadius: 30,
-            maxRadius: 35,
-            particleSpeed: 0.02,
-            energyLayers: 3
-        };
-
-        // Chargement des images
-        const team1Ship = new Image();
-        team1Ship.src = '/img/starship1.jpg';
-        const team2Ship = new Image();
-        team2Ship.src = '/img/starship2.jpg';
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
         
-        // Support ships alternating pool
-        const supportShipImages = [];
-        for (let i = 3; i <= 7; i++) {
-            const img = new Image();
-            img.src = `/img/starship${i}.jpg`;
-            supportShipImages.push(img);
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // État du jeu
+        const gameState = {
+            players: [
+                {
+                    x: 0,
+                    y: 0,
+                    width: 49,
+                    height: 49,
+                    lives: 10,
+                    bullets: [],
+                    powerUpType: 'normal',
+                    active: true,
+                    shield: false,
+                    points: 0,
+                    impacts: 0
+                },
+                {
+                    x: 0,
+                    y: 0,
+                    width: 49,
+                    height: 49,
+                    lives: 10,
+                    bullets: [],
+                    powerUpType: 'normal',
+                    active: true,
+                    shield: false,
+                    points: 0,
+                    impacts: 0
+                }
+            ],
+            powerUps: [],
+            floatingPoints: [],
+            barriers: [],
+            paused: false,
+            gameOver: false,
+            winner: null
+        };
+
+        // Sons
+        const soundEffects = {
+            shoot: new Audio("/audio/shoot.mp3"),
+            hit: new Audio("/audio/hit.mp3"),
+            powerUp: new Audio("/audio/coin.mp3")
+        };
+
+        function playSound(sound) {
+            try {
+                sound.currentTime = 0;
+                sound.play().catch(() => {});
+            } catch (error) {
+                // Son optionnel
+            }
         }
 
-        // Power-ups
-        const powerUpImages = {
-            basic: new Image(),
-            powerUp1: new Image(),
-            powerUp2: new Image()
-        };
-        powerUpImages.basic.src = '/img/powerUp.jpg';
-        powerUpImages.powerUp1.src = '/img/powerUp1.jpg';
-        powerUpImages.powerUp2.src = '/img/powerUp2.jpg';
-
-        const teamConfig = {
-            team1: {
-                ships: [
-                    {
-                        x: canvas.width * 0.5,
-                        y: canvas.height * 0.25,
-                        width: 49,
-                        height: 49,
-                        lives: 10,
-                        image: team1Ship,
-                        rotation: Math.PI,
-                        shootCooldown: 0,
-                        usingMouse: false,
-                        mouseId: null,
-                        gamepad: null,
-                        points: 0,
-                        impacts: 0,
-                        active: true,
-                        shield: false,
-                        shieldStartTime: 0,
-                        shieldDuration: 10000,
-                        canGeneratePoints: true,
-                        powerUpType: 'normal',
-                        powerUpEndTime: 0,
-                        isPlayer: true
-                    },
-                    {
-                        x: canvas.width * 0.3,
-                        y: canvas.height * 0.15,
-                        width: 49,
-                        height: 49,
-                        lives: 10,
-                        image: supportShipImages[0],
-                        rotation: Math.PI,
-                        shootCooldown: 0,
-                        velocityX: 2,
-                        velocityY: 1,
-                        points: 0,
-                        impacts: 0,
-                        active: true,
-                        shield: false,
-                        shieldStartTime: 0,
-                        shieldDuration: 10000,
-                        canGeneratePoints: false,
-                        lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000,
-                        aiMode: 'aggressive',
-                        targetShip: null,
-                        isPlayer: false,
-                        shipImageIndex: 0
-                    },
-                    {
-                        x: canvas.width * 0.7,
-                        y: canvas.height * 0.35,
-                        width: 49,
-                        height: 49,
-                        lives: 10,
-                        image: supportShipImages[1],
-                        rotation: Math.PI,
-                        shootCooldown: 0,
-                        velocityX: -2,
-                        velocityY: 1.5,
-                        points: 0,
-                        impacts: 0,
-                        active: true,
-                        shield: false,
-                        shieldStartTime: 0,
-                        shieldDuration: 10000,
-                        canGeneratePoints: false,
-                        lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000,
-                        aiMode: 'defensive',
-                        dodgeCooldown: 0,
-                        isPlayer: false,
-                        shipImageIndex: 1
-                    }
-                ]
-            },
-            team2: {
-                ships: [
-                    {
-                        x: canvas.width * 0.5,
-                        y: canvas.height * 0.75,
-                        width: 49,
-                        height: 49,
-                        lives: 10,
-                        image: team2Ship,
-                        rotation: 0,
-                        shootCooldown: 0,
-                        usingMouse: false,
-                        mouseId: null,
-                        gamepad: null,
-                        points: 0,
-                        impacts: 0,
-                        active: true,
-                        shield: false,
-                        shieldStartTime: 0,
-                        shieldDuration: 10000,
-                        canGeneratePoints: true,
-                        powerUpType: 'normal',
-                        powerUpEndTime: 0,
-                        isPlayer: true
-                    },
-                    {
-                        x: canvas.width * 0.3,
-                        y: canvas.height * 0.65,
-                        width: 49,
-                        height: 49,
-                        lives: 10,
-                        image: supportShipImages[2],
-                        rotation: 0,
-                        shootCooldown: 0,
-                        velocityX: 2,
-                        velocityY: -1,
-                        points: 0,
-                        impacts: 0,
-                        active: true,
-                        shield: false,
-                        shieldStartTime: 0,
-                        shieldDuration: 10000,
-                        canGeneratePoints: false,
-                        lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000,
-                        aiMode: 'aggressive',
-                        targetShip: null,
-                        isPlayer: false,
-                        shipImageIndex: 2
-                    },
-                    {
-                        x: canvas.width * 0.7,
-                        y: canvas.height * 0.85,
-                        width: 49,
-                        height: 49,
-                        lives: 10,
-                        image: supportShipImages[3],
-                        rotation: 0,
-                        shootCooldown: 0,
-                        velocityX: -2,
-                        velocityY: -1.5,
-                        points: 0,
-                        impacts: 0,
-                        active: true,
-                        shield: false,
-                        shieldStartTime: 0,
-                        shieldDuration: 10000,
-                        canGeneratePoints: false,
-                        lastDirectionChange: Date.now(),
-                        directionChangeInterval: 2000,
-                        aiMode: 'defensive',
-                        dodgeCooldown: 0,
-                        isPlayer: false,
-                        shipImageIndex: 3
-                    }
-                ]
+        // Initialisation PeerJS
+        function initPeerJS() {
+            if (typeof Peer === 'undefined') {
+                console.error('PeerJS non disponible');
+                document.getElementById('connectionStatus').textContent = 'Erreur: PeerJS non chargé';
+                return;
             }
-        };
+
+            console.log('Initialisation PeerJS...');
+            document.getElementById('connectionStatus').textContent = 'Connexion aux serveurs...';
+            
+            try {
+                peer = new Peer();
+            } catch (error) {
+                console.error('Erreur création Peer:', error);
+                document.getElementById('connectionStatus').textContent = 'Erreur: ' + error.message;
+                return;
+            }
+            
+            peer.on('open', function(id) {
+                console.log('Peer ouvert avec ID:', id);
+                document.getElementById('peerIdSpan').textContent = id;
+                document.getElementById('hostGame').disabled = false;
+                document.getElementById('copyIdBtn').style.display = 'inline-block';
+                document.getElementById('connectionStatus').textContent = 'Prêt à jouer !';
+            });
+
+            peer.on('connection', function(conn) {
+                console.log('Connexion reçue de:', conn.peer);
+                setupConnection(conn);
+                isHost = true;
+                myPlayerIndex = 0;
+            });
+
+            peer.on('error', function(err) {
+                console.error('Erreur PeerJS:', err);
+                document.getElementById('connectionStatus').textContent = 'Erreur: ' + (err.message || 'Connexion échouée');
+            });
+        }
+
+        // Configuration de la connexion
+        function setupConnection(conn) {
+            connection = conn;
+            
+            conn.on('open', function() {
+                console.log('Connexion établie!');
+                document.getElementById('connectionStatus').textContent = 'Connecté!';
+                startGame();
+            });
+
+            conn.on('data', function(data) {
+                handleNetworkMessage(data);
+            });
+
+            conn.on('close', function() {
+                console.log('Connexion fermée');
+                document.getElementById('connectionStatus').textContent = 'Connexion perdue';
+            });
+        }
+
+        // Gestion des messages réseau
+        function handleNetworkMessage(data) {
+            switch(data.type) {
+                case 'playerInput':
+                    handleRemotePlayerInput(data);
+                    break;
+                case 'bulletFired':
+                    addBulletFromNetwork(data);
+                    break;
+                case 'ping':
+                    sendMessage({type: 'pong', timestamp: data.timestamp});
+                    break;
+                case 'pong':
+                    networkLatency = Date.now() - data.timestamp;
+                    document.getElementById('statusText').textContent = `Connecté (${networkLatency}ms)`;
+                    break;
+            }
+        }
+
+        function sendMessage(data) {
+            if (connection && connection.open) {
+                connection.send(data);
+            }
+        }
+
+        // Événements des boutons
+        document.getElementById('hostGame').addEventListener('click', function() {
+            document.getElementById('connectionStatus').textContent = 'En attente d\'un adversaire... Partagez votre ID !';
+            isHost = true;
+            myPlayerIndex = 0;
+        });
+
+        document.getElementById('copyIdBtn').addEventListener('click', function() {
+            const peerIdText = document.getElementById('peerIdSpan').textContent;
+            navigator.clipboard.writeText(peerIdText).then(function() {
+                const btn = document.getElementById('copyIdBtn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copié !';
+                btn.style.background = '#00ff00';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#04fbac';
+                }, 2000);
+            }).catch(function() {
+                alert('ID copié: ' + peerIdText);
+            });
+        });
+
+        document.getElementById('joinGame').addEventListener('click', function() {
+            const peerID = document.getElementById('joinGameInput').value.trim();
+            if (peerID) {
+                console.log('Connexion à:', peerID);
+                const conn = peer.connect(peerID);
+                setupConnection(conn);
+                isHost = false;
+                myPlayerIndex = 1;
+                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
+            }
+        });
+
+        // Démarrage du jeu
+        function startGame() {
+            document.getElementById('connectionPanel').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'block';
+            document.getElementById('scoreBoard').style.display = 'flex';
+            document.getElementById('team1Points').style.display = 'flex';
+            document.getElementById('team2Points').style.display = 'flex';
+            document.getElementById('networkStatus').style.display = 'block';
+            document.querySelector('.divider').style.display = 'block';
+            document.getElementById('controlInfo').style.display = 'block';
+            
+            gameStarted = true;
+            initializeGame();
+            gameLoop();
+        }
+
+        function initializeGame() {
+            const midPoint = canvas.height / 2;
+            
+            gameState.players[0].x = canvas.width * 0.5;
+            gameState.players[0].y = canvas.height * 0.25;
+            
+            gameState.players[1].x = canvas.width * 0.5;
+            gameState.players[1].y = canvas.height * 0.75;
+
+            initializeLives();
+        }
 
         function initializeLives() {
             const team1LivesContainer = document.getElementById('team1Lives');
@@ -473,1125 +477,208 @@
             team1LivesContainer.innerHTML = '';
             team2LivesContainer.innerHTML = '';
             
-            for (let i = 0; i < teamConfig.team1.ships[0].lives; i++) {
+            for (let i = 0; i < gameState.players[0].lives; i++) {
                 const lifeIcon = document.createElement('div');
                 lifeIcon.classList.add('life-icon');
                 team1LivesContainer.appendChild(lifeIcon);
             }
             
-            for (let i = 0; i < teamConfig.team2.ships[0].lives; i++) {
+            for (let i = 0; i < gameState.players[1].lives; i++) {
                 const lifeIcon = document.createElement('div');
                 lifeIcon.classList.add('life-icon');
                 team2LivesContainer.appendChild(lifeIcon);
             }
         }
-        initializeLives();
 
-        const gameState = {
-            team1Bullets: [],
-            team2Bullets: [],
-            paused: false,
-            gameOver: false,
-            winner: null,
-            pointers: new Map(),
-            lastShootTime: {
-                team1: 0,
-                team2: 0
-            },
-            barriers: [],
-            barrierTimer: 0,
-            floatingPoints: [],
-            floatingLives: [],
-            powerUps: [],
-            vortexes: [],
-            lastVortexTime: 0,
-            vortexInterval: 15000,
-            lastShipSwap: Date.now(),
-            shipSwapInterval: 15000,
-            shieldEffects: []
-        };
-
+        // Contrôles
         const keys = {};
+        const mouse = { x: 0, y: 0, clicking: false };
+
         window.addEventListener('keydown', (e) => {
             keys[e.code] = true;
-            if(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyG'].includes(e.code)) {
-                e.preventDefault();
-            }
+            e.preventDefault();
         });
+
         window.addEventListener('keyup', (e) => {
             keys[e.code] = false;
         });
 
-        const team1Controls = {
-            left: 'KeyA',
-            right: 'KeyD',
-            up: 'KeyW',
-            down: 'KeyS',
-            shoot: 'KeyG'
-        };
-
-        const team2Controls = {
-            left: 'ArrowLeft',
-            right: 'ArrowRight',
-            up: 'ArrowUp',
-            down: 'ArrowDown',
-            shoot: 'Space'
-        };
-
-        function handlePointerEvent(e) {
-            e.preventDefault();
-            if (gameState.gameOver) return;
-
+        canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const pointerX = e.clientX - rect.left;
-            const pointerY = e.clientY - rect.top;
-            const midPoint = canvas.height / 2;
-            const team = pointerY < midPoint ? 'team1' : 'team2';
-            const ship = teamConfig[team].ships[0];
-
-            if (!ship.active) return;
-
-            if (e.type === 'pointerdown') {
-                ship.mouseId = e.pointerId;
-                ship.usingMouse = true;
-                gameState.pointers.set(e.pointerId, {
-                    x: pointerX,
-                    y: pointerY,
-                    team: team,
-                    clicking: e.buttons === 1
-                });
-            } else if (e.type === 'pointerup' || e.type === 'pointercancel') {
-                gameState.pointers.delete(e.pointerId);
-                if (ship.mouseId === e.pointerId) {
-                    ship.usingMouse = false;
-                    ship.mouseId = null;
-                }
-            } else if (e.type === 'pointermove') {
-                if (gameState.pointers.has(e.pointerId)) {
-                    gameState.pointers.set(e.pointerId, {
-                        x: pointerX,
-                        y: pointerY,
-                        team: team,
-                        clicking: e.buttons === 1
-                    });
-                }
-            }
-        }
-
-        canvas.addEventListener('pointerdown', handlePointerEvent);
-        canvas.addEventListener('pointerup', handlePointerEvent);
-        canvas.addEventListener('pointermove', handlePointerEvent);
-        canvas.addEventListener('pointercancel', handlePointerEvent);
-        canvas.style.touchAction = 'none';
-
-        window.addEventListener('gamepadconnected', (e) => {
-            console.log(`Manette connectée: ${e.gamepad.id}`);
-            if (!teamConfig.team1.ships[0].gamepad) {
-                teamConfig.team1.ships[0].gamepad = e.gamepad.index;
-            } else if (!teamConfig.team2.ships[0].gamepad) {
-                teamConfig.team2.ships[0].gamepad = e.gamepad.index;
-            }
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
         });
 
-        window.addEventListener('gamepaddisconnected', (e) => {
-            console.log(`Manette déconnectée: ${e.gamepad.id}`);
-            if (teamConfig.team1.ships[0].gamepad === e.gamepad.index) {
-                teamConfig.team1.ships[0].gamepad = null;
-            } else if (teamConfig.team2.ships[0].gamepad === e.gamepad.index) {
-                teamConfig.team2.ships[0].gamepad = null;
-            }
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) mouse.clicking = true;
         });
 
-        function moveShipWithGamepad(ship, gamepadIndex, team) {
-            const gamepad = navigator.getGamepads()[gamepadIndex];
-            if (!gamepad) return;
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0) mouse.clicking = false;
+        });
+
+        // Gestion des entrées
+        function handleLocalPlayerInput() {
+            if (!gameStarted || gameState.paused) return;
             
+            const player = gameState.players[myPlayerIndex];
+            if (!player.active) return;
+
+            let moved = false;
+            let shot = false;
+
+            // Contrôles souris
+            const midPoint = canvas.height / 2;
+            const isInPlayerZone = myPlayerIndex === 0 ? mouse.y < midPoint : mouse.y > midPoint;
+            
+            if (isInPlayerZone) {
+                if (Math.abs(player.x - mouse.x) > 2 || Math.abs(player.y - mouse.y) > 2) {
+                    player.x = mouse.x;
+                    player.y = mouse.y;
+                    moved = true;
+                }
+                
+                if (mouse.clicking) shot = true;
+            }
+
+            // Contrôles clavier
+            const controls = myPlayerIndex === 0 ? 
+                { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', shoot: 'KeyG' } :
+                { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', shoot: 'Space' };
+
             const speed = 5;
-            const deadzone = 0.1;
-            const axisX = gamepad.axes[0];
-            const axisY = gamepad.axes[1];
+            if (keys[controls.left]) { player.x -= speed; moved = true; }
+            if (keys[controls.right]) { player.x += speed; moved = true; }
+            if (keys[controls.up]) { player.y -= speed; moved = true; }
+            if (keys[controls.down]) { player.y += speed; moved = true; }
+            if (keys[controls.shoot]) shot = true;
+
+            // Contraintes
+            const minY = myPlayerIndex === 0 ? player.height/2 : midPoint + player.height/2;
+            const maxY = myPlayerIndex === 0 ? midPoint - player.height/2 : canvas.height - player.height/2;
             
-            if (Math.abs(axisX) > deadzone) ship.x += axisX * speed;
-            if (Math.abs(axisY) > deadzone) ship.y += axisY * speed;
+            player.x = Math.max(player.width/2, Math.min(canvas.width - player.width/2, player.x));
+            player.y = Math.max(minY, Math.min(maxY, player.y));
+
+            // Tir
+            if (shot && (!player.lastShootTime || Date.now() - player.lastShootTime > 100)) {
+                shootBullet(player, myPlayerIndex);
+                player.lastShootTime = Date.now();
+            }
+
+            // Synchronisation réseau
+            if (moved || shot) {
+                sendMessage({
+                    type: 'playerInput',
+                    playerIndex: myPlayerIndex,
+                    x: player.x,
+                    y: player.y,
+                    shot: shot
+                });
+            }
+        }
+
+        function handleRemotePlayerInput(data) {
+            const player = gameState.players[data.playerIndex];
+            player.x = data.x;
+            player.y = data.y;
             
-            if (gamepad.buttons[0].pressed && ship.shootCooldown <= 0) {
-                shootBullet(ship, team);
-                ship.shootCooldown = 15;
+            if (data.shot) {
+                shootBullet(player, data.playerIndex);
             }
         }
 
-        function moveShip(ship, team) {
-            if (!ship.active) return;
-            if (ship.shootCooldown > 0) ship.shootCooldown--;
-
-            if (ship.usingMouse && ship.mouseId !== null && gameState.pointers.has(ship.mouseId)) {
-                const pointer = gameState.pointers.get(ship.mouseId);
-                ship.x = pointer.x;
-                ship.y = pointer.y;
-                if (pointer.clicking && ship.shootCooldown <= 0) {
-                    shootBullet(ship, team);
-                    ship.shootCooldown = 15;
-                }
-            } else {
-                const controls = team === 'team1' ? team1Controls : team2Controls;
-                const speed = 5;
-                if (keys[controls.left]) ship.x -= speed;
-                if (keys[controls.right]) ship.x += speed;
-                if (keys[controls.up]) ship.y -= speed;
-                if (keys[controls.down]) ship.y += speed;
-                if (keys[controls.shoot] && ship.shootCooldown <= 0) {
-                    shootBullet(ship, team);
-                    ship.shootCooldown = 15;
-                }
-            }
-
-            if (ship.gamepad !== null) {
-                moveShipWithGamepad(ship, ship.gamepad, team);
-            }
-
-            const midPoint = canvas.height / 2;
-            ship.x = Math.max(ship.width/2, Math.min(canvas.width - ship.width/2, ship.x));
-            ship.y = Math.max(
-                team === 'team1' ? ship.height/2 : midPoint + ship.height/2,
-                Math.min(
-                    team === 'team1' ? midPoint - ship.height/2 : canvas.height - ship.height/2,
-                    ship.y
-                )
-            );
-        }
-
-        function findNearestEnemy(ship, team) {
-            const enemyTeam = team === 'team1' ? 'team2' : 'team1';
-            let nearestEnemy = null;
-            let minDistance = Infinity;
-
-            teamConfig[enemyTeam].ships.forEach(enemy => {
-                if (enemy.active) {
-                    const dx = enemy.x - ship.x;
-                    const dy = enemy.y - ship.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        nearestEnemy = enemy;
-                    }
-                }
-            });
-
-            return nearestEnemy;
-        }
-
-        function predictBulletPath(ship, team) {
-            const enemyBullets = team === 'team1' ? gameState.team2Bullets : gameState.team1Bullets;
-            let nearestThreat = null;
-            let minTime = Infinity;
-
-            enemyBullets.forEach(bullet => {
-                const dx = ship.x - bullet.x;
-                const dy = ship.y - bullet.y;
-                const timeToImpact = Math.abs(dy / bullet.vy);
-                
-                if (timeToImpact < minTime && Math.abs(dx) < ship.width && dy * bullet.vy < 0) {
-                    minTime = timeToImpact;
-                    nearestThreat = bullet;
-                }
-            });
-
-            return { threat: nearestThreat, timeToImpact: minTime };
-        }
-
-        function moveEnemyShip(ship, team) {
-            if (!ship.active) return;
-            if (ship.shootCooldown > 0) ship.shootCooldown--;
-
-            const currentTime = Date.now();
+        function shootBullet(player, playerIndex) {
+            if (!player.active) return;
             
-            if (ship.aiMode === 'aggressive') {
-                // Mode agressif : poursuite active des ennemis
-                const target = findNearestEnemy(ship, team);
-                if (target) {
-                    const dx = target.x - ship.x;
-                    const dy = target.y - ship.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance > 100) {
-                        ship.velocityX = (dx / distance) * 3;
-                        ship.velocityY = (dy / distance) * 2;
-                    }
-                    
-                    // Tir prédictif
-                    if (Math.abs(dx) < 50 && ship.shootCooldown <= 0) {
-                        shootBullet(ship, team);
-                        ship.shootCooldown = 10;
-                    }
-                }
-            } else if (ship.aiMode === 'defensive') {
-                // Mode défensif : évitement des balles
-                const threatInfo = predictBulletPath(ship, team);
-                if (threatInfo.threat && threatInfo.timeToImpact < 30) {
-                    if (ship.dodgeCooldown <= 0) {
-                        ship.velocityX = (Math.random() > 0.5 ? 1 : -1) * 5;
-                        ship.dodgeCooldown = 30;
-                    }
-                } else {
-                    // Mouvement en zigzag
-                    if (currentTime - ship.lastDirectionChange > ship.directionChangeInterval) {
-                        ship.velocityX = (Math.random() - 0.5) * 4;
-                        ship.velocityY = (Math.random() - 0.5) * 3;
-                        ship.lastDirectionChange = currentTime;
-                    }
-                }
-                
-                if (ship.dodgeCooldown > 0) ship.dodgeCooldown--;
-                
-                // Tir opportuniste
-                const target = findNearestEnemy(ship, team);
-                if (target && Math.abs(target.x - ship.x) < 100 && ship.shootCooldown <= 0 && Math.random() < 0.3) {
-                    shootBullet(ship, team);
-                    ship.shootCooldown = 20;
-                }
-            }
-
-            ship.x += ship.velocityX;
-            ship.y += ship.velocityY;
-
-            const midPoint = canvas.height / 2;
-            if (ship.x <= ship.width/2 || ship.x >= canvas.width - ship.width/2) {
-                ship.velocityX *= -1;
-            }
-            if ((team === 'team1' && (ship.y <= ship.height/2 || ship.y >= midPoint - ship.height/2)) ||
-                (team === 'team2' && (ship.y <= midPoint + ship.height/2 || ship.y >= canvas.height - ship.height/2))) {
-                ship.velocityY *= -1;
-            }
-
-            ship.x = Math.max(ship.width/2, Math.min(canvas.width - ship.width/2, ship.x));
-            ship.y = Math.max(
-                team === 'team1' ? ship.height/2 : midPoint + ship.height/2,
-                Math.min(
-                    team === 'team1' ? midPoint - ship.height/2 : canvas.height - ship.height/2,
-                    ship.y
-                )
-            );
-
-            // Changement périodique de mode
-            if (currentTime - ship.lastDirectionChange > 5000) {
-                ship.aiMode = ship.aiMode === 'aggressive' ? 'defensive' : 'aggressive';
-                ship.lastDirectionChange = currentTime;
-            }
-        }
-
-        function shootBullet(ship, team) {
-            if (!ship.active) return;
             const bulletSpeed = 10;
-            const bulletColor = team === 'team1' ? '#04fbac' : '#FF7F50';
+            const bulletColor = playerIndex === 0 ? '#04fbac' : '#FF7F50';
             
-            if (ship.powerUpType === 'normal') {
-                const newBullet = {
-                    x: ship.x,
-                    y: ship.y,
-                    color: bulletColor,
-                    team: team,
-                    vy: team === 'team1' ? bulletSpeed : -bulletSpeed,
-                    vx: 0
-                };
-                
-                if (team === 'team1') {
-                    gameState.team1Bullets.push(newBullet);
-                } else {
-                    gameState.team2Bullets.push(newBullet);
-                }
-            } else if (ship.powerUpType === 'triple') {
-                // Tir triple
-                for (let i = -1; i <= 1; i++) {
-                    const newBullet = {
-                        x: ship.x + i * 20,
-                        y: ship.y,
-                        color: bulletColor,
-                        team: team,
-                        vy: team === 'team1' ? bulletSpeed : -bulletSpeed,
-                        vx: i * 0.5
-                    };
-                    
-                    if (team === 'team1') {
-                        gameState.team1Bullets.push(newBullet);
-                    } else {
-                        gameState.team2Bullets.push(newBullet);
-                    }
-                }
-            } else if (ship.powerUpType === 'spread') {
-                // Tir en éventail rotatif
-                const angleBase = Date.now() / 100;
-                for (let i = 0; i < 5; i++) {
-                    const angle = angleBase + (i * Math.PI / 4);
-                    const newBullet = {
-                        x: ship.x,
-                        y: ship.y,
-                        color: bulletColor,
-                        team: team,
-                        vy: team === 'team1' ? bulletSpeed * Math.cos(angle) : -bulletSpeed * Math.cos(angle),
-                        vx: bulletSpeed * Math.sin(angle) * 0.5
-                    };
-                    
-                    if (team === 'team1') {
-                        gameState.team1Bullets.push(newBullet);
-                    } else {
-                        gameState.team2Bullets.push(newBullet);
-                    }
-                }
-            }
-        }
-
-        function createPowerUp() {
-            if (Math.random() < 0.02 && gameState.powerUps.length < 3) {
-                const types = ['basic', 'powerUp1', 'powerUp2'];
-                const type = types[Math.floor(Math.random() * types.length)];
-                const powerUp = {
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    type: type,
-                    size: 40,
-                    active: true,
-                    createdTime: Date.now(),
-                    lifeTime: 15000
-                };
-                gameState.powerUps.push(powerUp);
-            }
-        }
-
-        function updatePowerUps() {
-            gameState.powerUps = gameState.powerUps.filter(powerUp => {
-                if (Date.now() - powerUp.createdTime > powerUp.lifeTime) {
-                    return false;
-                }
-
-                ['team1', 'team2'].forEach(team => {
-                    teamConfig[team].ships.forEach(ship => {
-                        if (ship.active && ship.isPlayer) {
-                            const dx = ship.x - powerUp.x;
-                            const dy = ship.y - powerUp.y;
-                            const distance = Math.sqrt(dx * dx + dy * dy);
-                            if (distance < 40) {
-                                if (powerUp.type === 'basic') {
-                                    ship.powerUpType = 'normal';
-                                } else if (powerUp.type === 'powerUp1') {
-                                    ship.powerUpType = 'triple';
-                                    ship.shootCooldown = 0;
-                                } else if (powerUp.type === 'powerUp2') {
-                                    ship.powerUpType = 'spread';
-                                    ship.shootCooldown = 0;
-                                }
-                                ship.powerUpEndTime = Date.now() + 20000;
-                                powerUp.active = false;
-                            }
-                        }
-                    });
-                });
-
-                return powerUp.active;
-            });
-
-            ['team1', 'team2'].forEach(team => {
-                teamConfig[team].ships.forEach(ship => {
-                    if (ship.powerUpEndTime && Date.now() > ship.powerUpEndTime) {
-                        ship.powerUpType = 'normal';
-                        ship.powerUpEndTime = 0;
-                    }
-                });
-            });
-        }
-
-        function createVortex() {
-            const currentTime = Date.now();
-            if (currentTime - gameState.lastVortexTime > gameState.vortexInterval && gameState.vortexes.length < 1) {
-                const vortex = {
-                    x: Math.random() * (canvas.width - 100) + 50,
-                    y: Math.random() * (canvas.height - 100) + 50,
-                    size: 80,
-                    active: true,
-                    createdTime: currentTime,
-                    lifeTime: 15000
-                };
-                gameState.vortexes.push(vortex);
-                gameState.lastVortexTime = currentTime;
-
-                // Créer l'élément visuel du vortex
-                const vortexElement = document.createElement('div');
-                vortexElement.className = 'vortex';
-                vortexElement.style.left = (vortex.x - 40) + 'px';
-                vortexElement.style.top = (vortex.y - 40) + 'px';
-                vortexElement.style.width = '80px';
-                vortexElement.style.height = '80px';
-                vortexElement.id = `vortex-${currentTime}`;
-                document.body.appendChild(vortexElement);
-                vortex.element = vortexElement;
-            }
-        }
-
-        function updateVortexes() {
-            gameState.vortexes = gameState.vortexes.filter(vortex => {
-                if (Date.now() - vortex.createdTime > vortex.lifeTime) {
-                    if (vortex.element) {
-                        vortex.element.remove();
-                    }
-                    return false;
-                }
-
-                ['team1', 'team2'].forEach(team => {
-                    teamConfig[team].ships.forEach(ship => {
-                        if (ship.active) {
-                            const dx = ship.x - vortex.x;
-                            const dy = ship.y - vortex.y;
-                            const distance = Math.sqrt(dx * dx + dy * dy);
-                            if (distance < 30) {
-                                // Téléportation aléatoire dans le camp du vaisseau
-                                const midPoint = canvas.height / 2;
-                                if (team === 'team1') {
-                                    ship.x = Math.random() * (canvas.width - 100) + 50;
-                                    ship.y = Math.random() * (midPoint - 100) + 50;
-                                } else {
-                                    ship.x = Math.random() * (canvas.width - 100) + 50;
-                                    ship.y = midPoint + Math.random() * (midPoint - 100) + 50;
-                                }
-                                // Effet visuel de téléportation
-                                createTeleportEffect(vortex.x, vortex.y);
-                                createTeleportEffect(ship.x, ship.y);
-                            }
-                        }
-                    });
-                });
-
-                return true;
-            });
-        }
-
-        function createTeleportEffect(x, y) {
-            for (let i = 0; i < 20; i++) {
-                const angle = (Math.PI * 2 * i) / 20;
-                const speed = 2 + Math.random() * 2;
-                gameState.floatingPoints.push({
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    size: 3 + Math.random() * 2,
-                    color: '#9400D3',
-                    opacity: 1,
-                    life: 300,
-                    isEffect: true
-                });
-            }
-        }
-
-        function swapSupportShips() {
-            const currentTime = Date.now();
-            if (currentTime - gameState.lastShipSwap > gameState.shipSwapInterval) {
-                ['team1', 'team2'].forEach(team => {
-                    teamConfig[team].ships.forEach(ship => {
-                        if (!ship.isPlayer && ship.active) {
-                            // Changement d'image de vaisseau
-                            const oldIndex = ship.shipImageIndex;
-                            let newIndex;
-                            do {
-                                newIndex = Math.floor(Math.random() * supportShipImages.length);
-                            } while (newIndex === oldIndex);
-                            
-                            ship.shipImageIndex = newIndex;
-                            ship.image = supportShipImages[newIndex];
-                            
-                            // Effet visuel de changement
-                            createSwapEffect(ship.x, ship.y);
-                        }
-                    });
-                });
-                gameState.lastShipSwap = currentTime;
-            }
-        }
-
-        function createSwapEffect(x, y) {
-            for (let i = 0; i < 10; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1 + Math.random() * 1.5;
-                gameState.floatingPoints.push({
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    size: 2 + Math.random() * 2,
-                    color: '#FFFF00',
-                    opacity: 1,
-                    life: 200,
-                    isEffect: true
-                });
-            }
-        }
-
-        function createBarrier() {
-            const midPoint = canvas.height / 2;
-            const zone = Math.random() < 0.5 ? 'top' : 'bottom';
-            const y = zone === 'top' ? (Math.random() * midPoint * 0.8) + midPoint * 0.1 :
-                                      (Math.random() * midPoint * 0.8) + midPoint + midPoint * 0.1;
-            
-            const width = Math.random() * (barrierConfig.maxWidth - barrierConfig.minWidth) + barrierConfig.minWidth;
-            const x = Math.random() * (canvas.width - width);
-            
-            const barrier = {
-                x: x,
-                y: y,
-                targetWidth: width,
-                currentWidth: 0,
-                height: barrierConfig.height,
-                deployStartTime: Date.now(),
-                deployTime: barrierConfig.deployTime,
-                lifeStartTime: Date.now(),
-                lifeTime: barrierConfig.lifeTime,
-                active: true
+            const bullet = {
+                x: player.x,
+                y: player.y,
+                color: bulletColor,
+                vy: playerIndex === 0 ? bulletSpeed : -bulletSpeed,
+                vx: 0,
+                playerIndex: playerIndex
             };
             
-            gameState.barriers.push(barrier);
-        }
-
-        function updateBarriers() {
-            const currentTime = Date.now();
-            if (currentTime - gameState.barrierTimer > 1300 && gameState.barriers.length < 10) {
-                for (let i = 0; i < 2; i++) {
-                    createBarrier();
-                }
-                gameState.barrierTimer = currentTime;
-            }
+            player.bullets.push(bullet);
             
-            gameState.barriers = gameState.barriers.filter(barrier => {
-                const deployElapsed = currentTime - barrier.deployStartTime;
-                if (deployElapsed < barrier.deployTime) {
-                    barrier.currentWidth = (deployElapsed / barrier.deployTime) * barrier.targetWidth;
-                } else {
-                    barrier.currentWidth = barrier.targetWidth;
-                }
-                
-                const lifeElapsed = currentTime - barrier.lifeStartTime;
-                return lifeElapsed < barrier.lifeTime;
+            sendMessage({
+                type: 'bulletFired',
+                bullet: bullet
             });
+            
+            playSound(soundEffects.shoot);
         }
 
-        function drawBarriers() {
-            gameState.barriers.forEach(barrier => {
-                const lifeElapsed = Date.now() - barrier.lifeStartTime;
-                const lifeRatio = lifeElapsed / barrier.lifeTime;
-                if (lifeRatio > 0.8) {
-                    ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.5;
-                }
-                
-                const gradient = ctx.createLinearGradient(barrier.x, barrier.y, barrier.x + barrier.currentWidth, barrier.y);
-                gradient.addColorStop(0, '#FFA500');
-                gradient.addColorStop(0.5, '#FFFF00');
-                gradient.addColorStop(1, '#FFA500');
-                
-                ctx.fillStyle = gradient;
-                ctx.fillRect(barrier.x, barrier.y, barrier.currentWidth, barrier.height);
-                ctx.globalAlpha = 1.0;
-            });
+        function addBulletFromNetwork(data) {
+            const player = gameState.players[data.bullet.playerIndex];
+            player.bullets.push(data.bullet);
         }
 
-        function checkBulletBarrierCollision(bullet) {
-            for (let i = 0; i < gameState.barriers.length; i++) {
-                const barrier = gameState.barriers[i];
-                if (bullet.x >= barrier.x && bullet.x <= barrier.x + barrier.currentWidth &&
-                    bullet.y >= barrier.y - 5 && bullet.y <= barrier.y + barrier.height + 5) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
+        // Mise à jour du jeu
         function updateBullets() {
-            gameState.team1Bullets = gameState.team1Bullets.filter(bullet => {
-                bullet.y += bullet.vy;
-                bullet.x += bullet.vx || 0;
-                if (checkBulletBarrierCollision(bullet)) {
-                    return false;
-                }
-                return bullet.y > -10 && bullet.y < canvas.height + 10 && bullet.x > -10 && bullet.x < canvas.width + 10;
-            });
-
-            gameState.team2Bullets = gameState.team2Bullets.filter(bullet => {
-                bullet.y += bullet.vy;
-                bullet.x += bullet.vx || 0;
-                if (checkBulletBarrierCollision(bullet)) {
-                    return false;
-                }
-                return bullet.y > -10 && bullet.y < canvas.height + 10 && bullet.x > -10 && bullet.x < canvas.width + 10;
-            });
-        }
-
-        function createFloatingPoints(x, y, team, amount = 30) {
-            const pointColor = team === 'team1' ? '#FF7F50' : '#04fbac';
-            for (let i = 0; i < amount; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 0.5 + Math.random() * 1.5;
-                gameState.floatingPoints.push({
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    size: 2 + Math.random() * 2,
-                    color: pointColor,
-                    team: team,
-                    opacity: 1,
-                    active: true,
-                    targetTeam: team === 'team1' ? 'team2' : 'team1'
-                });
-            }
-        }
-
-        function createFloatingLives() {
-            if (Math.random() < 0.005 && gameState.floatingLives.length < 2) {
-                const isTop = Math.random() < 0.5;
-                const x = Math.random() * canvas.width;
-                const y = isTop ? -50 : canvas.height + 50;
-                const vy = isTop ? 1.5 : -1.5;
-                gameState.floatingLives.push({
-                    x: x,
-                    y: y,
-                    vy: vy,
-                    size: 30,
-                    targetTeam: isTop ? 'team1' : 'team2',
-                    image: new Image(),
-                    active: true,
-                    blinkClass: isTop ? 'life-blink-red' : 'life-blink-blue'
-                });
-                gameState.floatingLives[gameState.floatingLives.length - 1].image.src = '/img/lives.jpg';
-            }
-        }
-
-        function updateFloatingPoints() {
-            // Limiter le nombre de points flottants
-            if (gameState.floatingPoints.length > 200) {
-                gameState.floatingPoints = gameState.floatingPoints.slice(-200);
-            }
-
-            for (let i = gameState.floatingPoints.length - 1; i >= 0; i--) {
-                const point = gameState.floatingPoints[i];
-
-                if (point.isEffect) {
-                    point.x += point.vx;
-                    point.y += point.vy;
-                    point.vx *= 0.98;
-                    point.vy *= 0.98;
-                    point.life -= 8;
-                    if (point.life < 100) {
-                        point.opacity = point.life / 100;
-                    }
-                    if (point.life <= 0) {
-                        gameState.floatingPoints.splice(i, 1);
-                    }
-                    continue;
-                }
-
-                point.x += point.vx;
-                point.y += point.vy;
-                point.vx *= 0.99;
-                point.vy *= 0.99;
-
-                const targetTeam = point.targetTeam;
-                const targetY = targetTeam === 'team1' ? canvas.height * 0.25 : canvas.height * 0.75;
-                const dy = targetY - point.y;
-                const distanceToCamp = Math.abs(dy);
-                const ny = dy / Math.max(distanceToCamp, 1);
-                point.vy = point.vy * 0.95 + ny * 0.05;
-
-                teamConfig[targetTeam].ships.forEach(ship => {
-                    if (ship.active) {
-                        const dx = ship.x - point.x;
-                        const dyShip = ship.y - point.y;
-                        const distance = Math.sqrt(dx * dx + dyShip * dyShip);
-                        if (distance < 30) {
-                            if (ship.canGeneratePoints) {
-                                ship.points += 1;
-                                document.querySelector(`#${targetTeam}Points span`).textContent = `${ship.points} / 50`;
-                            }
-                            if (ship.points >= 50 && !ship.shield) {
-                                activateShield(ship);
-                            }
-                            gameState.floatingPoints.splice(i, 1);
-                        }
-                    }
-                });
-
-                if (point.x < -20 || point.x > canvas.width + 20 || point.y < -20 || point.y > canvas.height + 20) {
-                    gameState.floatingPoints.splice(i, 1);
-                }
-            }
-        }
-
-        function updateFloatingLives() {
-            for (let i = gameState.floatingLives.length - 1; i >= 0; i--) {
-                const life = gameState.floatingLives[i];
-                life.y += life.vy;
-
-                const targetTeam = life.targetTeam;
-                teamConfig[targetTeam].ships.forEach(ship => {
-                    if (ship.active) {
-                        const dx = ship.x - life.x;
-                        const dy = ship.y - life.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < 30) {
-                            ship.lives = Math.min(10, ship.lives + 1);
-                            ship.impacts = Math.max(0, ship.impacts - 1);
-                            if (ship === teamConfig[targetTeam].ships[0]) {
-                                initializeLives();
-                            }
-                            gameState.floatingLives.splice(i, 1);
-                        }
-                    }
-                });
-
-                if (life.x < -50 || life.x > canvas.width + 50 || life.y < -50 || life.y > canvas.height + 50) {
-                    gameState.floatingLives.splice(i, 1);
-                }
-            }
-        }
-
-        function updateShields() {
-            ['team1', 'team2'].forEach(team => {
-                teamConfig[team].ships.forEach(ship => {
-                    if (ship.shield) {
-                        updateShieldEffect(ship, team);
-                        if (Date.now() - ship.shieldStartTime > ship.shieldDuration) {
-                            ship.shield = false;
-                            removeShieldEffect(ship, team);
-                        }
-                    }
-                });
-            });
-        }
-
-        function drawFloatingPoints() {
-            gameState.floatingPoints.forEach(point => {
-                ctx.save();
-                ctx.globalAlpha = point.opacity;
-                ctx.fillStyle = point.color;
-                ctx.shadowColor = point.color;
-                ctx.shadowBlur = 5;
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, point.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            });
-        }
-
-        function drawFloatingLives() {
-            gameState.floatingLives.forEach(life => {
-                if (life.image.complete) {
-                    ctx.save();
-                    if (life.blinkClass === 'life-blink-red') {
-                        ctx.filter = 'hue-rotate(0deg) brightness(1.2)';
-                        if (Math.sin(Date.now() / 100) > 0) {
-                            ctx.globalAlpha = 0.5;
-                        }
-                    } else {
-                        ctx.filter = 'hue-rotate(240deg) brightness(1.2)';
-                        if (Math.sin(Date.now() / 100) > 0) {
-                            ctx.globalAlpha = 0.5;
-                        }
-                    }
-                    ctx.drawImage(
-                        life.image,
-                        life.x - life.size / 2,
-                        life.y - life.size / 2,
-                        life.size,
-                        life.size
-                    );
-                    ctx.restore();
-                }
-            });
-        }
-
-        function drawPowerUps() {
-            gameState.powerUps.forEach(powerUp => {
-                const img = powerUpImages[powerUp.type];
-                if (img.complete) {
-                    ctx.save();
-                    ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 200) * 0.2;
-                    ctx.drawImage(
-                        img,
-                        powerUp.x - powerUp.size / 2,
-                        powerUp.y - powerUp.size / 2,
-                        powerUp.size,
-                        powerUp.size
-                    );
+            gameState.players.forEach(player => {
+                player.bullets = player.bullets.filter(bullet => {
+                    bullet.y += bullet.vy;
+                    bullet.x += bullet.vx || 0;
                     
-                    // Ajouter un halo coloré selon le type
-                    ctx.shadowBlur = 20;
-                    if (powerUp.type === 'powerUp1') {
-                        ctx.shadowColor = '#00FF00';
-                    } else if (powerUp.type === 'powerUp2') {
-                        ctx.shadowColor = '#FF00FF';
-                    }
-                    ctx.restore();
-                }
-            });
-        }
-
-        function drawVortexes() {
-            gameState.vortexes.forEach(vortex => {
-                ctx.save();
-                const gradient = ctx.createRadialGradient(vortex.x, vortex.y, 10, vortex.x, vortex.y, 40);
-                gradient.addColorStop(0, 'rgba(148, 0, 211, 0)');
-                gradient.addColorStop(0.5, 'rgba(148, 0, 211, 0.5)');
-                gradient.addColorStop(1, 'rgba(75, 0, 130, 0.8)');
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(vortex.x, vortex.y, 40, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Ajouter des spirales
-                ctx.strokeStyle = '#9400D3';
-                ctx.lineWidth = 2;
-                ctx.globalAlpha = 0.5;
-                const time = Date.now() / 50;
-                for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
-                    const startAngle = time + (i * Math.PI * 2 / 3);
-                    ctx.arc(vortex.x, vortex.y, 30, startAngle, startAngle + Math.PI / 2, false);
-                    ctx.stroke();
-                }
-                ctx.restore();
-            });
-        }
-
-        function createImpactEffect(x, y) {
-            for (let i = 0; i < 10; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 0.5 + Math.random() * 1.5;
-                gameState.floatingPoints.push({
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    size: 2 + Math.random() * 2,
-                    color: '#FFFFFF',
-                    opacity: 1,
-                    life: 150 + Math.random() * 100,
-                    isEffect: true
-                });
-            }
-        }
-
-        function createBigExplosion(x, y, team) {
-            const pointColor = team === 'team1' ? '#04fbac' : '#FF7F50';
-            const colors = [pointColor, '#FFFFFF', '#FFFF00', '#FF0000'];
-            for (let i = 0; i < 100; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1 + Math.random() * 4;
-                const size = 3 + Math.random() * 4;
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                gameState.floatingPoints.push({
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    size: size,
-                    color: color,
-                    opacity: 1,
-                    life: 200 + Math.random() * 300,
-                    isEffect: true
-                });
-            }
-            createFloatingPoints(x, y, team, 100);
-        }
-
-        function activateShield(ship) {
-            if (!ship.active) return;
-
-            ship.shield = true;
-            ship.shieldStartTime = Date.now();
-            ship.points = 0;
-
-            const team = getShipTeam(ship);
-            if (ship === teamConfig[team].ships[0]) {
-                document.querySelector(`#${team}Points span`).textContent = `${ship.points} / 50`;
-            }
-
-            createShieldEffect(ship, team);
-        }
-
-        function getShipTeam(ship) {
-            for (let team of ['team1', 'team2']) {
-                if (teamConfig[team].ships.includes(ship)) {
-                    return team;
-                }
-            }
-            return null;
-        }
-
-        function createShieldEffect(ship, team) {
-            const shieldId = `shield-${team}-${Date.now()}`;
-            ship.shieldId = shieldId;
-
-            const container = document.createElement('div');
-            container.className = 'shield-container';
-            container.id = shieldId;
-            container.style.width = (ship.width + 40) + 'px';
-            container.style.height = (ship.height + 40) + 'px';
-            document.body.appendChild(container);
-
-            const baseColor = team === 'team1' ? '#04fbac' : '#FF7F50';
-            const colors = team === 'team1' ? 
-                ['#04fbac', '#00ffff', '#0088ff', '#80ffff'] : 
-                ['#FF7F50', '#ffcc80', '#ff8844', '#ffaa66'];
-
-            // Création de plusieurs couches d'énergie
-            for (let i = 0; i < shieldConfig.energyLayers; i++) {
-                const layer = document.createElement('div');
-                layer.className = 'shield-layer';
-                layer.style.width = '100%';
-                layer.style.height = '100%';
-                layer.style.borderColor = colors[i % colors.length];
-                layer.style.animationDelay = `${i * 0.2}s`;
-                layer.style.animationDuration = `${2 + i * 0.3}s`;
-                container.appendChild(layer);
-
-                const ring = document.createElement('div');
-                ring.className = 'energy-ring';
-                ring.style.width = `${100 + i * 10}%`;
-                ring.style.height = `${100 + i * 10}%`;
-                ring.style.left = `${-i * 5}%`;
-                ring.style.top = `${-i * 5}%`;
-                ring.style.borderColor = colors[(i + 1) % colors.length];
-                ring.style.animationDuration = `${3 - i * 0.5}s`;
-                ring.style.animationDirection = i % 2 === 0 ? 'normal' : 'reverse';
-                container.appendChild(ring);
-            }
-
-            // Particules d'énergie simplifiées
-            const shieldParticles = [];
-            for (let i = 0; i < 20; i++) {
-                const particle = {
-                    angle: Math.random() * Math.PI * 2,
-                    speed: shieldConfig.particleSpeed + Math.random() * 0.01,
-                    radius: shieldConfig.minRadius + Math.random() * (shieldConfig.maxRadius - shieldConfig.minRadius),
-                    size: 2 + Math.random() * 2,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    pulsePhase: Math.random() * Math.PI * 2
-                };
-                shieldParticles.push(particle);
-            }
-
-            gameState.shieldEffects.push({
-                ship: ship,
-                container: container,
-                particles: shieldParticles,
-                team: team
-            });
-        }
-
-        function updateShieldEffect(ship, team) {
-            const effect = gameState.shieldEffects.find(e => e.ship === ship);
-            if (!effect) return;
-
-            effect.container.style.left = (ship.x - parseInt(effect.container.style.width) / 2) + 'px';
-            effect.container.style.top = (ship.y - parseInt(effect.container.style.height) / 2) + 'px';
-        }
-
-        function removeShieldEffect(ship, team) {
-            const effectIndex = gameState.shieldEffects.findIndex(e => e.ship === ship);
-            if (effectIndex !== -1) {
-                const effect = gameState.shieldEffects[effectIndex];
-                effect.container.remove();
-                gameState.shieldEffects.splice(effectIndex, 1);
-            }
-        }
-
-        function drawShieldParticles() {
-            gameState.shieldEffects.forEach(effect => {
-                if (!effect.ship.active) return;
-                
-                effect.particles.forEach(particle => {
-                    particle.angle += particle.speed;
-                    const x = effect.ship.x + Math.cos(particle.angle) * particle.radius;
-                    const y = effect.ship.y + Math.sin(particle.angle) * particle.radius;
-                    
-                    const pulseFactor = 0.5 + Math.sin(Date.now() / 200 + particle.pulsePhase) * 0.5;
-                    
-                    ctx.save();
-                    ctx.globalAlpha = 0.4 + pulseFactor * 0.4;
-                    ctx.fillStyle = particle.color;
-                    ctx.shadowColor = particle.color;
-                    ctx.shadowBlur = 5 + pulseFactor * 5;
-                    ctx.beginPath();
-                    ctx.arc(x, y, particle.size * (0.5 + pulseFactor * 0.5), 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
+                    return bullet.y > -10 && bullet.y < canvas.height + 10 && 
+                           bullet.x > -10 && bullet.x < canvas.width + 10;
                 });
             });
         }
 
         function checkCollisions() {
-            const team1Ships = teamConfig.team1.ships;
-            const team2Ships = teamConfig.team2.ships;
-
-            team1Ships.forEach(team1Ship => {
-                if (team1Ship.active && !team1Ship.shield) {
-                    gameState.team2Bullets.forEach((bullet, bulletIndex) => {
-                        if (Math.abs(bullet.x - team1Ship.x) < team1Ship.width/2 &&
-                            Math.abs(bullet.y - team1Ship.y) < team1Ship.height/2) {
-                            team1Ship.impacts++;
-                            gameState.team2Bullets.splice(bulletIndex, 1);
-                            if (team1Ship.canGeneratePoints) {
-                                createFloatingPoints(team1Ship.x, team1Ship.y, 'team1', 30);
-                            }
-                            if (team1Ship.impacts >= 10) {
-                                team1Ship.impacts = 0;
-                                createBigExplosion(team1Ship.x, team1Ship.y, 'team1');
-                                team1Ship.active = false;
-                                if (team1Ship === teamConfig.team1.ships[0]) {
-                                    endGame('team2');
+            for (let i = 0; i < gameState.players.length; i++) {
+                const player = gameState.players[i];
+                if (!player.active) continue;
+                
+                for (let j = 0; j < gameState.players.length; j++) {
+                    if (i === j) continue;
+                    
+                    const opponent = gameState.players[j];
+                    
+                    opponent.bullets = opponent.bullets.filter(bullet => {
+                        const dx = Math.abs(bullet.x - player.x);
+                        const dy = Math.abs(bullet.y - player.y);
+                        
+                        if (dx < player.width/2 && dy < player.height/2) {
+                            if (!player.shield) {
+                                player.impacts++;
+                                
+                                if (player.impacts >= 10) {
+                                    player.impacts = 0;
+                                    player.active = false;
+                                    endGame(j);
                                 }
-                            } else {
-                                createImpactEffect(team1Ship.x, team1Ship.y);
+                                
+                                playSound(soundEffects.hit);
                             }
+                            
+                            return false;
                         }
+                        
+                        return true;
                     });
                 }
-            });
-
-            team2Ships.forEach(team2Ship => {
-                if (team2Ship.active && !team2Ship.shield) {
-                    gameState.team1Bullets.forEach((bullet, bulletIndex) => {
-                        if (Math.abs(bullet.x - team2Ship.x) < team2Ship.width/2 &&
-                            Math.abs(bullet.y - team2Ship.y) < team2Ship.height/2) {
-                            team2Ship.impacts++;
-                            gameState.team1Bullets.splice(bulletIndex, 1);
-                            if (team2Ship.canGeneratePoints) {
-                                createFloatingPoints(team2Ship.x, team2Ship.y, 'team2', 30);
-                            }
-                            if (team2Ship.impacts >= 10) {
-                                team2Ship.impacts = 0;
-                                createBigExplosion(team2Ship.x, team2Ship.y, 'team2');
-                                team2Ship.active = false;
-                                if (team2Ship === teamConfig.team2.ships[0]) {
-                                    endGame('team1');
-                                }
-                            } else {
-                                createImpactEffect(team2Ship.x, team2Ship.y);
-                            }
-                        }
-                    });
-                }
-            });
+            }
         }
 
-        function endGame(winner) {
+        function endGame(winnerIndex) {
             gameState.gameOver = true;
-            gameState.winner = winner;
+            gameState.winner = winnerIndex;
             
             const gameOverMessage = document.getElementById('gameOverMessage');
             gameOverMessage.style.display = 'block';
             
-            if (winner === 'team1') {
-                gameOverMessage.textContent = "Victoire du joueur HAUT !";
+            if (winnerIndex === 0) {
+                gameOverMessage.textContent = "Victoire du Joueur 1 !";
                 gameOverMessage.style.color = '#04fbac';
             } else {
-                gameOverMessage.textContent = "Victoire du joueur BAS !";
+                gameOverMessage.textContent = "Victoire du Joueur 2 !";
                 gameOverMessage.style.color = '#FF7F50';
             }
             
@@ -1602,349 +689,118 @@
             replayButton.style.padding = '10px 20px';
             replayButton.style.fontSize = '18px';
             replayButton.style.cursor = 'pointer';
+            replayButton.style.background = '#04fbac';
+            replayButton.style.color = 'black';
+            replayButton.style.border = 'none';
+            replayButton.style.borderRadius = '5px';
             replayButton.onclick = resetGame;
             gameOverMessage.appendChild(replayButton);
         }
 
-        function drawBullets() {
-            gameState.team1Bullets.forEach(bullet => {
-                ctx.save();
-                ctx.fillStyle = bullet.color;
-                ctx.shadowColor = bullet.color;
-                ctx.shadowBlur = 5;
-                ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            });
-
-            gameState.team2Bullets.forEach(bullet => {
-                ctx.save();
-                ctx.fillStyle = bullet.color;
-                ctx.shadowColor = bullet.color;
-                ctx.shadowBlur = 5;
-                ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            });
-        }
-
-        function drawShips() {
-            teamConfig.team1.ships.forEach(ship => {
-                if (ship.active) {
-                    if (ship.image.complete) {
-                        ctx.save();
-                        if (ship.impacts > 0) {
-                            ctx.save();
-                            ctx.fillStyle = '#FF0000';
-                            ctx.font = '16px Arial';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(
-                                `${ship.impacts}/10`,
-                                ship.x,
-                                ship.y - ship.height/2 - 10
-                            );
-                            ctx.restore();
-                        }
-                        
-                        // Effet de power-up visuel
-                        if (ship.powerUpType !== 'normal' && ship.isPlayer) {
-                            ctx.save();
-                            ctx.shadowBlur = 20;
-                            if (ship.powerUpType === 'triple') {
-                                ctx.shadowColor = '#00FF00';
-                            } else if (ship.powerUpType === 'spread') {
-                                ctx.shadowColor = '#FF00FF';
-                            }
-                            ctx.beginPath();
-                            ctx.arc(ship.x, ship.y, ship.width/2 + 10, 0, Math.PI * 2);
-                            ctx.strokeStyle = ctx.shadowColor;
-                            ctx.lineWidth = 2;
-                            ctx.stroke();
-                            ctx.restore();
-                        }
-                        
-                        ctx.translate(ship.x, ship.y);
-                        ctx.rotate(ship.rotation);
-                        ctx.drawImage(
-                            ship.image,
-                            -ship.width/2,
-                            -ship.height/2,
-                            ship.width,
-                            ship.height
-                        );
-                        ctx.restore();
-                        
-                        // Indicateur de power-up
-                        if (ship.powerUpType !== 'normal' && ship.isPlayer) {
-                            ctx.save();
-                            ctx.fillStyle = ship.powerUpType === 'triple' ? '#00FF00' : '#FF00FF';
-                            ctx.font = 'bold 14px Arial';
-                            ctx.textAlign = 'center';
-                            const timeLeft = Math.ceil((ship.powerUpEndTime - Date.now()) / 1000);
-                            ctx.fillText(
-                                `${ship.powerUpType.toUpperCase()}: ${timeLeft}s`,
-                                ship.x,
-                                ship.y + ship.height/2 + 15
-                            );
-                            ctx.restore();
-                        }
-                    } else {
-                        ctx.fillStyle = '#04fbac';
-                        ctx.fillRect(
-                            ship.x - ship.width/2,
-                            ship.y - ship.height/2,
-                            ship.width,
-                            ship.height
-                        );
-                    }
-                }
-            });
-
-            teamConfig.team2.ships.forEach(ship => {
-                if (ship.active) {
-                    if (ship.image.complete) {
-                        ctx.save();
-                        if (ship.impacts > 0) {
-                            ctx.save();
-                            ctx.fillStyle = '#FF0000';
-                            ctx.font = '16px Arial';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(
-                                `${ship.impacts}/10`,
-                                ship.x,
-                                ship.y - ship.height/2 - 10
-                            );
-                            ctx.restore();
-                        }
-                        
-                        // Effet de power-up visuel
-                        if (ship.powerUpType !== 'normal' && ship.isPlayer) {
-                            ctx.save();
-                            ctx.shadowBlur = 20;
-                            if (ship.powerUpType === 'triple') {
-                                ctx.shadowColor = '#00FF00';
-                            } else if (ship.powerUpType === 'spread') {
-                                ctx.shadowColor = '#FF00FF';
-                            }
-                            ctx.beginPath();
-                            ctx.arc(ship.x, ship.y, ship.width/2 + 10, 0, Math.PI * 2);
-                            ctx.strokeStyle = ctx.shadowColor;
-                            ctx.lineWidth = 2;
-                            ctx.stroke();
-                            ctx.restore();
-                        }
-                        
-                        ctx.translate(ship.x, ship.y);
-                        ctx.rotate(ship.rotation);
-                        ctx.drawImage(
-                            ship.image,
-                            -ship.width/2,
-                            -ship.height/2,
-                            ship.width,
-                            ship.height
-                        );
-                        ctx.restore();
-                        
-                        // Indicateur de power-up
-                        if (ship.powerUpType !== 'normal' && ship.isPlayer) {
-                            ctx.save();
-                            ctx.fillStyle = ship.powerUpType === 'triple' ? '#00FF00' : '#FF00FF';
-                            ctx.font = 'bold 14px Arial';
-                            ctx.textAlign = 'center';
-                            const timeLeft = Math.ceil((ship.powerUpEndTime - Date.now()) / 1000);
-                            ctx.fillText(
-                                `${ship.powerUpType.toUpperCase()}: ${timeLeft}s`,
-                                ship.x,
-                                ship.y + ship.height/2 + 15
-                            );
-                            ctx.restore();
-                        }
-                    } else {
-                        ctx.fillStyle = '#FF7F50';
-                        ctx.fillRect(
-                            ship.x - ship.width/2,
-                            ship.y - ship.height/2,
-                            ship.width,
-                            ship.height
-                        );
-                    }
-                }
-            });
-        }
-
-        function gameLoop() {
-            if (gameState.paused) {
-                ctx.save();
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = '36px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('PAUSE', canvas.width / 2, canvas.height / 2);
-                ctx.restore();
-                requestAnimationFrame(gameLoop);
-                return;
-            }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (!gameState.gameOver) {
-                moveShip(teamConfig.team1.ships[0], 'team1');
-                moveShip(teamConfig.team2.ships[0], 'team2');
-                moveEnemyShip(teamConfig.team1.ships[1], 'team1');
-                moveEnemyShip(teamConfig.team1.ships[2], 'team1');
-                moveEnemyShip(teamConfig.team2.ships[1], 'team2');
-                moveEnemyShip(teamConfig.team2.ships[2], 'team2');
-                updateBarriers();
-                updateBullets();
-                checkCollisions();
-                createFloatingLives();
-                updateFloatingLives();
-                updateShields();
-                createPowerUp();
-                updatePowerUps();
-                createVortex();
-                updateVortexes();
-                swapSupportShips();
-            }
-
-            drawBarriers();
-            drawBullets();
-            drawShips();
-            updateFloatingPoints();
-            drawFloatingPoints();
-            drawFloatingLives();
-            drawPowerUps();
-            drawVortexes();
-            drawShieldParticles();
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            const midPoint = canvas.height / 2;
-            teamConfig.team1.ships[0].x = canvas.width * 0.5;
-            teamConfig.team1.ships[0].y = midPoint * 0.5;
-            teamConfig.team1.ships[1].x = canvas.width * 0.3;
-            teamConfig.team1.ships[1].y = midPoint * 0.3;
-            teamConfig.team1.ships[2].x = canvas.width * 0.7;
-            teamConfig.team1.ships[2].y = midPoint * 0.7;
-            teamConfig.team2.ships[0].x = canvas.width * 0.5;
-            teamConfig.team2.ships[0].y = midPoint * 1.5;
-            teamConfig.team2.ships[1].x = canvas.width * 0.3;
-            teamConfig.team2.ships[1].y = midPoint * 1.3;
-            teamConfig.team2.ships[2].x = canvas.width * 0.7;
-            teamConfig.team2.ships[2].y = midPoint * 1.7;
-            
-            document.querySelector('.divider').style.top = `${midPoint}px`;
-        });
-
-        function resetPoints() {
-            teamConfig.team1.ships.forEach(ship => ship.points = 0);
-            teamConfig.team2.ships.forEach(ship => ship.points = 0);
-            document.querySelector('#team1Points span').textContent = '0 / 50';
-            document.querySelector('#team2Points span').textContent = '0 / 50';
-            gameState.floatingPoints = [];
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyR') {
-                resetGame();
-            }
-            if (e.code === 'Escape' && !gameState.gameOver) {
-                gameState.paused = !gameState.paused;
-            }
-        });
-
         function resetGame() {
-            const gameOverMessage = document.getElementById('gameOverMessage');
-            gameOverMessage.style.display = 'none';
-            gameOverMessage.innerHTML = '';
-            
             gameState.gameOver = false;
             gameState.winner = null;
-            gameState.paused = false;
             
-            document.getElementById('team1Score').textContent = '0';
-            document.getElementById('team2Score').textContent = '0';
-            
-            const midPoint = canvas.height / 2;
-            
-            // Reset all ships
-            ['team1', 'team2'].forEach(team => {
-                teamConfig[team].ships.forEach((ship, index) => {
-                    ship.lives = 10;
-                    ship.impacts = 0;
-                    ship.points = 0;
-                    ship.active = true;
-                    ship.shield = false;
-                    ship.powerUpType = 'normal';
-                    ship.powerUpEndTime = 0;
-                    ship.shootCooldown = 0;
-                    
-                    if (!ship.isPlayer) {
-                        ship.velocityX = (Math.random() - 0.5) * 4;
-                        ship.velocityY = (Math.random() - 0.5) * 4;
-                        ship.lastDirectionChange = Date.now();
-                        ship.aiMode = Math.random() > 0.5 ? 'aggressive' : 'defensive';
-                    }
-                });
+            gameState.players.forEach((player, index) => {
+                player.lives = 10;
+                player.impacts = 0;
+                player.active = true;
+                player.bullets = [];
+                
+                const midPoint = canvas.height / 2;
+                player.x = canvas.width * 0.5;
+                player.y = index === 0 ? canvas.height * 0.25 : canvas.height * 0.75;
             });
             
-            teamConfig.team1.ships[0].x = canvas.width * 0.5;
-            teamConfig.team1.ships[0].y = midPoint * 0.5;
-            teamConfig.team1.ships[1].x = canvas.width * 0.3;
-            teamConfig.team1.ships[1].y = midPoint * 0.3;
-            teamConfig.team1.ships[2].x = canvas.width * 0.7;
-            teamConfig.team1.ships[2].y = midPoint * 0.7;
-            
-            teamConfig.team2.ships[0].x = canvas.width * 0.5;
-            teamConfig.team2.ships[0].y = midPoint * 1.5;
-            teamConfig.team2.ships[1].x = canvas.width * 0.3;
-            teamConfig.team2.ships[1].y = midPoint * 1.3;
-            teamConfig.team2.ships[2].x = canvas.width * 0.7;
-            teamConfig.team2.ships[2].y = midPoint * 1.7;
-            
-            document.querySelector('#team1Points span').textContent = '0 / 50';
-            document.querySelector('#team2Points span').textContent = '0 / 50';
-            
-            gameState.team1Bullets = [];
-            gameState.team2Bullets = [];
-            gameState.barriers = [];
-            gameState.floatingPoints = [];
-            gameState.floatingLives = [];
-            gameState.powerUps = [];
-            gameState.vortexes = [];
-            gameState.lastVortexTime = Date.now();
-            gameState.lastShipSwap = Date.now();
-            
-            // Nettoyer les effets visuels
-            document.querySelectorAll('.vortex').forEach(v => v.remove());
-            document.querySelectorAll('.shield-container').forEach(s => s.remove());
-            gameState.shieldEffects = [];
+            document.getElementById('gameOverMessage').style.display = 'none';
+            document.getElementById('gameOverMessage').innerHTML = '';
             
             initializeLives();
         }
 
-        Promise.all([
-            new Promise(resolve => team1Ship.onload = resolve),
-            new Promise(resolve => team2Ship.onload = resolve),
-            ...supportShipImages.map(img => new Promise(resolve => img.onload = resolve)),
-            new Promise(resolve => powerUpImages.basic.onload = resolve),
-            new Promise(resolve => powerUpImages.powerUp1.onload = resolve),
-            new Promise(resolve => powerUpImages.powerUp2.onload = resolve)
-        ]).then(() => {
-            gameState.barrierTimer = Date.now();
-            createBarrier();
-            document.querySelector('#team1Points span').textContent = `${teamConfig.team1.ships[0].points} / 50`;
-            document.querySelector('#team2Points span').textContent = `${teamConfig.team2.ships[0].points} / 50`;
-            gameLoop();
+        // Rendu
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dessiner les balles
+            gameState.players.forEach(player => {
+                player.bullets.forEach(bullet => {
+                    ctx.save();
+                    ctx.fillStyle = bullet.color;
+                    ctx.shadowColor = bullet.color;
+                    ctx.shadowBlur = 5;
+                    ctx.beginPath();
+                    ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            });
+            
+            // Dessiner les joueurs
+            gameState.players.forEach((player, index) => {
+                if (!player.active) return;
+                
+                ctx.save();
+                
+                // Impacts
+                if (player.impacts > 0) {
+                    ctx.fillStyle = '#FF0000';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(
+                        `${player.impacts}/10`,
+                        player.x,
+                        player.y - player.height/2 - 10
+                    );
+                }
+                
+                // Vaisseau
+                ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
+                ctx.fillRect(
+                    player.x - player.width/2,
+                    player.y - player.height/2,
+                    player.width,
+                    player.height
+                );
+                
+                ctx.restore();
+            });
+        }
+
+        // Boucle de jeu
+        function gameLoop() {
+            if (!gameStarted) return;
+            
+            handleLocalPlayerInput();
+            updateBullets();
+            checkCollisions();
+            render();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialisation
+        window.addEventListener('load', () => {
+            console.log('Page chargée, vérification de PeerJS...');
+            
+            if (typeof Peer !== 'undefined') {
+                console.log('PeerJS détecté, initialisation...');
+                initPeerJS();
+            } else {
+                console.log('PeerJS non détecté, attente...');
+                setTimeout(() => {
+                    if (typeof Peer !== 'undefined') {
+                        console.log('PeerJS détecté après délai');
+                        initPeerJS();
+                    } else {
+                        console.error('PeerJS non disponible');
+                        document.getElementById('connectionStatus').textContent = 'Erreur: PeerJS non chargé';
+                    }
+                }, 3000);
+            }
         });
+
+        console.log("✅ Code JavaScript chargé avec succès");
     </script>
 </body>
 </html>
