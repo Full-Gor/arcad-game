@@ -1,49 +1,5 @@
-function updateLaserTraits() {
-            const currentTime = Date.now();
-            gameState.laserTraits = gameState.laserTraits.filter(trait => {
-                const elapsed = currentTime - trait.createdAt;
-                
-                // Fade out progressif pendant les dernières 500ms
-                if (elapsed > trait.duration - 500) {
-                    trait.opacity = Math.max(0, 1 - ((elapsed - (trait.duration - 500)) / 500));
-                }
-                
-                return elapsed < trait.duration;
-            });
-        }        // Générer un trait laser
-        function generateLaserTrait() {
-            if (!isHost) return;
-            
-            const width = 30 + Math.random() * 20; // Entre 30 et 50px
-            const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
-            const midPoint = canvas.height / 2;
-            
-            const trait = {
-                x: Math.random() * (canvas.width - width),
-                y: isPlayerZone === 0 ? 
-                    Math.random() * (midPoint - 50) : 
-                    midPoint + Math.random() * (canvas.height / 2 - 50),
-                width: width,
-                height: 3,
-                createdAt: Date.now(),
-                duration: 3000, // 3 secondes
-                color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
-                opacity: 1,
-                id: Date.now() + Math.random()
-            };
-            
-            gameState.laserTraits.push(trait);
-        }        document.getElementById('joinGame').addEventListener('click', function() {
-            const peerID = document.getElementById('joinGameInput').value.trim();
-            if (peerID) {
-                console.log('Connexion à:', peerID);
-                const conn = peer.connect(peerID);
-                setupConnection(conn);
-                isHost = false;
-                myPlayerIndex = 1;
-                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
-            }
-        });<!DOCTYPE html>
+
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -235,7 +191,25 @@ function updateLaserTraits() {
             border-radius: 5px;
         }
 
-        /* Animations pour les boucliers */
+        #resetButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #ff6600;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 100;
+            display: none;
+        }
+
+        #resetButton:hover {
+            background: #ff8800;
+        }
+
         @keyframes shieldPulse {
             0% {
                 transform: scale(1) rotate(0deg);
@@ -259,25 +233,6 @@ function updateLaserTraits() {
             pointer-events: none;
             z-index: 900;
             background: radial-gradient(circle at center, transparent 60%, currentColor 100%);
-        }
-
-        #resetButton {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 10px 20px;
-            background: #ff6600;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            z-index: 100;
-            display: none;
-        }
-
-        #resetButton:hover {
-            background: #ff8800;
         }
     </style>
 </head>
@@ -340,8 +295,10 @@ function updateLaserTraits() {
     <button id="resetButton" onclick="resetGame()">Réinitialiser</button>
 
     <script>
-        console.log("🚀 Démarrage Starship Battle...");
-
+        // Configuration du jeu
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
         // Variables globales
         let peer = null;
         let connection = null;
@@ -349,10 +306,6 @@ function updateLaserTraits() {
         let gameStarted = false;
         let myPlayerIndex = 0;
         let networkLatency = 0;
-
-        // Configuration du jeu
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -406,7 +359,7 @@ function updateLaserTraits() {
             ],
             powerUps: [],
             redPoints: [],
-            laserTraits: [], // Nouveaux traits laser
+            laserTraits: [],
             paused: false,
             gameOver: false,
             winner: null
@@ -473,36 +426,17 @@ function updateLaserTraits() {
             suspensionCount: 15
         };
 
-        function playSound(sound) {
-            try {
-                sound.currentTime = 0;
-                sound.play().catch(() => {});
-            } catch (error) {
-                // Son optionnel
-            }
-        }
+        // Contrôles
+        const keys = {};
+        const mouse = { x: 0, y: 0, clicking: false };
 
         // Initialisation PeerJS
         function initPeerJS() {
-            if (typeof Peer === 'undefined') {
-                console.error('PeerJS non disponible');
-                document.getElementById('connectionStatus').textContent = 'Erreur: PeerJS non chargé';
-                return;
-            }
-
             console.log('Initialisation PeerJS...');
-            document.getElementById('connectionStatus').textContent = 'Connexion aux serveurs...';
-            
-            try {
-                peer = new Peer();
-            } catch (error) {
-                console.error('Erreur création Peer:', error);
-                document.getElementById('connectionStatus').textContent = 'Erreur: ' + error.message;
-                return;
-            }
+            peer = new Peer();
             
             peer.on('open', function(id) {
-                console.log('Peer ouvert avec ID:', id);
+                console.log('Mon ID Peer:', id);
                 document.getElementById('peerIdSpan').textContent = id;
                 document.getElementById('hostGame').disabled = false;
                 document.getElementById('copyIdBtn').style.display = 'inline-block';
@@ -510,7 +444,7 @@ function updateLaserTraits() {
             });
 
             peer.on('connection', function(conn) {
-                console.log('Connexion reçue de:', conn.peer);
+                console.log('Connexion entrante:', conn.peer);
                 setupConnection(conn);
                 isHost = true;
                 myPlayerIndex = 0;
@@ -518,7 +452,7 @@ function updateLaserTraits() {
 
             peer.on('error', function(err) {
                 console.error('Erreur PeerJS:', err);
-                document.getElementById('connectionStatus').textContent = 'Erreur: ' + (err.message || 'Connexion échouée');
+                document.getElementById('connectionStatus').textContent = 'Erreur: ' + err.message;
             });
         }
 
@@ -582,43 +516,16 @@ function updateLaserTraits() {
             }
         }
 
-        // Événements des boutons
-        document.getElementById('hostGame').addEventListener('click', function() {
-            document.getElementById('connectionStatus').textContent = 'En attente d\'un adversaire... Partagez votre ID !';
-            isHost = true;
-            myPlayerIndex = 0;
-        });
+        // Fonctions du jeu
+        function playSound(sound) {
+            try {
+                sound.currentTime = 0;
+                sound.play().catch(() => {});
+            } catch (error) {
+                // Son optionnel
+            }
+        }
 
-        document.getElementById('copyIdBtn').addEventListener('click', function() {
-            const peerIdText = document.getElementById('peerIdSpan').textContent;
-            navigator.clipboard.writeText(peerIdText).then(function() {
-                const btn = document.getElementById('copyIdBtn');
-                const originalText = btn.textContent;
-                btn.textContent = '✅ Copié !';
-                btn.style.background = '#00ff00';
-                
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = '#04fbac';
-                }, 2000);
-            }).catch(function() {
-                alert('ID copié: ' + peerIdText);
-            });
-        });
-
-        document.getElementById('joinGameInput').addEventListener('keydown', function(e) {
-            e.stopPropagation();
-        });
-        
-        document.getElementById('joinGameInput').addEventListener('keyup', function(e) {
-            e.stopPropagation();
-        });
-        
-        document.getElementById('joinGameInput').addEventListener('paste', function(e) {
-            e.stopPropagation();
-        });
-
-        // Démarrage du jeu
         function startGame() {
             document.getElementById('connectionPanel').style.display = 'none';
             document.getElementById('gameCanvas').style.display = 'block';
@@ -633,7 +540,7 @@ function updateLaserTraits() {
             gameStarted = true;
             initializeGame();
             
-            // Générer des power-ups et traits laser périodiquement (seulement par l'hôte)
+            // Générer des éléments périodiquement (seulement par l'hôte)
             if (isHost) {
                 setInterval(() => {
                     if (gameState.powerUps.length < 3) {
@@ -641,7 +548,6 @@ function updateLaserTraits() {
                     }
                 }, 5000);
                 
-                // Générer des traits laser périodiquement
                 setInterval(() => {
                     if (gameState.laserTraits.length < 6) {
                         generateLaserTrait();
@@ -684,10 +590,7 @@ function updateLaserTraits() {
             }
         }
 
-        // Contrôles
-        const keys = {};
-        const mouse = { x: 0, y: 0, clicking: false };
-
+        // Événements
         window.addEventListener('keydown', (e) => {
             if (e.target.id !== 'joinGameInput') {
                 keys[e.code] = true;
@@ -715,9 +618,45 @@ function updateLaserTraits() {
             if (e.button === 0) mouse.clicking = false;
         });
 
-        // Gestion des entrées
+        // Boutons
+        document.getElementById('hostGame').addEventListener('click', function() {
+            document.getElementById('connectionStatus').textContent = 'En attente d\'un adversaire... Partagez votre ID !';
+            isHost = true;
+            myPlayerIndex = 0;
+        });
+
+        document.getElementById('copyIdBtn').addEventListener('click', function() {
+            const peerIdText = document.getElementById('peerIdSpan').textContent;
+            navigator.clipboard.writeText(peerIdText).then(function() {
+                const btn = document.getElementById('copyIdBtn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copié !';
+                btn.style.background = '#00ff00';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#04fbac';
+                }, 2000);
+            }).catch(function() {
+                alert('ID copié: ' + peerIdText);
+            });
+        });
+
+        document.getElementById('joinGame').addEventListener('click', function() {
+            const peerID = document.getElementById('joinGameInput').value.trim();
+            if (peerID) {
+                console.log('Connexion à:', peerID);
+                const conn = peer.connect(peerID);
+                setupConnection(conn);
+                isHost = false;
+                myPlayerIndex = 1;
+                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
+            }
+        });
+
+        // Gestion des entrées locales
         let lastShootTime = 0;
-        const shootCooldown = 100; // 100ms entre chaque tir
+        const shootCooldown = 100;
         
         function handleLocalPlayerInput() {
             if (!gameStarted || gameState.paused) return;
@@ -736,7 +675,6 @@ function updateLaserTraits() {
                 const targetX = mouse.x;
                 const targetY = mouse.y;
                 
-                // Contraintes pour rester dans sa zone
                 const minY = myPlayerIndex === 0 ? player.height/2 : midPoint + player.height/2;
                 const maxY = myPlayerIndex === 0 ? midPoint - player.height/2 : canvas.height - player.height/2;
                 
@@ -1572,7 +1510,7 @@ function updateLaserTraits() {
                 
                 ctx.restore();
             });
-        }() {
+        }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Dessiner les power-ups
@@ -1755,8 +1693,53 @@ function updateLaserTraits() {
                 
                 ctx.restore();
             });
-        }
-
+        
+function updateLaserTraits() {
+            const currentTime = Date.now();
+            gameState.laserTraits = gameState.laserTraits.filter(trait => {
+                const elapsed = currentTime - trait.createdAt;
+                
+                // Fade out progressif pendant les dernières 500ms
+                if (elapsed > trait.duration - 500) {
+                    trait.opacity = Math.max(0, 1 - ((elapsed - (trait.duration - 500)) / 500));
+                }
+                
+                return elapsed < trait.duration;
+            });
+        }        // Générer un trait laser
+        function generateLaserTrait() {
+            if (!isHost) return;
+            
+            const width = 30 + Math.random() * 20; // Entre 30 et 50px
+            const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
+            const midPoint = canvas.height / 2;
+            
+            const trait = {
+                x: Math.random() * (canvas.width - width),
+                y: isPlayerZone === 0 ? 
+                    Math.random() * (midPoint - 50) : 
+                    midPoint + Math.random() * (canvas.height / 2 - 50),
+                width: width,
+                height: 3,
+                createdAt: Date.now(),
+                duration: 3000, // 3 secondes
+                color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
+                opacity: 1,
+                id: Date.now() + Math.random()
+            };
+            
+            gameState.laserTraits.push(trait);
+        }        document.getElementById('joinGame').addEventListener('click', function() {
+            const peerID = document.getElementById('joinGameInput').value.trim();
+            if (peerID) {
+                console.log('Connexion à:', peerID);
+                const conn = peer.connect(peerID);
+                setupConnection(conn);
+                isHost = false;
+                myPlayerIndex = 1;
+                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
+            }
+        });
         function drawShieldParticles() {
             gameState.players.forEach((player, playerIndex) => {
                 if (!player.shield) return;
