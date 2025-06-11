@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -112,6 +111,13 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 10px 20px;
             border-radius: 10px;
+            flex-direction: column;
+        }
+
+        .wins-counter {
+            font-size: 14px;
+            margin-top: 5px;
+            color: #04fbac;
         }
 
         .lives-container {
@@ -241,7 +247,7 @@
     <div id="connectionPanel">
         <h2>🚀 Starship Battle Online</h2>
         <div id="myPeerID">
-            Votre ID: <span id="peerIdSpan">Connexion...</span>
+            Votre Pseudo: <span id="peerIdSpan">Connexion...</span>
             <button id="copyIdBtn" style="display: none; margin-left: 10px; padding: 5px 10px; background: #04fbac; color: black; border: none; border-radius: 3px; cursor: pointer;">📋 Copier</button>
         </div>
         
@@ -252,7 +258,7 @@
         
         <div>
             <h3>Rejoindre une partie</h3>
-            <input type="text" id="joinGameInput" placeholder="Entrez l'ID de votre adversaire">
+            <input type="text" id="joinGameInput" placeholder="Entrez le pseudo de votre adversaire">
             <br>
             <button id="joinGame">Rejoindre</button>
         </div>
@@ -266,19 +272,21 @@
             <span>Joueur 1: </span>
             <span id="team1Score">0</span>
             <div id="team1Lives" class="lives-container"></div>
+            <div class="wins-counter">Victoires: <span id="team1Wins">0</span></div>
         </div>
         <div class="team-score team2">
             <span>Joueur 2: </span>
             <span id="team2Score">0</span>
             <div id="team2Lives" class="lives-container"></div>
+            <div class="wins-counter">Victoires: <span id="team2Wins">0</span></div>
         </div>
     </div>
 
     <div id="team1Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 50</span>
+        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 100</span>
     </div>
     <div id="team2Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 50</span>
+        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 100</span>
     </div>
 
     <div id="networkStatus" style="display: none;">
@@ -306,6 +314,8 @@
         let gameStarted = false;
         let myPlayerIndex = 0;
         let networkLatency = 0;
+        let playerPseudo = '';
+        let wins = [0, 0]; // Victoires de chaque joueur
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -314,6 +324,18 @@
         
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
+
+        // Génération de pseudo aléatoire
+        function generatePseudo() {
+            const adjectives = ['Rapide', 'Fort', 'Agile', 'Brave', 'Noble', 'Sage', 'Fier', 'Vif'];
+            const nouns = ['Aigle', 'Lion', 'Falcon', 'Tigre', 'Dragon', 'Loup', 'Phénix', 'Cobra'];
+            const numbers = Math.floor(Math.random() * 100);
+            
+            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            
+            return `${adj}${noun}${numbers}`;
+        }
 
         // État du jeu
         const gameState = {
@@ -367,50 +389,40 @@
 
         // Sons
         const soundEffects = {
-            shoot: new Audio("../audio/shoot.mp3"),
-            hit: new Audio("../audio/hit.mp3"),
-            coin: new Audio("../audio/coin.mp3"),
-            king: new Audio("../audio/king.mp3"),
-            perfect: new Audio("../audio/perfect.mp3"),
-            awesome: new Audio("../audio/awesome.mp3"),
-            gameOver: new Audio("../audio/gameOver.mp3")
+            shoot: createBeepSound(220, 0.1),
+            hit: createBeepSound(150, 0.2),
+            coin: createBeepSound(440, 0.1),
+            king: createBeepSound(300, 0.3),
+            perfect: createBeepSound(523, 0.2),
+            awesome: createBeepSound(659, 0.3),
+            gameOver: createBeepSound(110, 0.5)
         };
 
-        // Configuration des volumes
-        const volumes = {
-            shoot: 0.3,
-            hit: 1.0,
-            coin: 0.3,
-            king: 0.6,
-            perfect: 0.4,
-            awesome: 1.0,
-            gameOver: 1.0
-        };
-
-        Object.keys(soundEffects).forEach(key => {
-            soundEffects[key].volume = volumes[key] || 1.0;
-        });
-
-        // Chargement des images
-        const starshipImg = new Image();
-        starshipImg.src = "../img/starship7.jpg";
-        const starship2Img = new Image();
-        starship2Img.src = "../img/starship6.jpg";
-        const powerUpImgs = [new Image(), new Image(), new Image()];
-        powerUpImgs[0].src = "../img/powerUp.jpg";
-        powerUpImgs[1].src = "../img/powerUp1.jpg";
-        powerUpImgs[2].src = "../img/powerUp2.jpg";
-        const livesImg = new Image();
-        livesImg.src = "../img/lives.jpg";
-        const thunderImgs = [new Image(), new Image(), new Image()];
-        thunderImgs[0].src = "../img/thunder1.jpg";
-        thunderImgs[1].src = "../img/thunder2.jpg";
-        thunderImgs[2].src = "../img/thunder3.jpg";
-        const assistantShipImgs = [];
-        for (let i = 1; i <= 6; i++) {
-            const img = new Image();
-            img.src = `../img/starship${i}.jpg`;
-            assistantShipImgs.push(img);
+        // Création de sons de base sans fichiers externes
+        function createBeepSound(frequency, duration) {
+            return {
+                play: function() {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.value = frequency;
+                        oscillator.type = 'square';
+                        
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + duration);
+                    } catch (e) {
+                        // Sons optionnels
+                    }
+                }
+            };
         }
 
         // Configuration des particules de bouclier
@@ -433,10 +445,11 @@
         // Initialisation PeerJS
         function initPeerJS() {
             console.log('Initialisation PeerJS...');
-            peer = new Peer();
+            playerPseudo = generatePseudo();
+            peer = new Peer(playerPseudo);
             
             peer.on('open', function(id) {
-                console.log('Mon ID Peer:', id);
+                console.log('Mon Pseudo:', id);
                 document.getElementById('peerIdSpan').textContent = id;
                 document.getElementById('hostGame').disabled = false;
                 document.getElementById('copyIdBtn').style.display = 'inline-block';
@@ -519,8 +532,7 @@
         // Fonctions du jeu
         function playSound(sound) {
             try {
-                sound.currentTime = 0;
-                sound.play().catch(() => {});
+                sound.play();
             } catch (error) {
                 // Son optionnel
             }
@@ -620,7 +632,7 @@
 
         // Boutons
         document.getElementById('hostGame').addEventListener('click', function() {
-            document.getElementById('connectionStatus').textContent = 'En attente d\'un adversaire... Partagez votre ID !';
+            document.getElementById('connectionStatus').textContent = 'En attente d\'un adversaire... Partagez votre pseudo !';
             isHost = true;
             myPlayerIndex = 0;
         });
@@ -638,7 +650,7 @@
                     btn.style.background = '#04fbac';
                 }, 2000);
             }).catch(function() {
-                alert('ID copié: ' + peerIdText);
+                alert('Pseudo copié: ' + peerIdText);
             });
         });
 
@@ -797,8 +809,8 @@
             const powerUp = {
                 x: Math.random() * (canvas.width - 40),
                 y: Math.random() * (canvas.height - 40),
-                vx: (Math.random() - 0.5) * 2, // Vitesse horizontale
-                vy: (Math.random() - 0.5) * 2, // Vitesse verticale
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
                 width: 40,
                 height: 40,
                 type: Math.floor(Math.random() * 3),
@@ -821,8 +833,33 @@
             }
         }
 
-        // Activation du bouclier
-        function activateShield(player, duration = 5000) { // Changé à 5 secondes
+        // Génération de trait laser (corrigée)
+        function generateLaserTrait() {
+            if (!isHost) return;
+            
+            const width = 30 + Math.random() * 20;
+            const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
+            const midPoint = canvas.height / 2;
+            
+            const trait = {
+                x: Math.random() * (canvas.width - width),
+                y: isPlayerZone === 0 ? 
+                    Math.random() * (midPoint - 50) : 
+                    midPoint + Math.random() * (canvas.height / 2 - 50),
+                width: width,
+                height: 3,
+                createdAt: Date.now(),
+                duration: 3000,
+                color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
+                opacity: 1,
+                id: Date.now() + Math.random()
+            };
+            
+            gameState.laserTraits.push(trait);
+        }
+
+        // Activation du bouclier (corrigée pour 100 points et 3 secondes)
+        function activateShield(player, duration = 3000) {
             if (!player || !player.active) return;
             
             player.shield = true;
@@ -858,7 +895,7 @@
             }
         }
 
-        // Activation de l'éclair
+        // Activation de l'éclair (corrigée)
         function activateThunder(player) {
             if (player.thunderActive) {
                 player.thunderCount = Math.min(player.thunderCount + 1, 3);
@@ -876,9 +913,9 @@
             });
         }
 
-        // Création d'un vaisseau assistant
+        // Création d'un vaisseau assistant (corrigée)
         function createAssistantShip(player, imgIndex = null) {
-            if (player.assistantShips.length >= 3) return; // Limité à 3 assistants
+            if (player.assistantShips.length >= 3) return;
             
             const playerIndex = gameState.players.indexOf(player);
             if (imgIndex === null) {
@@ -925,6 +962,17 @@
                     bullet.y += bullet.vy;
                     bullet.x += bullet.vx || 0;
                     
+                    // Vérifier collision avec les traits laser
+                    let hitTrait = false;
+                    gameState.laserTraits.forEach(trait => {
+                        if (bullet.x >= trait.x && bullet.x <= trait.x + trait.width &&
+                            bullet.y >= trait.y && bullet.y <= trait.y + trait.height) {
+                            hitTrait = true;
+                        }
+                    });
+                    
+                    if (hitTrait) return false;
+                    
                     return bullet.y > -10 && bullet.y < canvas.height + 10 && 
                            bullet.x > -10 && bullet.x < canvas.width + 10;
                 });
@@ -935,11 +983,9 @@
             if (!isHost) return;
             
             gameState.powerUps = gameState.powerUps.filter(powerUp => {
-                // Mouvement
                 powerUp.x += powerUp.vx || 0;
                 powerUp.y += powerUp.vy || 0;
                 
-                // Rebond sur les bords
                 if (powerUp.x <= 0 || powerUp.x >= canvas.width - powerUp.width) {
                     powerUp.vx = -(powerUp.vx || 0);
                     powerUp.x = Math.max(0, Math.min(canvas.width - powerUp.width, powerUp.x));
@@ -949,7 +995,6 @@
                     powerUp.y = Math.max(0, Math.min(canvas.height - powerUp.height, powerUp.y));
                 }
                 
-                // Animation de rotation
                 powerUp.rotation = (powerUp.rotation || 0) + 0.05;
                 return true;
             });
@@ -963,7 +1008,6 @@
                 if (point.vx) point.vx *= 0.98;
                 if (point.vy) point.vy *= 0.98;
                 
-                // Attraction vers les joueurs
                 gameState.players.forEach((player, index) => {
                     if (!player.active) return;
                     
@@ -988,9 +1032,9 @@
                                 });
                             }
                             
-                            // Activation du bouclier tous les 50 points
-                            if (player.redPointsCollected >= 50) {
-                                activateShield(player);
+                            // Activation du bouclier tous les 100 points (corrigé)
+                            if (player.redPointsCollected >= 100) {
+                                activateShield(player, 3000); // 3 secondes
                                 player.redPointsCollected = 0;
                                 document.getElementById(`p${index + 1}RedPoints`).textContent = player.redPointsCollected;
                                 
@@ -1033,7 +1077,6 @@
         function updateAssistantShips() {
             gameState.players.forEach(player => {
                 player.assistantShips = player.assistantShips.filter(assistant => {
-                    // Mouvement
                     if (assistant.isEntering) {
                         const targetY = assistant.targetY;
                         if (Math.abs(assistant.y - targetY) > assistant.speed) {
@@ -1052,7 +1095,6 @@
                         }
                     }
                     
-                    // Tir automatique
                     const currentTime = Date.now();
                     if (currentTime - assistant.lastShootTime > assistant.shootInterval) {
                         const bullet = {
@@ -1073,13 +1115,6 @@
                     
                     return assistant.health > 0;
                 });
-                
-                // Si un assistant est détruit et qu'il y en a moins de 3, en créer un nouveau
-                gameState.players.forEach(player => {
-                    if (player.assistantShips.length < 3 && player.redPointsCollected >= 25) {
-                        createAssistantShip(player);
-                    }
-                });
             });
         }
 
@@ -1095,6 +1130,19 @@
             });
         }
 
+        function updateLaserTraits() {
+            const currentTime = Date.now();
+            gameState.laserTraits = gameState.laserTraits.filter(trait => {
+                const elapsed = currentTime - trait.createdAt;
+                
+                if (elapsed > trait.duration - 500) {
+                    trait.opacity = Math.max(0, 1 - ((elapsed - (trait.duration - 500)) / 500));
+                }
+                
+                return elapsed < trait.duration;
+            });
+        }
+
         function checkCollisions() {
             for (let i = 0; i < gameState.players.length; i++) {
                 const player = gameState.players[i];
@@ -1105,7 +1153,6 @@
                     
                     const opponent = gameState.players[j];
                     
-                    // Collisions avec les balles adverses
                     opponent.bullets = opponent.bullets.filter(bullet => {
                         const dx = Math.abs(bullet.x - player.x);
                         const dy = Math.abs(bullet.y - player.y);
@@ -1115,7 +1162,6 @@
                                 if (player.powerUpLevel > 0) {
                                     player.powerUpLevel--;
                                     
-                                    // Effet visuel
                                     for (let k = 0; k < 20; k++) {
                                         gameState.redPoints.push({
                                             x: player.x,
@@ -1143,7 +1189,6 @@
                         return true;
                     });
                     
-                    // Collisions avec les assistants
                     for (let k = player.assistantShips.length - 1; k >= 0; k--) {
                         const assistant = player.assistantShips[k];
                         
@@ -1156,7 +1201,6 @@
                                     assistant.health--;
                                     
                                     if (assistant.health <= 0) {
-                                        // Explosion
                                         for (let l = 0; l < 30; l++) {
                                             gameState.redPoints.push({
                                                 x: assistant.x + assistant.width/2,
@@ -1166,7 +1210,6 @@
                                             });
                                         }
                                         
-                                        // Retirer l'assistant détruit
                                         player.assistantShips.splice(k, 1);
                                     }
                                 }
@@ -1181,7 +1224,6 @@
                 }
             }
             
-            // Collisions avec les power-ups
             gameState.players.forEach((player, index) => {
                 if (!player.active) return;
                 
@@ -1191,15 +1233,12 @@
                     
                     if (dx < (player.width + powerUp.width)/2 && dy < (player.height + powerUp.height)/2) {
                         if (powerUp.type === 0) {
-                            // Éclair
                             activateThunder(player);
                         } else if (powerUp.type === 1) {
-                            // Power-up de tir
                             player.powerUpLevel = Math.min(player.powerUpLevel + 1, 9);
                         } else if (powerUp.type === 2) {
-                            // Bonus spécial
                             player.powerUpLevel = 3;
-                            activateShield(player, 5000);
+                            activateShield(player, 3000);
                         }
                         
                         if (index === myPlayerIndex) {
@@ -1230,7 +1269,7 @@
                 player.powerUpLevel = Math.min(player.powerUpLevel + 1, 9);
             } else if (data.powerUpType === 2) {
                 player.powerUpLevel = 3;
-                activateShield(player, 5000);
+                activateShield(player, 3000);
             }
         }
 
@@ -1242,15 +1281,17 @@
             gameState.gameOver = true;
             gameState.winner = winnerIndex;
             
+            // Incrémenter les victoires
+            wins[winnerIndex]++;
+            document.getElementById(`team${winnerIndex + 1}Wins`).textContent = wins[winnerIndex];
+            
             const gameOverMessage = document.getElementById('gameOverMessage');
             gameOverMessage.style.display = 'block';
             
             if (winnerIndex === 0) {
-                gameOverMessage.textContent = "Victoire du Joueur 1 !";
-                gameOverMessage.style.color = '#04fbac';
+                gameOverMessage.innerHTML = `<h2 style="color: #04fbac;">Victoire du Joueur 1 !</h2><p>Parties gagnées: ${wins[0]}</p>`;
             } else {
-                gameOverMessage.textContent = "Victoire du Joueur 2 !";
-                gameOverMessage.style.color = '#FF7F50';
+                gameOverMessage.innerHTML = `<h2 style="color: #FF7F50;">Victoire du Joueur 2 !</h2><p>Parties gagnées: ${wins[1]}</p>`;
             }
             
             playSound(soundEffects.gameOver);
@@ -1300,8 +1341,6 @@
             document.getElementById('gameOverMessage').innerHTML = '';
             document.getElementById('p1RedPoints').textContent = '0';
             document.getElementById('p2RedPoints').textContent = '0';
-            document.getElementById('team1Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 50';
-            document.getElementById('team2Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 50';
             
             initializeLives();
         }
@@ -1310,7 +1349,7 @@
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Dessiner les traits laser
+            // Dessiner les traits laser (corrigés avec visibilité)
             gameState.laserTraits.forEach(trait => {
                 ctx.save();
                 ctx.globalAlpha = trait.opacity;
@@ -1327,18 +1366,10 @@
                 ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
                 ctx.rotate(powerUp.rotation || 0);
                 
-                if (powerUpImgs[powerUp.type].complete) {
-                    ctx.drawImage(
-                        powerUpImgs[powerUp.type],
-                        -powerUp.width/2,
-                        -powerUp.height/2,
-                        powerUp.width,
-                        powerUp.height
-                    );
-                } else {
-                    ctx.fillStyle = ['#00ff00', '#ff00ff', '#ffff00'][powerUp.type];
-                    ctx.fillRect(-powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
-                }
+                // Dessiner avec des formes colorées
+                const colors = ['#00ff00', '#ff00ff', '#ffff00'];
+                ctx.fillStyle = colors[powerUp.type];
+                ctx.fillRect(-powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
                 
                 ctx.restore();
                 
@@ -1372,15 +1403,14 @@
                 });
             });
             
-            // Dessiner les éclairs
+            // Dessiner les éclairs (corrigés pour tirer vers l'avant)
             gameState.players.forEach((player, playerIndex) => {
                 if (!player.thunderActive) return;
                 
-                const thunderFrame = Math.floor((Date.now() - player.thunderStartTime) / 100) % 3;
                 const thunderDirections = [
-                    { angle: 90 },
-                    { angle: 135 },
-                    { angle: 45 }
+                    { angle: playerIndex === 0 ? 90 : -90 },
+                    { angle: playerIndex === 0 ? 135 : -45 },
+                    { angle: playerIndex === 0 ? 45 : -135 }
                 ];
                 
                 for (let i = 0; i < player.thunderCount; i++) {
@@ -1391,15 +1421,9 @@
                     ctx.translate(player.x, player.y);
                     ctx.rotate(angleRad);
                     
-                    if (thunderImgs[thunderFrame].complete) {
-                        ctx.drawImage(
-                            thunderImgs[thunderFrame],
-                            -20,
-                            -400,
-                            40,
-                            400
-                        );
-                    }
+                    // Dessiner l'éclair avec des rectangles colorés
+                    ctx.fillStyle = playerIndex === 0 ? '#04fbac' : '#FF7F50';
+                    ctx.fillRect(-20, playerIndex === 0 ? 0 : -400, 40, 400);
                     
                     ctx.restore();
                 }
@@ -1408,7 +1432,7 @@
             // Dessiner les particules de bouclier
             drawShieldParticles();
             
-            // Dessiner les vaisseaux assistants
+            // Dessiner les vaisseaux assistants (corrigés pour l'orientation)
             gameState.players.forEach(player => {
                 player.assistantShips.forEach(assistant => {
                     ctx.save();
@@ -1417,7 +1441,7 @@
                         ctx.globalAlpha = 0.7 + assistant.health * 0.1;
                     }
                     
-                    // Rotation pour les assistants du joueur du haut
+                    // Rotation correcte selon le joueur
                     if (assistant.playerIndex === 0) {
                         ctx.translate(assistant.x + assistant.width/2, assistant.y + assistant.height/2);
                         ctx.rotate(Math.PI);
@@ -1426,18 +1450,9 @@
                         ctx.translate(assistant.x, assistant.y);
                     }
                     
-                    if (assistantShipImgs[assistant.imageIndex] && assistantShipImgs[assistant.imageIndex].complete) {
-                        ctx.drawImage(
-                            assistantShipImgs[assistant.imageIndex],
-                            0,
-                            0,
-                            assistant.width,
-                            assistant.height
-                        );
-                    } else {
-                        ctx.fillStyle = getAssistantColor(assistant.imageIndex);
-                        ctx.fillRect(0, 0, assistant.width, assistant.height);
-                    }
+                    // Dessiner avec des couleurs
+                    ctx.fillStyle = getAssistantColor(assistant.imageIndex);
+                    ctx.fillRect(0, 0, assistant.width, assistant.height);
                     
                     ctx.restore();
                     
@@ -1468,33 +1483,24 @@
                 }
                 
                 // Vaisseau avec rotation appropriée
-                const img = index === 0 ? starshipImg : starship2Img;
-                if (img.complete) {
-                    ctx.save();
-                    ctx.translate(player.x, player.y);
-                    
-                    // Rotation de 180 degrés pour le joueur du haut (index 0)
-                    if (index === 0) {
-                        ctx.rotate(Math.PI);
-                    }
-                    
-                    ctx.drawImage(
-                        img,
-                        -player.width/2,
-                        -player.height/2,
-                        player.width,
-                        player.height
-                    );
-                    ctx.restore();
-                } else {
-                    ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
-                    ctx.fillRect(
-                        player.x - player.width/2,
-                        player.y - player.height/2,
-                        player.width,
-                        player.height
-                    );
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                
+                // Rotation de 180 degrés pour le joueur du haut (index 0)
+                if (index === 0) {
+                    ctx.rotate(Math.PI);
                 }
+                
+                // Dessiner le vaisseau avec des couleurs
+                ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
+                ctx.fillRect(
+                    -player.width/2,
+                    -player.height/2,
+                    player.width,
+                    player.height
+                );
+                
+                ctx.restore();
                 
                 // Indicateur de niveau de power-up
                 if (player.powerUpLevel > 0) {
@@ -1511,235 +1517,7 @@
                 ctx.restore();
             });
         }
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Dessiner les power-ups
-            gameState.powerUps.forEach(powerUp => {
-                ctx.save();
-                ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
-                ctx.rotate(powerUp.rotation || 0);
-                
-                if (powerUpImgs[powerUp.type].complete) {
-                    ctx.drawImage(
-                        powerUpImgs[powerUp.type],
-                        -powerUp.width/2,
-                        -powerUp.height/2,
-                        powerUp.width,
-                        powerUp.height
-                    );
-                } else {
-                    ctx.fillStyle = ['#00ff00', '#ff00ff', '#ffff00'][powerUp.type];
-                    ctx.fillRect(-powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
-                }
-                
-                ctx.restore();
-                
-                // Effet de lueur
-                ctx.save();
-                ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
-                ctx.fillStyle = '#04fbac';
-                ctx.beginPath();
-                ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2 + 5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            });
-            
-            // Dessiner les points rouges
-            gameState.redPoints.forEach(point => {
-                ctx.fillStyle = 'red';
-                ctx.fillRect(point.x - 2, point.y - 2, 4, 4);
-            });
-            
-            // Dessiner les balles
-            gameState.players.forEach(player => {
-                player.bullets.forEach(bullet => {
-                    ctx.save();
-                    ctx.fillStyle = bullet.color;
-                    ctx.shadowColor = bullet.color;
-                    ctx.shadowBlur = 5;
-                    ctx.beginPath();
-                    ctx.arc(bullet.x, bullet.y, bullet.width/2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
-                });
-            });
-            
-            // Dessiner les éclairs
-            gameState.players.forEach((player, playerIndex) => {
-                if (!player.thunderActive) return;
-                
-                const thunderFrame = Math.floor((Date.now() - player.thunderStartTime) / 100) % 3;
-                const thunderDirections = [
-                    { angle: 90 },
-                    { angle: 135 },
-                    { angle: 45 }
-                ];
-                
-                for (let i = 0; i < player.thunderCount; i++) {
-                    const direction = thunderDirections[i];
-                    ctx.save();
-                    
-                    const angleRad = (direction.angle - 90) * Math.PI / 180;
-                    ctx.translate(player.x, player.y);
-                    ctx.rotate(angleRad);
-                    
-                    if (thunderImgs[thunderFrame].complete) {
-                        ctx.drawImage(
-                            thunderImgs[thunderFrame],
-                            -20,
-                            -400,
-                            40,
-                            400
-                        );
-                    }
-                    
-                    ctx.restore();
-                }
-            });
-            
-            // Dessiner les particules de bouclier
-            drawShieldParticles();
-            
-            // Dessiner les vaisseaux assistants
-            gameState.players.forEach(player => {
-                player.assistantShips.forEach(assistant => {
-                    ctx.save();
-                    
-                    if (assistant.health < 3) {
-                        ctx.globalAlpha = 0.7 + assistant.health * 0.1;
-                    }
-                    
-                    if (assistantShipImgs[assistant.imageIndex] && assistantShipImgs[assistant.imageIndex].complete) {
-                        ctx.drawImage(
-                            assistantShipImgs[assistant.imageIndex],
-                            assistant.x,
-                            assistant.y,
-                            assistant.width,
-                            assistant.height
-                        );
-                    } else {
-                        ctx.fillStyle = getAssistantColor(assistant.imageIndex);
-                        ctx.fillRect(assistant.x, assistant.y, assistant.width, assistant.height);
-                    }
-                    
-                    // Barre de vie
-                    ctx.fillStyle = '#04fbac';
-                    for (let i = 0; i < assistant.health; i++) {
-                        ctx.fillRect(assistant.x + i * 12, assistant.y - 10, 10, 5);
-                    }
-                    
-                    ctx.restore();
-                });
-            });
-            
-            // Dessiner les joueurs
-            gameState.players.forEach((player, index) => {
-                if (!player.active) return;
-                
-                ctx.save();
-                
-                // Indicateur d'impacts
-                if (player.impacts > 0) {
-                    ctx.fillStyle = '#FF0000';
-                    ctx.font = '16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(
-                        `${player.impacts}/10`,
-                        player.x,
-                        player.y - player.height/2 - 10
-                    );
-                }
-                
-                // Vaisseau avec rotation appropriée
-                const img = index === 0 ? starshipImg : starship2Img;
-                if (img.complete) {
-                    ctx.save();
-                    ctx.translate(player.x, player.y);
-                    
-                    // Rotation de 180 degrés pour le joueur du haut (index 0)
-                    if (index === 0) {
-                        ctx.rotate(Math.PI);
-                    }
-                    
-                    ctx.drawImage(
-                        img,
-                        -player.width/2,
-                        -player.height/2,
-                        player.width,
-                        player.height
-                    );
-                    ctx.restore();
-                } else {
-                    ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
-                    ctx.fillRect(
-                        player.x - player.width/2,
-                        player.y - player.height/2,
-                        player.width,
-                        player.height
-                    );
-                }
-                
-                // Indicateur de niveau de power-up
-                if (player.powerUpLevel > 0) {
-                    ctx.fillStyle = '#ff00ff';
-                    ctx.font = '12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(
-                        `LV${player.powerUpLevel}`,
-                        player.x,
-                        player.y + player.height/2 + 15
-                    );
-                }
-                
-                ctx.restore();
-            });
-        
-function updateLaserTraits() {
-            const currentTime = Date.now();
-            gameState.laserTraits = gameState.laserTraits.filter(trait => {
-                const elapsed = currentTime - trait.createdAt;
-                
-                // Fade out progressif pendant les dernières 500ms
-                if (elapsed > trait.duration - 500) {
-                    trait.opacity = Math.max(0, 1 - ((elapsed - (trait.duration - 500)) / 500));
-                }
-                
-                return elapsed < trait.duration;
-            });
-        }        // Générer un trait laser
-        function generateLaserTrait() {
-            if (!isHost) return;
-            
-            const width = 30 + Math.random() * 20; // Entre 30 et 50px
-            const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
-            const midPoint = canvas.height / 2;
-            
-            const trait = {
-                x: Math.random() * (canvas.width - width),
-                y: isPlayerZone === 0 ? 
-                    Math.random() * (midPoint - 50) : 
-                    midPoint + Math.random() * (canvas.height / 2 - 50),
-                width: width,
-                height: 3,
-                createdAt: Date.now(),
-                duration: 3000, // 3 secondes
-                color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
-                opacity: 1,
-                id: Date.now() + Math.random()
-            };
-            
-            gameState.laserTraits.push(trait);
-        }        document.getElementById('joinGame').addEventListener('click', function() {
-            const peerID = document.getElementById('joinGameInput').value.trim();
-            if (peerID) {
-                console.log('Connexion à:', peerID);
-                const conn = peer.connect(peerID);
-                setupConnection(conn);
-                isHost = false;
-                myPlayerIndex = 1;
-                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
-            }
-        });
+
         function drawShieldParticles() {
             gameState.players.forEach((player, playerIndex) => {
                 if (!player.shield) return;
