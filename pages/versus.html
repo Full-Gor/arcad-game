@@ -320,10 +320,10 @@ function updateLaserTraits() {
     </div>
 
     <div id="team1Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 100</span>
+        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 50</span>
     </div>
     <div id="team2Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 100</span>
+        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 50</span>
     </div>
 
     <div id="networkStatus" style="display: none;">
@@ -1379,7 +1379,196 @@ function updateLaserTraits() {
                 ctx.restore();
             });
             
-            // Dessiner les power-ups() {
+            // Dessiner les power-ups
+            gameState.powerUps.forEach(powerUp => {
+                ctx.save();
+                ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+                ctx.rotate(powerUp.rotation || 0);
+                
+                if (powerUpImgs[powerUp.type].complete) {
+                    ctx.drawImage(
+                        powerUpImgs[powerUp.type],
+                        -powerUp.width/2,
+                        -powerUp.height/2,
+                        powerUp.width,
+                        powerUp.height
+                    );
+                } else {
+                    ctx.fillStyle = ['#00ff00', '#ff00ff', '#ffff00'][powerUp.type];
+                    ctx.fillRect(-powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
+                }
+                
+                ctx.restore();
+                
+                // Effet de lueur
+                ctx.save();
+                ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
+                ctx.fillStyle = '#04fbac';
+                ctx.beginPath();
+                ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2 + 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+            
+            // Dessiner les points rouges
+            gameState.redPoints.forEach(point => {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(point.x - 2, point.y - 2, 4, 4);
+            });
+            
+            // Dessiner les balles
+            gameState.players.forEach(player => {
+                player.bullets.forEach(bullet => {
+                    ctx.save();
+                    ctx.fillStyle = bullet.color;
+                    ctx.shadowColor = bullet.color;
+                    ctx.shadowBlur = 5;
+                    ctx.beginPath();
+                    ctx.arc(bullet.x, bullet.y, bullet.width/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            });
+            
+            // Dessiner les éclairs
+            gameState.players.forEach((player, playerIndex) => {
+                if (!player.thunderActive) return;
+                
+                const thunderFrame = Math.floor((Date.now() - player.thunderStartTime) / 100) % 3;
+                const thunderDirections = [
+                    { angle: 90 },
+                    { angle: 135 },
+                    { angle: 45 }
+                ];
+                
+                for (let i = 0; i < player.thunderCount; i++) {
+                    const direction = thunderDirections[i];
+                    ctx.save();
+                    
+                    const angleRad = (direction.angle - 90) * Math.PI / 180;
+                    ctx.translate(player.x, player.y);
+                    ctx.rotate(angleRad);
+                    
+                    if (thunderImgs[thunderFrame].complete) {
+                        ctx.drawImage(
+                            thunderImgs[thunderFrame],
+                            -20,
+                            -400,
+                            40,
+                            400
+                        );
+                    }
+                    
+                    ctx.restore();
+                }
+            });
+            
+            // Dessiner les particules de bouclier
+            drawShieldParticles();
+            
+            // Dessiner les vaisseaux assistants
+            gameState.players.forEach(player => {
+                player.assistantShips.forEach(assistant => {
+                    ctx.save();
+                    
+                    if (assistant.health < 3) {
+                        ctx.globalAlpha = 0.7 + assistant.health * 0.1;
+                    }
+                    
+                    // Rotation pour les assistants du joueur du haut
+                    if (assistant.playerIndex === 0) {
+                        ctx.translate(assistant.x + assistant.width/2, assistant.y + assistant.height/2);
+                        ctx.rotate(Math.PI);
+                        ctx.translate(-assistant.width/2, -assistant.height/2);
+                    } else {
+                        ctx.translate(assistant.x, assistant.y);
+                    }
+                    
+                    if (assistantShipImgs[assistant.imageIndex] && assistantShipImgs[assistant.imageIndex].complete) {
+                        ctx.drawImage(
+                            assistantShipImgs[assistant.imageIndex],
+                            0,
+                            0,
+                            assistant.width,
+                            assistant.height
+                        );
+                    } else {
+                        ctx.fillStyle = getAssistantColor(assistant.imageIndex);
+                        ctx.fillRect(0, 0, assistant.width, assistant.height);
+                    }
+                    
+                    ctx.restore();
+                    
+                    // Barre de vie
+                    ctx.fillStyle = '#04fbac';
+                    for (let i = 0; i < assistant.health; i++) {
+                        ctx.fillRect(assistant.x + i * 12, assistant.y - 10, 10, 5);
+                    }
+                });
+            });
+            
+            // Dessiner les joueurs
+            gameState.players.forEach((player, index) => {
+                if (!player.active) return;
+                
+                ctx.save();
+                
+                // Indicateur d'impacts
+                if (player.impacts > 0) {
+                    ctx.fillStyle = '#FF0000';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(
+                        `${player.impacts}/10`,
+                        player.x,
+                        player.y - player.height/2 - 10
+                    );
+                }
+                
+                // Vaisseau avec rotation appropriée
+                const img = index === 0 ? starshipImg : starship2Img;
+                if (img.complete) {
+                    ctx.save();
+                    ctx.translate(player.x, player.y);
+                    
+                    // Rotation de 180 degrés pour le joueur du haut (index 0)
+                    if (index === 0) {
+                        ctx.rotate(Math.PI);
+                    }
+                    
+                    ctx.drawImage(
+                        img,
+                        -player.width/2,
+                        -player.height/2,
+                        player.width,
+                        player.height
+                    );
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
+                    ctx.fillRect(
+                        player.x - player.width/2,
+                        player.y - player.height/2,
+                        player.width,
+                        player.height
+                    );
+                }
+                
+                // Indicateur de niveau de power-up
+                if (player.powerUpLevel > 0) {
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(
+                        `LV${player.powerUpLevel}`,
+                        player.x,
+                        player.y + player.height/2 + 15
+                    );
+                }
+                
+                ctx.restore();
+            });
+        }() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Dessiner les power-ups
@@ -1628,6 +1817,7 @@ function updateLaserTraits() {
             updateThunder();
             updateAssistantShips();
             updateShieldParticles();
+            updateLaserTraits();
             checkCollisions();
             render();
             
