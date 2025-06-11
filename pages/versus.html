@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Starship Battle Versus - Enhanced</title>
-    <link rel="icon" type="image/x-icon" href="../img/favicon.ico">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body {
@@ -146,6 +145,7 @@
             right: 15px;
             color: #04fbac;
             border-color: #04fbac;
+            display: flex;
         }
 
         #team2Points {
@@ -187,12 +187,12 @@
             font-size: 14px;
             z-index: 20;
             background: rgba(0, 0, 0, 0.7);
-            padding: 5px 10px;
+            padding: 10px;
             border-radius: 5px;
         }
 
         #resetButton {
-            position: absolute;
+            position: fixed;
             top: 10px;
             right: 10px;
             padding: 10px 20px;
@@ -211,9 +211,9 @@
         }
 
         @keyframes shieldPulse {
-            0% { transform: scale(1) rotate(0deg); opacity: 0.6; }
-            50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
-            100% { transform: scale(1) rotate(360deg); opacity: 0.6; }
+            0% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 0.6; }
         }
 
         .shield-effect {
@@ -227,10 +227,10 @@
         }
     </style>
 </head>
-<body>
+<body bgcolor="black">
     <!-- Panneau de connexion -->
     <div id="connectionPanel">
-        <h2>🚀 Starship Battle Online</h2>
+        <h2>🚖 Starship Battle Online</h2>
         <div id="myPeerID">
             Votre pseudo: <span id="peerIdSpan">Connexion...</span>
             <button id="copyIdBtn" style="display: none; margin-left: 10px; padding: 5px 10px; background: #04fbac; color: black; border: none; border-radius: 3px; cursor: pointer;">📋 Copier</button>
@@ -251,18 +251,18 @@
     <!-- Interface de jeu -->
     <div id="scoreBoard" style="display: none;">
         <div class="team-score team1">
-            <span>Joueur 1 - Parties gagnées: </span>
+            <span>Joueur 1 - Partie gagnées: </span>
             <span id="team1Score">0</span>
             <div id="team1Lives" class="lives-container"></div>
         </div>
         <div class="team-score team2">
-            <span>Joueur 2 - Parties gagnées: </span>
+            <span>Joueur 2 - Partie gagnées: </span>
             <span id="team2Score">0</span>
             <div id="team2Lives" class="lives-container"></div>
         </div>
     </div>
 
-    <div id="team1Points" class="point-counter" style="display: none;">
+    <div id="team1Points" class="point-counter">
         <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 25</span>
     </div>
     <div id="team2Points" class="point-counter" style="display: none;">
@@ -378,24 +378,24 @@
         };
 
         Object.keys(soundEffects).forEach(key => {
-            soundEffects[key].volume = volumes[key] || 1.0;
+            soundEffects[key].volume = volumes[key] || 0;
         });
 
         // Chargement des images
         const starshipImg = new Image();
-        starshipImg.src = "../img/starship7.jpg";
+        starshipImg.src = '../img/starship7.jpg';
         const starship2Img = new Image();
-        starship2Img.src = "../img/starship6.jpg";
+        starship2Img.src = '../img/starship6.jpg';
         const powerUpImgs = [new Image(), new Image(), new Image()];
-        powerUpImgs[0].src = "../img/powerUp.jpg";
-        powerUpImgs[1].src = "../img/powerUp1.jpg";
-        powerUpImgs[2].src = "../img/powerUp2.jpg";
+        powerUpImgs[0].src = '../img/powerUp.jpg';
+        powerUpImgs[1].src = '../img/powerUp1.jpg';
+        powerUpImgs[2].src = '../img/powerUp2.jpg';
         const livesImg = new Image();
-        livesImg.src = "../img/lives.jpg";
+        livesImg.src = '../img/lives.jpg';
         const thunderImgs = [new Image(), new Image(), new Image()];
-        thunderImgs[0].src = "../img/thunder1.jpg";
-        thunderImgs[1].src = "../img/thunder2.jpg";
-        thunderImgs[2].src = "../img/thunder3.jpg";
+        thunderImgs[0].src = '../img/thunder1.jpg';
+        thunderImgs[1].src = '../img/thunder2.jpg';
+        thunderImgs[2].src = '../img/thunder3.jpg';
         const assistantShipImgs = [];
         for (let i = 1; i <= 6; i++) {
             const img = new Image();
@@ -408,7 +408,7 @@
             particleCount: 25,
             particles: [],
             orbitalParticles: [],
-            colors: ["#04fbac", "#00ffff", "#0088ff", "#80ffff"],
+            colors: ['#04fbac', '#00ffff', '#0088ff', '#80ffff'],
             minSize: 2,
             maxSize: 5,
             minSpeed: 0.02,
@@ -428,14 +428,14 @@
             return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${nouns[Math.floor(Math.random() * nouns.length)]}${number}`;
         }
 
-        // Initialisation PeerJS
+        // Initialisation de PeerJS
         function initPeerJS() {
-            console.log('Initialisation PeerJS...');
+            console.log('Initialisation de PeerJS...');
             myPseudo = generatePseudo();
             peer = new Peer(myPseudo);
 
             peer.on('open', function(id) {
-                console.log('Mon pseudo:', myPseudo);
+                console.log('Pseudo:', myPseudo);
                 document.getElementById('peerIdSpan').textContent = myPseudo;
                 document.getElementById('hostGame').disabled = false;
                 document.getElementById('copyIdBtn').style.display = 'inline-block';
@@ -443,15 +443,15 @@
             });
 
             peer.on('connection', function(conn) {
-                console.log('Connexion entrante:', conn.peer);
+                console.log('Connexion entrante :', conn.peer);
                 setupConnection(conn);
                 isHost = true;
                 myPlayerIndex = 0;
             });
 
             peer.on('error', function(err) {
-                console.error('Erreur PeerJS:', err);
-                document.getElementById('connectionStatus').textContent = 'Erreur: ' + err.message;
+                console.error('Erreur de PeerJS :', err);
+                document.getElementById('connectionStatus').textContent = 'Erreur : ' + err.message;
             });
         }
 
@@ -460,8 +460,8 @@
             connection = conn;
 
             conn.on('open', function() {
-                console.log('Connexion établie!');
-                document.getElementById('connectionStatus').textContent = 'Connecté!';
+                console.log('Connexion établie !');
+                document.getElementById('connectionStatus').textContent = 'Connecté !';
                 startGame();
             });
 
@@ -618,11 +618,15 @@
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) mouse.clicking = true;
+            if (e.button === 0) {
+                mouse.clicking = true;
+            }
         });
 
         canvas.addEventListener('mouseup', (e) => {
-            if (e.button === 0) mouse.clicking = false;
+            if (e.button === 0) {
+                mouse.clicking = false;
+            }
         });
 
         document.getElementById('hostGame').addEventListener('click', function() {
@@ -638,20 +642,19 @@
                 const originalText = btn.textContent;
                 btn.textContent = '✅ Copié !';
                 btn.style.background = '#00ff00';
-
                 setTimeout(() => {
                     btn.textContent = originalText;
                     btn.style.background = '#04fbac';
                 }, 2000);
             }).catch(function() {
-                alert('Pseudo copié: ' + peerIdText);
+                alert('Pseudo copié : ' + peerIdText);
             });
         });
 
         document.getElementById('joinGame').addEventListener('click', function() {
             const peerID = document.getElementById('joinGameInput').value.trim();
             if (peerID) {
-                console.log('Connexion à:', peerID);
+                console.log('Connexion à :', peerID);
                 const conn = peer.connect(peerID);
                 setupConnection(conn);
                 isHost = false;
@@ -704,7 +707,7 @@
             if (keys[controls.right]) { player.x += speed; moved = true; }
             if (keys[controls.up]) { player.y -= speed; moved = true; }
             if (keys[controls.down]) { player.y += speed; moved = true; }
-            if (keys[controls.shoot]) shot = true;
+            if (keys[controls.shoot]) { shot = true; }
 
             const midPointY = canvas.height / 2;
             const minY = myPlayerIndex === 0 ? player.height/2 : midPointY + player.height/2;
@@ -747,11 +750,11 @@
             const bulletColor = playerIndex === 0 ? '#04fbac' : '#FF7F50';
 
             const rows = [
-                { offsets: [0], y: player.y + (playerIndex === 0 ? -player.height/2 : player.height/2), speed: bulletSpeed, color: bulletColor },
-                { offsets: [-10, 0, 10], y: player.y + (playerIndex === 0 ? -player.height/2 : player.height/2), speed: bulletSpeed - 1, color: bulletColor },
-                { offsets: [-15, -5, 5, 15], y: player.y + (playerIndex === 0 ? -player.height/2 - 4 : player.height/2 + 4), speed: bulletSpeed - 2, color: "#FF00FF" },
-                { offsets: [-20, -10, 0, 10, 20], y: player.y + (playerIndex === 0 ? -player.height/2 - 8 : player.height/2 + 8), speed: bulletSpeed - 3, color: bulletColor },
-                { offsets: [-30, -20, -10, 0, 10, 20, 30], y: player.y + (playerIndex === 0 ? -player.height/2 - 12 : player.height/2 + 12), speed: bulletSpeed - 4, color: "#FF00FF" }
+                { offsets: [0], y: player.y + (playerIndex === 0 ? player.height/2 : -player.height/2), speed: bulletSpeed, color: bulletColor },
+                { offsets: [-10, 0, 10], y: player.y + (playerIndex === 0 ? player.height/2 : -player.height/2), speed: bulletSpeed - 1, color: bulletColor },
+                { offsets: [-15, -5, 5, 15], y: player.y + (playerIndex === 0 ? player.height/2 + 4 : -player.height/2 - 4), speed: bulletSpeed - 2, color: '#FF00FF' },
+                { offsets: [-20, -10, 0, 10, 20], y: player.y + (playerIndex === 0 ? player.height/2 + 8 : -player.height/2 - 8), speed: bulletSpeed - 3, color: bulletColor },
+                { offsets: [-30, -20, -10, 0, 10, 20, 30], y: player.y + (playerIndex === 0 ? player.height/2 + 12 : -player.height/2 - 12), speed: bulletSpeed - 4, color: '#FF00FF' }
             ];
 
             const numRows = Math.min(player.powerUpLevel + 1, rows.length);
@@ -763,7 +766,7 @@
                         x: player.x + xOffset,
                         y: row.y,
                         color: row.color,
-                        vy: playerIndex === 0 ? -row.speed : row.speed,
+                        vy: playerIndex === 0 ? bulletSpeed : -bulletSpeed, // J1 tire vers le bas, J2 vers le haut
                         vx: 0,
                         playerIndex: playerIndex,
                         width: 4,
@@ -872,7 +875,7 @@
         }
 
         function createAssistantShip(player, imgIndex = null) {
-            if (player.assistantShips.length >= 3) return;
+            if (player.assistantShips.length >= 3) return; // Limite à 3 assistants max
 
             const playerIndex = gameState.players.indexOf(player);
             if (imgIndex === null) {
@@ -882,7 +885,7 @@
             const midPoint = canvas.height / 2;
             const assistant = {
                 x: Math.random() * (canvas.width - 50),
-                y: playerIndex === 0 ? midPoint - 100 : midPoint + 100,
+                y: playerIndex === 0 ? midPoint - 150 : midPoint + 150,
                 targetY: playerIndex === 0 ? midPoint - 50 : midPoint + 50,
                 width: 40,
                 height: 40,
@@ -901,6 +904,7 @@
             };
 
             player.assistantShips.push(assistant);
+            console.log(`Assistant créé pour joueur ${playerIndex + 1} à (${assistant.x}, ${assistant.y})`);
 
             if (playerIndex === myPlayerIndex) {
                 sendMessage({
@@ -919,13 +923,15 @@
                     bullet.y += bullet.vy;
                     bullet.x += bullet.vx || 0;
 
-                    // Vérifier collision avec les traits laser pour tous les tirs
                     for (const trait of gameState.laserTraits) {
                         if (
-                            bullet.x > trait.x && bullet.x < trait.x + trait.width &&
-                            bullet.y > trait.y && bullet.y < trait.y + trait.height
+                            bullet.x + bullet.width/2 > trait.x &&
+                            bullet.x - bullet.width/2 < trait.x + trait.width &&
+                            bullet.y + bullet.height/2 > trait.y &&
+                            bullet.y - bullet.height/2 < trait.y + trait.height
                         ) {
-                            return false; // Supprimer la balle si elle touche un trait
+                            console.log('Collision balle avec trait laser détectée');
+                            return false;
                         }
                     }
 
@@ -991,7 +997,6 @@
                                 });
                             }
 
-                            // Activer le bouclier tous les 25 points rouges
                             if (player.redPointsCollected >= 25) {
                                 activateShield(player);
                                 player.redPointsCollected -= 25;
@@ -1055,10 +1060,10 @@
                     if (currentTime - assistant.lastShootTime > assistant.shootInterval) {
                         const bullet = {
                             x: assistant.x + assistant.width / 2,
-                            y: assistant.y + (assistant.playerIndex === 0 ? -assistant.height / 2 : assistant.height / 2),
+                            y: assistant.y + (assistant.playerIndex === 0 ? assistant.height / 2 : -assistant.height / 2),
                             width: 4,
                             height: 4,
-                            vy: assistant.playerIndex === 0 ? -8 : 8, // Direction correcte des tirs
+                            vy: assistant.playerIndex === 0 ? 8 : -8,
                             vx: 0,
                             color: getAssistantColor(assistant.imageIndex),
                             playerIndex: assistant.playerIndex,
@@ -1102,7 +1107,7 @@
         function generateLaserTrait() {
             if (!isHost) return;
 
-            const width = 30 + Math.random() * 20;
+            const width = 50 + Math.random() * 20;
             const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
             const midPoint = canvas.height / 2;
 
@@ -1112,7 +1117,7 @@
                     Math.random() * (midPoint - 50) :
                     midPoint + Math.random() * (canvas.height / 2 - 50),
                 width: width,
-                height: 3,
+                height: 10,
                 createdAt: Date.now(),
                 duration: 3000,
                 color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
@@ -1121,6 +1126,7 @@
             };
 
             gameState.laserTraits.push(trait);
+            console.log(`Trait créé à (${trait.x}, ${trait.y})`);
         }
 
         function checkCollisions() {
@@ -1142,7 +1148,7 @@
                                 if (player.powerUpLevel > 0) {
                                     player.powerUpLevel--;
 
-                                    for (let k = 0; k < 5; k++) { // Réduit à 5 points rouges
+                                    for (let k = 0; k < 5; k++) {
                                         gameState.redPoints.push({
                                             x: player.x,
                                             y: player.y,
@@ -1155,7 +1161,6 @@
                                     player.impacts++;
 
                                     if (player.impacts >= 10) {
-                                        player.impacts = 0;
                                         player.active = false;
                                         endGame(j);
                                     }
@@ -1174,18 +1179,18 @@
                         const assistant = player.assistantShips[k];
 
                         opponent.bullets = opponent.bullets.filter(bullet => {
-                            const dx = Math.abs(bullet.x - assistant.x - assistant.width/2);
-                            const dy = Math.abs(bullet.y - assistant.y - assistant.height/2);
+                            const dx = Math.abs(bullet.x - assistant.x - assistant.width / 2);
+                            const dy = Math.abs(bullet.y - assistant.y - assistant.height / 2);
 
                             if (dx < assistant.width/2 && dy < assistant.height/2) {
                                 if (!assistant.shield) {
                                     assistant.health--;
 
                                     if (assistant.health <= 0) {
-                                        for (let l = 0; l < 5; l++) { // Réduit à 5 points rouges
+                                        for (let l = 0; l < 5; l++) {
                                             gameState.redPoints.push({
-                                                x: assistant.x + assistant.width/2,
-                                                y: assistant.y + assistant.height/2,
+                                                x: assistant.x + assistant.width / 2,
+                                                y: assistant.y + assistant.height / 2,
                                                 vx: (Math.random() - 0.5) * 8,
                                                 vy: (Math.random() - 0.5) * 8,
                                                 id: Date.now() + Math.random()
@@ -1210,14 +1215,15 @@
                 if (!player.active) return;
 
                 gameState.powerUps = gameState.powerUps.filter(powerUp => {
-                    const dx = Math.abs(powerUp.x + powerUp.width/2 - player.x);
-                    const dy = Math.abs(powerUp.y + powerUp.height/2 - player.y);
+                    const dx = Math.abs(powerUp.x + powerUp.width / 2 - player.x);
+                    const dy = Math.abs(powerUp.y + powerUp.height / 2 - player.y);
 
-                    if (dx < (player.width + powerUp.width)/2 && dy < (player.height + powerUp.height)/2) {
+                    if (dx < (player.width + powerUp.width) / 2 && dy < (player.height + powerUp.height) / 2) {
                         if (powerUp.type === 0) {
                             activateThunder(player);
                         } else if (powerUp.type === 1) {
                             player.powerUpLevel = Math.min(player.powerUpLevel + 1, 9);
+                            createAssistantShip(player);
                         } else if (powerUp.type === 2) {
                             player.powerUpLevel = 3;
                             activateShield(player, 3000);
@@ -1249,6 +1255,7 @@
                 activateThunder(player);
             } else if (data.powerUpType === 1) {
                 player.powerUpLevel = Math.min(player.powerUpLevel + 1, 9);
+                createAssistantShip(player);
             } else if (data.powerUpType === 2) {
                 player.powerUpLevel = 3;
                 activateShield(player, 3000);
@@ -1266,19 +1273,19 @@
 
             const gameOverMessage = document.getElementById('gameOverMessage');
             gameOverMessage.style.display = 'block';
-            gameOverMessage.textContent = `Victoire du Joueur ${winnerIndex + 1} !\nParties gagnées: ${gameState.players[winnerIndex].gamesWon}`;
+            gameOverMessage.textContent = `Victoire du Joueur ${winnerIndex + 1} !\nParties gagnées : ${gameState.players[winnerIndex].gamesWon}`;
             gameOverMessage.style.color = winnerIndex === 0 ? '#04fbac' : '#FF7F50';
 
             playSound(soundEffects.gameOver);
 
             const replayButton = document.createElement('button');
-            replayButton.textContent = "Rejouer";
+            replayButton.textContent = 'Rejouer';
             replayButton.style.display = 'block';
             replayButton.style.margin = '20px auto 0';
             replayButton.style.padding = '10px 20px';
             replayButton.style.fontSize = '18px';
             replayButton.style.cursor = 'pointer';
-            replayButton.style.background = '#04fbac';
+            replayButton.style.backgroundColor = '#04fbac';
             replayButton.style.color = 'black';
             replayButton.style.border = 'none';
             replayButton.style.borderRadius = '5px';
@@ -1309,7 +1316,6 @@
                 player.y = index === 0 ? canvas.height * 0.25 : canvas.height * 0.75;
             });
 
-            // Réinitialiser les power-ups et points rouges
             gameState.powerUps = [];
             gameState.redPoints = [];
             gameState.laserTraits = [];
@@ -1327,7 +1333,6 @@
 
             initializeLives();
 
-            // Synchroniser la réinitialisation pour les deux joueurs
             if (connection && connection.open) {
                 sendMessage({ type: 'resetGame' });
             }
@@ -1340,28 +1345,29 @@
                 ctx.save();
                 ctx.globalAlpha = trait.opacity;
                 ctx.fillStyle = trait.color;
-                ctx.shadowColor = trait.color;
-                ctx.shadowBlur = 10;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
                 ctx.fillRect(trait.x, trait.y, trait.width, trait.height);
+                ctx.strokeRect(trait.x, trait.y, trait.width, trait.height);
                 ctx.restore();
             });
 
             gameState.powerUps.forEach(powerUp => {
                 ctx.save();
-                ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+                ctx.translate(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2);
                 ctx.rotate(powerUp.rotation || 0);
 
                 if (powerUpImgs[powerUp.type].complete) {
                     ctx.drawImage(
                         powerUpImgs[powerUp.type],
-                        -powerUp.width/2,
-                        -powerUp.height/2,
+                        -powerUp.width / 2,
+                        -powerUp.height / 2,
                         powerUp.width,
                         powerUp.height
                     );
                 } else {
-                    ctx.fillStyle = ['#00ff00', '#ff00ff', '#ffff00'][powerUp.type];
-                    ctx.fillRect(-powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
+                    ctx.fillStyle = ['#ff00ff', '#ff00ff', '#ffff00'][powerUp.type];
+                    ctx.fillRect(-powerUp.width / 2, -powerUp.height / 2, powerUp.width, powerUp.height);
                 }
 
                 ctx.restore();
@@ -1370,7 +1376,7 @@
                 ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
                 ctx.fillStyle = '#04fbac';
                 ctx.beginPath();
-                ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2 + 5, 0, Math.PI * 2);
+                ctx.arc(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2, powerUp.width / 2 + 5, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             });
@@ -1384,10 +1390,14 @@
                 player.bullets.forEach(bullet => {
                     ctx.save();
                     ctx.fillStyle = bullet.color;
+                    ctx.strokeStyle = bullet.color;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(bullet.x - bullet.width/2, bullet.y - bullet.height/2, bullet.width, bullet.height);
+                    ctx.fillStyle = bullet.color;
                     ctx.shadowColor = bullet.color;
                     ctx.shadowBlur = 5;
                     ctx.beginPath();
-                    ctx.arc(bullet.x, bullet.y, bullet.width/2, 0, Math.PI * 2);
+                    ctx.arc(bullet.x, bullet.y, bullet.width / 2, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.restore();
                 });
@@ -1435,11 +1445,8 @@
                         ctx.globalAlpha = 0.7 + assistant.health * 0.1;
                     }
 
-                    ctx.translate(assistant.x + assistant.width/2, assistant.y + assistant.height/2);
-                    if (assistant.playerIndex === 0) {
-                        ctx.rotate(Math.PI); // Rotation pour le joueur 1
-                    }
-                    ctx.translate(-assistant.width/2, -assistant.height/2);
+                    ctx.translate(assistant.x + assistant.width / 2, assistant.y + assistant.height / 2);
+                    ctx.translate(-assistant.width / 2, -assistant.height / 2);
 
                     if (assistantShipImgs[assistant.imageIndex] && assistantShipImgs[assistant.imageIndex].complete) {
                         ctx.drawImage(
@@ -1475,32 +1482,24 @@
                     ctx.fillText(
                         `${player.impacts}/10`,
                         player.x,
-                        player.y - player.height/2 - 10
+                        player.y - player.height / 2 - 10
                     );
                 }
 
                 const img = index === 0 ? starshipImg : starship2Img;
                 if (img.complete) {
-                    ctx.save();
-                    ctx.translate(player.x, player.y);
-
-                    if (index === 0) {
-                        ctx.rotate(Math.PI);
-                    }
-
                     ctx.drawImage(
                         img,
-                        -player.width/2,
-                        -player.height/2,
+                        player.x - player.width / 2,
+                        player.y - player.height / 2,
                         player.width,
                         player.height
                     );
-                    ctx.restore();
                 } else {
                     ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
                     ctx.fillRect(
-                        player.x - player.width/2,
-                        player.y - player.height/2,
+                        player.x - player.width / 2,
+                        player.y - player.height / 2,
                         player.width,
                         player.height
                     );
@@ -1513,7 +1512,7 @@
                     ctx.fillText(
                         `LV${player.powerUpLevel}`,
                         player.x,
-                        player.y + player.height/2 + 15
+                        player.y + player.height / 2 + 15
                     );
                 }
 
@@ -1607,9 +1606,9 @@
                         initPeerJS();
                     } else {
                         console.error('PeerJS non disponible');
-                        document.getElementById('connectionStatus').textContent = 'Erreur: PeerJS non chargé';
+                        document.getElementById('connectionStatus').textContent = 'Erreur : PeerJS non chargé';
                     }
-                }, 3000);
+                }, 1000);
             }
         });
 
