@@ -662,13 +662,12 @@
             }
         }
 
-        function updateScoreBoard() {
-            document.getElementById('team1Name').textContent = myPlayerIndex === 0' ? myPseudo : opponentPseudo;
-            document.getElementById('team2Name').textContent = myPlayerIndex === 0 ? opponentPseudo : myPseudo;
-            document.getElementById('team1').Score').textContent = gameState.players[0].gamesWon;
-            document.getElementById('team2').Score').textContent = gameState.players[1].gamesWon;
-        }
-
+       function updateScoreBoard() {
+    document.getElementById('team1Name').textContent = myPlayerIndex === 0 ? myPseudo : opponentPseudo;
+    document.getElementById('team2Name').textContent = myPlayerIndex === 0 ? opponentPseudo : myPseudo;
+    document.getElementById('team1Score').textContent = gameState.players[0].gamesWon;
+    document.getElementById('team2Score').textContent = gameState.players[1].gamesWon;
+}
         // Événements
         window.addEventListener('keydown', (e) => {
             if (e.target.id !== 'joinGameInput') {
