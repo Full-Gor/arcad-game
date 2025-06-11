@@ -689,12 +689,16 @@ function updateLaserTraits() {
         const mouse = { x: 0, y: 0, clicking: false };
 
         window.addEventListener('keydown', (e) => {
-            keys[e.code] = true;
-            e.preventDefault();
+            if (e.target.id !== 'joinGameInput') {
+                keys[e.code] = true;
+                e.preventDefault();
+            }
         });
 
         window.addEventListener('keyup', (e) => {
-            keys[e.code] = false;
+            if (e.target.id !== 'joinGameInput') {
+                keys[e.code] = false;
+            }
         });
 
         canvas.addEventListener('mousemove', (e) => {
