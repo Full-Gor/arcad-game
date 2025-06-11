@@ -621,46 +621,45 @@
         }
 
         function initializeGame() {
-            console.log('Initialisation du jeu...');
-            const midPoint = canvas.height / 2;
+    console.log('Initialisation du jeu...');
+    const midPoint = canvas.height / 2;
 
-            gameState.players[0].x = canvas.width * 0.5;
-            gameState.players[0].y = canvas.height * 3;
-            gameState.players[0].active = true;
+    gameState.players[0].x = canvas.width * 0.5;
+    gameState.players[0].y = canvas.height * 0.25;
+    gameState.players[0].active = true;
 
-            gameState.players[1].x = canvas.width * 0.5;
-            gameState.players[1].y = canvas.height * 0.75;
-            gameState.players[1].active = true;
+    gameState.players[1].x = canvas.width * 0.5;
+    gameState.players[1].y = canvas.height * 0.75;
+    gameState.players[1].active = true;
 
-            initializeLives();
-            gameState.laserTraits = [];
-            gameState.powerUps = [];
-            gameState.redPoints = [];
-            gameState.paused = false;
-            updateScoreBoard();
-            console.log('Jeu initialisé avec succès');
-        }
+    initializeLives();
+    gameState.laserTraits = [];
+    gameState.powerUps = [];
+    gameState.redPoints = [];
+    gameState.paused = false;
+    updateScoreBoard();
+    console.log('Jeu initialisé avec succès');
+}
 
-        function initializeLives() {
-            const team1 = document.getElementById('team1Lives');
-            const team1LivesContainer = gameState.players;
-            const team2LivesContainer = document.getElementById('team2Lives');
+function initializeLives() {
+    const team1LivesContainer = document.getElementById('team1Lives');
+    const team2LivesContainer = document.getElementById('team2Lives');
 
-            team1LivesContainer.innerHTML = '';
-            team2LivesContainer.innerHTML = '';
+    team1LivesContainer.innerHTML = '';
+    team2LivesContainer.innerHTML = '';
 
-            for (let i = 0; i < gameState.players[0].lives; i++) {
-                const lifeIcon = document.createElement('div');
-                lifeIcon.classList.add('life-icon');
-                team1LivesContainer.appendChild(lifeIcon);
-            }
+    for (let i = 0; i < gameState.players[0].lives; i++) {
+        const lifeIcon = document.createElement('div');
+        lifeIcon.classList.add('life-icon');
+        team1LivesContainer.appendChild(lifeIcon);
+    }
 
-            for (let i = 0; i < gameState.players[1].lives; i++) {
-                const lifeIcon = document.createElement('div');
-                lifeIcon.classList.add('life-icon');
-                team2LivesContainer.appendChild(life);
-            }
-        }
+    for (let i = 0; i < gameState.players[1].lives; i++) {
+        const lifeIcon = document.createElement('div');
+        lifeIcon.classList.add('life-icon');
+        team2LivesContainer.appendChild(lifeIcon);
+    }
+}
 
        function updateScoreBoard() {
     document.getElementById('team1Name').textContent = myPlayerIndex === 0 ? myPseudo : opponentPseudo;
