@@ -145,6 +145,7 @@
             right: 15px;
             color: #04fbac;
             border-color: #04fbac;
+            display: flex;
         }
 
         #team2Points {
@@ -186,12 +187,12 @@
             font-size: 14px;
             z-index: 20;
             background: rgba(0, 0, 0, 0.7);
-            padding: 5px 10px;
+            padding: 10px;
             border-radius: 5px;
         }
 
         #resetButton {
-            position: absolute;
+            position: fixed;
             top: 10px;
             right: 10px;
             padding: 10px 20px;
@@ -209,34 +210,10 @@
             background: #ff8800;
         }
 
-        /* Ajout du compteur de victoires */
-        #winsCounter {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 10px;
-            border: 2px solid #04fbac;
-            z-index: 20;
-            display: none;
-        }
-
         @keyframes shieldPulse {
-            0% {
-                transform: scale(1) rotate(0deg);
-                opacity: 0.6;
-            }
-            50% {
-                transform: scale(1.1) rotate(180deg);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(1) rotate(360deg);
-                opacity: 0.6;
-            }
+            0% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 0.6; }
         }
 
         .shield-effect {
@@ -250,54 +227,46 @@
         }
     </style>
 </head>
-<body>
+<body bgcolor="black">
     <!-- Panneau de connexion -->
     <div id="connectionPanel">
-        <h2>🚀 Starship Battle Online</h2>
+        <h2>🚖 Starship Battle Online</h2>
         <div id="myPeerID">
-            Votre Pseudo: <span id="peerIdSpan">Connexion...</span>
+            Votre pseudo: <span id="peerIdSpan">Connexion...</span>
             <button id="copyIdBtn" style="display: none; margin-left: 10px; padding: 5px 10px; background: #04fbac; color: black; border: none; border-radius: 3px; cursor: pointer;">📋 Copier</button>
         </div>
-        
         <div>
             <h3>Créer une partie</h3>
             <button id="hostGame" disabled>Héberger une partie</button>
         </div>
-        
         <div>
             <h3>Rejoindre une partie</h3>
             <input type="text" id="joinGameInput" placeholder="Entrez le pseudo de votre adversaire">
             <br>
             <button id="joinGame">Rejoindre</button>
         </div>
-        
         <div id="connectionStatus">En attente de connexion...</div>
     </div>
 
     <!-- Interface de jeu -->
     <div id="scoreBoard" style="display: none;">
         <div class="team-score team1">
-            <span>Joueur 1: </span>
+            <span>Joueur 1 - Partie gagnées: </span>
             <span id="team1Score">0</span>
             <div id="team1Lives" class="lives-container"></div>
         </div>
         <div class="team-score team2">
-            <span>Joueur 2: </span>
+            <span>Joueur 2 - Partie gagnées: </span>
             <span id="team2Score">0</span>
             <div id="team2Lives" class="lives-container"></div>
         </div>
     </div>
 
-    <!-- Compteur de victoires -->
-    <div id="winsCounter" style="display: none;">
-        <span>Victoires - J1: <span id="player1Wins">0</span> | J2: <span id="player2Wins">0</span></span>
-    </div>
-
-    <div id="team1Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 100</span>
+    <div id="team1Points" class="point-counter">
+        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 25</span>
     </div>
     <div id="team2Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 100</span>
+        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 25</span>
     </div>
 
     <div id="networkStatus" style="display: none;">
@@ -317,7 +286,7 @@
         // Configuration du jeu
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
+
         // Variables globales
         let peer = null;
         let connection = null;
@@ -326,32 +295,14 @@
         let myPlayerIndex = 0;
         let networkLatency = 0;
         let myPseudo = '';
-        
-        // Compteur de victoires
-        let gameStats = {
-            player1Wins: 0,
-            player2Wins: 0
-        };
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
-        
+
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-
-        // Génération de pseudo aléatoire
-        function generatePseudo() {
-            const adjectives = ['Rapide', 'Brave', 'Fort', 'Sage', 'Noble', 'Fier', 'Vif', 'Agile'];
-            const animals = ['Aigle', 'Lion', 'Loup', 'Faucon', 'Tigre', 'Dragon', 'Phoenix', 'Cobra'];
-            const number = Math.floor(Math.random() * 100);
-            
-            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-            const animal = animals[Math.floor(Math.random() * animals.length)];
-            
-            return `${adj}${animal}${number}`;
-        }
 
         // État du jeu
         const gameState = {
@@ -373,7 +324,8 @@
                     thunderActive: false,
                     thunderCount: 0,
                     thunderStartTime: 0,
-                    assistantShips: []
+                    assistantShips: [],
+                    gamesWon: 0
                 },
                 {
                     x: 0,
@@ -392,7 +344,8 @@
                     thunderActive: false,
                     thunderCount: 0,
                     thunderStartTime: 0,
-                    assistantShips: []
+                    assistantShips: [],
+                    gamesWon: 0
                 }
             ],
             powerUps: [],
@@ -414,7 +367,6 @@
             gameOver: new Audio("../audio/gameOver.mp3")
         };
 
-        // Configuration des volumes
         const volumes = {
             shoot: 0.3,
             hit: 1.0,
@@ -426,24 +378,24 @@
         };
 
         Object.keys(soundEffects).forEach(key => {
-            soundEffects[key].volume = volumes[key] || 1.0;
+            soundEffects[key].volume = volumes[key] || 0;
         });
 
         // Chargement des images
         const starshipImg = new Image();
-        starshipImg.src = "../img/starship7.jpg";
+        starshipImg.src = '../img/starship7.jpg';
         const starship2Img = new Image();
-        starship2Img.src = "../img/starship6.jpg";
+        starship2Img.src = '../img/starship6.jpg';
         const powerUpImgs = [new Image(), new Image(), new Image()];
-        powerUpImgs[0].src = "../img/powerUp.jpg";
-        powerUpImgs[1].src = "../img/powerUp1.jpg";
-        powerUpImgs[2].src = "../img/powerUp2.jpg";
+        powerUpImgs[0].src = '../img/powerUp.jpg';
+        powerUpImgs[1].src = '../img/powerUp1.jpg';
+        powerUpImgs[2].src = '../img/powerUp2.jpg';
         const livesImg = new Image();
-        livesImg.src = "../img/lives.jpg";
+        livesImg.src = '../img/lives.jpg';
         const thunderImgs = [new Image(), new Image(), new Image()];
-        thunderImgs[0].src = "../img/thunder1.jpg";
-        thunderImgs[1].src = "../img/thunder2.jpg";
-        thunderImgs[2].src = "../img/thunder3.jpg";
+        thunderImgs[0].src = '../img/thunderImgs1.jpg';
+        thunderImgs[1].src = '../img/thunderImgs2.jpg';
+        thunderImgs[2].src = '../img/thunderImgs3.jpg';
         const assistantShipImgs = [];
         for (let i = 1; i <= 6; i++) {
             const img = new Image();
@@ -456,7 +408,7 @@
             particleCount: 25,
             particles: [],
             orbitalParticles: [],
-            colors: ["#04fbac", "#00ffff", "#0088ff", "#80ffff"],
+            colors: ['#04fbac', '#00ffff', '#ff4444', '#0080ff'],
             minSize: 2,
             maxSize: 5,
             minSpeed: 0.02,
@@ -468,40 +420,49 @@
         const keys = {};
         const mouse = { x: 0, y: 0, clicking: false };
 
-        // Initialisation PeerJS
+        // Générer un pseudo aléatoire
+        function generatePseudo() {
+            const adjectives = ['Rapide', 'Brillant', 'Furtif', 'Cosmique', 'Étoile', 'Galactique'];
+            const nouns = ['Vaisseau', 'Pilote', 'Guerrier', 'Explorateur', 'Comète', 'Nébuleuse'];
+            const number = Math.floor(Math.random() * 100);
+            return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${nouns[Math.floor(Math.random() * nouns.length)]}${number}`;
+        }
+
+        // Initialisation de PeerJS
         function initPeerJS() {
-            console.log('Initialisation PeerJS...');
+            console.log('Initialisation de PeerJS...');
             myPseudo = generatePseudo();
+            console.log('Pseudo :', myPseudo);
             peer = new Peer(myPseudo);
-            
+
             peer.on('open', function(id) {
-                console.log('Mon Pseudo:', id);
-                document.getElementById('peerIdSpan').textContent = id;
+                console.log('Pseudo:', myPseudo);
+                document.getElementById('peerIdSpan').textContent = myPseudo;
                 document.getElementById('hostGame').disabled = false;
-                document.getElementById('copyIdBtn').style.display = 'inline-block';
-                document.getElementById('connectionStatus').textContent = 'Prêt à jouer !';
+                document.getElementById('copyIdBtn').style.display = 'block';
+                document.getElementById('connectionStatus').textContent = 'connecté !';
             });
 
             peer.on('connection', function(conn) {
-                console.log('Connexion entrante:', conn.peer);
+                console.log('Connexion entrée :', conn.peer);
                 setupConnection(conn);
                 isHost = true;
                 myPlayerIndex = 0;
             });
 
             peer.on('error', function(err) {
-                console.error('Erreur PeerJS:', err);
-                document.getElementById('connectionStatus').textContent = 'Erreur: ' + err.message;
+                console.error('Erreur de PeerJS :', err);
+                document.getElementById('connectionStatus').textContent = 'Erreur : ' + err.message;
             });
         }
 
         // Configuration de la connexion
         function setupConnection(conn) {
             connection = conn;
-            
-            conn.on('open', function() {
-                console.log('Connexion établie!');
-                document.getElementById('connectionStatus').textContent = 'Connecté!';
+
+            conn.on('open', () => {
+                console.log('Connexion établie !');
+                document.getElementById('connectionStatus').textContent = 'Connecté !';
                 startGame();
             });
 
@@ -524,11 +485,14 @@
                 case 'bulletFired':
                     addBulletFromNetwork(data);
                     break;
+                case 'powerUpGenerated':
+                    gameState.powerUps.push(data.powerUp);
+                    break;
                 case 'powerUpCollected':
-                    handleRemotePowerUpCollection(data);
+                    handlePowerUpCollection(data);
                     break;
                 case 'redPointCollected':
-                    handleRemoteRedPointCollection(data);
+                    handleRedPointCollection(data);
                     break;
                 case 'shieldActivated':
                     activateShield(gameState.players[data.playerIndex]);
@@ -537,10 +501,7 @@
                     activateThunder(gameState.players[data.playerIndex]);
                     break;
                 case 'assistantCreated':
-                    createAssistantShip(gameState.players[data.playerIndex], data.assistantIndex);
-                    break;
-                case 'gameWon':
-                    updateWinCounter(data.winnerIndex);
+                    createAssistantShip(gameState.players[data.playerIndex], data.assistant);
                     break;
                 case 'ping':
                     sendMessage({type: 'pong', timestamp: data.timestamp});
@@ -548,6 +509,9 @@
                 case 'pong':
                     networkLatency = Date.now() - data.timestamp;
                     document.getElementById('statusText').textContent = `Connecté (${networkLatency}ms)`;
+                    break;
+                case 'resetGame':
+                    resetGame();
                     break;
             }
         }
@@ -572,60 +536,59 @@
             document.getElementById('connectionPanel').style.display = 'none';
             document.getElementById('gameCanvas').style.display = 'block';
             document.getElementById('scoreBoard').style.display = 'flex';
-            document.getElementById('winsCounter').style.display = 'block';
             document.getElementById('team1Points').style.display = 'flex';
             document.getElementById('team2Points').style.display = 'flex';
             document.getElementById('networkStatus').style.display = 'block';
             document.querySelector('.divider').style.display = 'block';
             document.getElementById('controlInfo').style.display = 'block';
             document.getElementById('resetButton').style.display = 'block';
-            
+
             gameStarted = true;
             initializeGame();
-            
-            // Générer des éléments périodiquement (seulement par l'hôte)
+
             if (isHost) {
                 setInterval(() => {
                     if (gameState.powerUps.length < 3) {
                         generatePowerUp();
                     }
                 }, 5000);
-                
+
                 setInterval(() => {
-                    if (gameState.laserTraits.length < 6) {
+                    if (gameState.laserTraits.length < 12) {
                         generateLaserTrait();
                     }
-                }, 2000);
+                }, 1000);
             }
-            
+
             gameLoop();
         }
 
         function initializeGame() {
             const midPoint = canvas.height / 2;
-            
+
             gameState.players[0].x = canvas.width * 0.5;
             gameState.players[0].y = canvas.height * 0.25;
-            
+
             gameState.players[1].x = canvas.width * 0.5;
             gameState.players[1].y = canvas.height * 0.75;
 
             initializeLives();
+            updateScoreBoard();
         }
 
         function initializeLives() {
             const team1LivesContainer = document.getElementById('team1Lives');
             const team2LivesContainer = document.getElementById('team2Lives');
-            
+
             team1LivesContainer.innerHTML = '';
             team2LivesContainer.innerHTML = '';
-            
+
             for (let i = 0; i < gameState.players[0].lives; i++) {
                 const lifeIcon = document.createElement('div');
                 lifeIcon.classList.add('life-icon');
                 team1LivesContainer.appendChild(lifeIcon);
             }
-            
+
             for (let i = 0; i < gameState.players[1].lives; i++) {
                 const lifeIcon = document.createElement('div');
                 lifeIcon.classList.add('life-icon');
@@ -633,16 +596,9 @@
             }
         }
 
-        // Mise à jour du compteur de victoires
-        function updateWinCounter(winnerIndex) {
-            if (winnerIndex === 0) {
-                gameStats.player1Wins++;
-            } else {
-                gameStats.player2Wins++;
-            }
-            
-            document.getElementById('player1Wins').textContent = gameStats.player1Wins;
-            document.getElementById('player2Wins').textContent = gameStats.player2Wins;
+        function updateScoreBoard() {
+            document.getElementById('team1Score').textContent = gameState.players[0].gamesWon;
+            document.getElementById('team2Score').textContent = gameState.players[1].gamesWon;
         }
 
         // Événements
@@ -666,41 +622,43 @@
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) mouse.clicking = true;
+            if (e.button === 0) {
+                mouse.clicking = true;
+            }
         });
 
         canvas.addEventListener('mouseup', (e) => {
-            if (e.button === 0) mouse.clicking = false;
+            if (e.button === 0) {
+                mouse.clicking = false;
+            }
         });
 
-        // Boutons
-        document.getElementById('hostGame').addEventListener('click', function() {
-            document.getElementById('connectionStatus').textContent = 'En attente d\'un adversaire... Partagez votre pseudo !';
+        document.getElementById('hostGame').addEventListener('click', () => {
+            document.getElementById('connectionStatus').textContent = 'En attente de votre adversaire... Partagez votre pseudo !';
             isHost = true;
             myPlayerIndex = 0;
         });
 
-        document.getElementById('copyIdBtn').addEventListener('click', function() {
+        document.getElementById('copyIdBtn').addEventListener('click', () => {
             const peerIdText = document.getElementById('peerIdSpan').textContent;
-            navigator.clipboard.writeText(peerIdText).then(function() {
+            navigator.clipboard.writeText(peerIdText).then(() => {
                 const btn = document.getElementById('copyIdBtn');
                 const originalText = btn.textContent;
                 btn.textContent = '✅ Copié !';
-                btn.style.background = '#00ff00';
-                
+                btn.style.backgroundColor = '#00ff00';
                 setTimeout(() => {
                     btn.textContent = originalText;
-                    btn.style.background = '#04fbac';
+                    btn.style.backgroundColor = '#04fbac';
                 }, 2000);
-            }).catch(function() {
-                alert('Pseudo copié: ' + peerIdText);
+            }).catch(() => {
+                alert('Pseudo copié : ' + peerIdText);
             });
         });
 
-        document.getElementById('joinGame').addEventListener('click', function() {
+        document.getElementById('joinGame').addEventListener('click', () => {
             const peerID = document.getElementById('joinGameInput').value.trim();
             if (peerID) {
-                console.log('Connexion à:', peerID);
+                console.log('Connexion à :', peerID);
                 const conn = peer.connect(peerID);
                 setupConnection(conn);
                 isHost = false;
@@ -712,41 +670,39 @@
         // Gestion des entrées locales
         let lastShootTime = 0;
         const shootCooldown = 100;
-        
+
         function handleLocalPlayerInput() {
             if (!gameStarted || gameState.paused) return;
-            
+
             const player = gameState.players[myPlayerIndex];
             if (!player.active) return;
 
             let moved = false;
             let shot = false;
 
-            // Contrôles souris
             const midPoint = canvas.height / 2;
             const isInPlayerZone = myPlayerIndex === 0 ? mouse.y < midPoint : mouse.y > midPoint;
-            
+
             if (isInPlayerZone) {
                 const targetX = mouse.x;
                 const targetY = mouse.y;
-                
+
                 const minY = myPlayerIndex === 0 ? player.height/2 : midPoint + player.height/2;
                 const maxY = myPlayerIndex === 0 ? midPoint - player.height/2 : canvas.height - player.height/2;
-                
+
                 const clampedX = Math.max(player.width/2, Math.min(canvas.width - player.width/2, targetX));
                 const clampedY = Math.max(minY, Math.min(maxY, targetY));
-                
+
                 if (Math.abs(player.x - clampedX) > 2 || Math.abs(player.y - clampedY) > 2) {
                     player.x = clampedX;
                     player.y = clampedY;
                     moved = true;
                 }
-                
+
                 if (mouse.clicking) shot = true;
             }
 
-            // Contrôles clavier
-            const controls = myPlayerIndex === 0 ? 
+            const controls = myPlayerIndex === 0 ?
                 { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', shoot: 'KeyG' } :
                 { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', shoot: 'Space' };
 
@@ -755,24 +711,21 @@
             if (keys[controls.right]) { player.x += speed; moved = true; }
             if (keys[controls.up]) { player.y -= speed; moved = true; }
             if (keys[controls.down]) { player.y += speed; moved = true; }
-            if (keys[controls.shoot]) shot = true;
+            if (keys[controls.shoot]) { shot = true; }
 
-            // Contraintes après mouvement clavier
             const midPointY = canvas.height / 2;
             const minY = myPlayerIndex === 0 ? player.height/2 : midPointY + player.height/2;
             const maxY = myPlayerIndex === 0 ? midPointY - player.height/2 : canvas.height - player.height/2;
-            
+
             player.x = Math.max(player.width/2, Math.min(canvas.width - player.width/2, player.x));
             player.y = Math.max(minY, Math.min(maxY, player.y));
 
-            // Tir avec cooldown
             const currentTime = Date.now();
             if (shot && currentTime - lastShootTime > shootCooldown) {
                 shootBullet(player, myPlayerIndex);
                 lastShootTime = currentTime;
             }
 
-            // Synchronisation réseau
             if (moved || shot) {
                 sendMessage({
                     type: 'playerInput',
@@ -788,7 +741,7 @@
             const player = gameState.players[data.playerIndex];
             player.x = data.x;
             player.y = data.y;
-            
+
             if (data.shot) {
                 shootBullet(player, data.playerIndex);
             }
@@ -796,45 +749,44 @@
 
         function shootBullet(player, playerIndex) {
             if (!player.active) return;
-            
+
             const bulletSpeed = 10;
             const bulletColor = playerIndex === 0 ? '#04fbac' : '#FF7F50';
-            
-            // Configuration des tirs selon le niveau de power-up
+
             const rows = [
-                { offsets: [0], y: player.y, speed: bulletSpeed, color: bulletColor },
-                { offsets: [-10, 0, 10], y: player.y, speed: bulletSpeed - 1, color: bulletColor },
-                { offsets: [-15, -5, 5, 15], y: player.y - 4, speed: bulletSpeed - 2, color: "#FF00FF" },
-                { offsets: [-20, -10, 0, 10, 20], y: player.y - 8, speed: bulletSpeed - 3, color: bulletColor },
-                { offsets: [-30, -20, -10, 0, 10, 20, 30], y: player.y - 12, speed: bulletSpeed - 4, color: "#FF00FF" }
+                { offsets: [-30, -20, -10, 0, 10, 20, 30], y: player.y + (playerIndex === 0 ? player.height/2 : -player.height/2), speed: bulletSpeed - 4, color: '#FF00FF' },
+                { offsets: [-20, -10, 0, 10, 20], y: player.y + (playerIndex === 0 ? player.height/2 + 4 : -player.height/2 - 4), speed: bulletSpeed - 3, color: bulletColor },
+                { offsets: [-15, -5, 5, 15], y: player.y + (playerIndex === 0 ? player.height/2 + 8 : -player.height/2 - 8), speed: bulletSpeed - 2, color: '#FF00FF' },
+                { offsets: [-10, 0, 10], y: player.y + (playerIndex === 0 ? player.height/2 + 12 : -player.height/2 - 12), speed: bulletSpeed - 1, color: bulletColor },
+                { offsets: [0], y: player.y + (playerIndex === 0 ? player.height/2 + 16 : -player.height/2 - 16), speed: bulletSpeed, color: bulletColor }
             ];
 
             const numRows = Math.min(player.powerUpLevel + 1, rows.length);
             const rowsToUse = rows.slice(0, numRows);
-            
+
             rowsToUse.forEach(row => {
                 row.offsets.forEach(xOffset => {
                     const bullet = {
                         x: player.x + xOffset,
                         y: row.y,
                         color: row.color,
-                        vy: playerIndex === 0 ? row.speed : -row.speed,
+                        vy: playerIndex === 0 ? bulletSpeed : -bulletSpeed,
                         vx: 0,
                         playerIndex: playerIndex,
                         width: 4,
                         height: 4
                     };
-                    
+
                     player.bullets.push(bullet);
                 });
             });
-            
+
             sendMessage({
                 type: 'bulletFired',
                 bullets: player.bullets.slice(-rowsToUse.reduce((sum, r) => sum + r.offsets.length, 0)),
                 playerIndex: playerIndex
             });
-            
+
             playSound(soundEffects.shoot);
         }
 
@@ -845,10 +797,9 @@
             });
         }
 
-        // Génération de power-ups (seulement par l'hôte)
         function generatePowerUp() {
             if (!isHost) return;
-            
+
             const powerUp = {
                 x: Math.random() * (canvas.width - 40),
                 y: Math.random() * (canvas.height - 40),
@@ -857,59 +808,36 @@
                 width: 40,
                 height: 40,
                 type: Math.floor(Math.random() * 3),
-                id: Date.now() + Math.random()
+                id: Date.now() + Math.random(),
+                rotation: 0
             };
-            
+
             gameState.powerUps.push(powerUp);
-            
-            // Générer aussi des points rouges
+            sendMessage({ type: 'powerUpGenerated', powerUp });
+
             if (Math.random() > 0.5) {
                 for (let i = 0; i < 10; i++) {
-                    gameState.redPoints.push({
+                    const redPoint = {
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height,
                         vx: (Math.random() - 0.5) * 2,
                         vy: (Math.random() - 0.5) * 2,
                         id: Date.now() + Math.random() + i
-                    });
+                    };
+                    gameState.redPoints.push(redPoint);
+                    sendMessage({ type: 'redPointGenerated', redPoint });
                 }
             }
         }
 
-        // Génération de traits laser (CORRECTION: ils bloquent maintenant les tirs)
-        function generateLaserTrait() {
-            if (!isHost) return;
-            
-            const width = 30 + Math.random() * 20;
-            const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
-            const midPoint = canvas.height / 2;
-            
-            const trait = {
-                x: Math.random() * (canvas.width - width),
-                y: isPlayerZone === 0 ? 
-                    Math.random() * (midPoint - 50) : 
-                    midPoint + Math.random() * (canvas.height / 2 - 50),
-                width: width,
-                height: 3,
-                createdAt: Date.now(),
-                duration: 3000,
-                color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
-                opacity: 1,
-                id: Date.now() + Math.random()
-            };
-            
-            gameState.laserTraits.push(trait);
-        }
-
-        // Activation du bouclier (CORRECTION: tous les 100 points, durée 3 secondes)
         function activateShield(player, duration = 3000) {
             if (!player || !player.active) return;
-            
+
             player.shield = true;
             createShieldParticles(player);
-            
+
             if (player.shieldTimeout) clearTimeout(player.shieldTimeout);
-            
+
             player.shieldTimeout = setTimeout(() => {
                 player.shield = false;
                 const playerIndex = gameState.players.indexOf(player);
@@ -918,14 +846,13 @@
             }, duration);
         }
 
-        // Création des particules de bouclier
         function createShieldParticles(player) {
             const playerIndex = gameState.players.indexOf(player);
-            
+
             for (let i = 0; i < shieldParticles.particleCount; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const distance = 30 + Math.random() * 10;
-                
+
                 shieldParticles.particles.push({
                     angle,
                     distance,
@@ -938,7 +865,6 @@
             }
         }
 
-        // Activation de l'éclair (CORRECTION: tir dans la bonne direction)
         function activateThunder(player) {
             if (player.thunderActive) {
                 player.thunderCount = Math.min(player.thunderCount + 1, 3);
@@ -947,28 +873,36 @@
                 player.thunderCount = 1;
                 player.thunderStartTime = Date.now();
             }
-            
+
             playSound(soundEffects.king);
-            
+
             sendMessage({
                 type: 'thunderActivated',
                 playerIndex: gameState.players.indexOf(player)
             });
         }
 
-        // Création d'un vaisseau assistant (CORRECTION: orientation correcte)
-        function createAssistantShip(player, imgIndex = null) {
+        function createAssistantShip(player, assistantData = null) {
             if (player.assistantShips.length >= 3) return;
-            
+
             const playerIndex = gameState.players.indexOf(player);
-            if (imgIndex === null) {
-                imgIndex = (player.assistantShips.length % 6);
+            let imgIndex, x, y;
+
+            if (assistantData) {
+                imgIndex = assistantData.imageIndex;
+                x = assistantData.x;
+                y = assistantData.y;
+            } else {
+                imgIndex = player.assistantShips.length % 6;
+                x = Math.random() * (canvas.width - 50);
+                const midPoint = canvas.height / 2;
+                y = playerIndex === 0 ? midPoint - 150 : midPoint + 150;
             }
-            
+
             const assistant = {
-                x: Math.random() * (canvas.width - 50),
-                y: playerIndex === 0 ? player.y + 100 : player.y - 100,
-                targetY: playerIndex === 0 ? player.y + 80 : player.y - 80,
+                x: x,
+                y: y,
+                targetY: playerIndex === 0 ? canvas.height / 2 - 50 : canvas.height / 2 + 50,
                 width: 40,
                 height: 40,
                 lastShootTime: 0,
@@ -984,39 +918,40 @@
                 shield: false,
                 shieldTimeout: null
             };
-            
+
             player.assistantShips.push(assistant);
-            
-            if (playerIndex === myPlayerIndex) {
+            console.log(`Assistant créé pour joueur ${playerIndex + 1} à (${assistant.x}, ${assistant.y})`);
+
+            if (playerIndex === myPlayerIndex && !assistantData) {
                 sendMessage({
                     type: 'assistantCreated',
                     playerIndex: playerIndex,
-                    assistantIndex: imgIndex
+                    assistant: { x: assistant.x, y: assistant.y, imageIndex: imgIndex }
                 });
             }
-            
+
             playSound(soundEffects.awesome);
         }
 
-        // Mise à jour du jeu
         function updateBullets() {
             gameState.players.forEach(player => {
                 player.bullets = player.bullets.filter(bullet => {
                     bullet.y += bullet.vy;
                     bullet.x += bullet.vx || 0;
-                    
-                    // CORRECTION: Vérification collision avec traits laser
-                    let hitLaserTrait = false;
-                    gameState.laserTraits.forEach(trait => {
-                        if (bullet.x >= trait.x && bullet.x <= trait.x + trait.width &&
-                            bullet.y >= trait.y && bullet.y <= trait.y + trait.height) {
-                            hitLaserTrait = true;
+
+                    for (const trait of gameState.laserTraits) {
+                        if (
+                            bullet.x + bullet.width/2 > trait.x &&
+                            bullet.x - bullet.width/2 < trait.x + trait.width &&
+                            bullet.y + bullet.height/2 > trait.y &&
+                            bullet.y - bullet.height/2 < trait.y + trait.height
+                        ) {
+                            console.log('Collision balle avec trait laser détectée');
+                            return false;
                         }
-                    });
-                    
-                    if (hitLaserTrait) return false;
-                    
-                    return bullet.y > -10 && bullet.y < canvas.height + 10 && 
+                    }
+
+                    return bullet.y > -10 && bullet.y < canvas.height + 10 &&
                            bullet.x > -10 && bullet.x < canvas.width + 10;
                 });
             });
@@ -1024,11 +959,11 @@
 
         function updatePowerUps() {
             if (!isHost) return;
-            
+
             gameState.powerUps = gameState.powerUps.filter(powerUp => {
                 powerUp.x += powerUp.vx || 0;
                 powerUp.y += powerUp.vy || 0;
-                
+
                 if (powerUp.x <= 0 || powerUp.x >= canvas.width - powerUp.width) {
                     powerUp.vx = -(powerUp.vx || 0);
                     powerUp.x = Math.max(0, Math.min(canvas.width - powerUp.width, powerUp.x));
@@ -1037,7 +972,7 @@
                     powerUp.vy = -(powerUp.vy || 0);
                     powerUp.y = Math.max(0, Math.min(canvas.height - powerUp.height, powerUp.y));
                 }
-                
+
                 powerUp.rotation = (powerUp.rotation || 0) + 0.05;
                 return true;
             });
@@ -1047,80 +982,65 @@
             gameState.redPoints = gameState.redPoints.filter(point => {
                 point.x += point.vx || 0;
                 point.y += point.vy || 0;
-                
+
                 if (point.vx) point.vx *= 0.98;
                 if (point.vy) point.vy *= 0.98;
-                
+
                 gameState.players.forEach((player, index) => {
                     if (!player.active) return;
-                    
+
                     const dx = player.x - point.x;
                     const dy = player.y - point.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
-                    
+
                     if (distance < 100) {
                         const force = (100 - distance) / 100 * 3;
                         point.x += (dx / distance) * force;
                         point.y += (dy / distance) * force;
-                        
+
                         if (distance < 30) {
-                            player.redPointsCollected++;
-                            document.getElementById(`p${index + 1}RedPoints`).textContent = player.redPointsCollected;
-                            
                             if (index === myPlayerIndex) {
+                                player.redPointsCollected++;
+                                const redPointsElement = document.getElementById(`p${index + 1}RedPoints`);
+                                if (redPointsElement) {
+                                    redPointsElement.textContent = player.redPointsCollected;
+                                }
+
                                 sendMessage({
                                     type: 'redPointCollected',
                                     playerIndex: index,
                                     pointId: point.id
                                 });
-                            }
-                            
-                            // CORRECTION: Activation du bouclier tous les 100 points
-                            if (player.redPointsCollected >= 100) {
-                                activateShield(player);
-                                player.redPointsCollected = 0;
-                                document.getElementById(`p${index + 1}RedPoints`).textContent = player.redPointsCollected;
-                                
-                                if (index === myPlayerIndex) {
+
+                                if (player.redPointsCollected >= 25) {
+                                    activateShield(player);
+                                    player.redPointsCollected -= 25;
+                                    if (redPointsElement) {
+                                        redPointsElement.textContent = player.redPointsCollected;
+                                    }
+
                                     sendMessage({
                                         type: 'shieldActivated',
                                         playerIndex: index
                                     });
                                 }
+
+                                playSound(soundEffects.coin);
                             }
-                            
-                            if (player.redPointsCollected % 25 === 0 && player.redPointsCollected > 0) {
-                                createAssistantShip(player);
-                            }
-                            
-                            playSound(soundEffects.coin);
                             return false;
                         }
                     }
                 });
-                
-                return point.x > 0 && point.x < canvas.width && 
-                       point.y > 0 && point.y < canvas.height;
-            });
-        }
 
-        function updateLaserTraits() {
-            const currentTime = Date.now();
-            gameState.laserTraits = gameState.laserTraits.filter(trait => {
-                const elapsed = currentTime - trait.createdAt;
-                
-                if (elapsed > trait.duration - 500) {
-                    trait.opacity = Math.max(0, 1 - ((elapsed - (trait.duration - 500)) / 500));
-                }
-                
-                return elapsed < trait.duration;
+                return point.x > 0 && point.x < canvas.width &&
+                       point.y > 0 && point.y < canvas.height;
             });
         }
 
         function updateThunder() {
             gameState.players.forEach(player => {
                 if (!player.thunderActive) return;
-                
+
                 const elapsedTime = Date.now() - player.thunderStartTime;
                 if (elapsedTime > 7000) {
                     player.thunderActive = false;
@@ -1143,18 +1063,18 @@
                     } else {
                         assistant.moveTimer += 0.01;
                         assistant.x += Math.sin(assistant.moveTimer) * 2 * assistant.moveDirection;
-                        
+
                         if (assistant.x < 0 || assistant.x + assistant.width > canvas.width) {
                             assistant.moveDirection *= -1;
                             assistant.x = Math.max(0, Math.min(canvas.width - assistant.width, assistant.x));
                         }
                     }
-                    
+
                     const currentTime = Date.now();
                     if (currentTime - assistant.lastShootTime > assistant.shootInterval) {
                         const bullet = {
                             x: assistant.x + assistant.width / 2,
-                            y: assistant.y + (assistant.playerIndex === 0 ? assistant.height : 0),
+                            y: assistant.y + (assistant.playerIndex === 0 ? assistant.height / 2 : -assistant.height / 2),
                             width: 4,
                             height: 4,
                             vy: assistant.playerIndex === 0 ? 8 : -8,
@@ -1163,11 +1083,11 @@
                             playerIndex: assistant.playerIndex,
                             isAssistantBullet: true
                         };
-                        
+
                         player.bullets.push(bullet);
                         assistant.lastShootTime = currentTime;
                     }
-                    
+
                     return assistant.health > 0;
                 });
             });
@@ -1178,111 +1098,151 @@
                 particle.angle += particle.speed;
                 if (particle.angle > Math.PI * 2) particle.angle -= Math.PI * 2;
             });
-            
+
             shieldParticles.orbitalParticles.forEach(particle => {
                 particle.angle += particle.moveSpeed;
                 if (particle.angle > Math.PI * 2) particle.angle -= Math.PI * 2;
             });
         }
 
+        function updateLaserTraits() {
+            const currentTime = Date.now();
+            gameState.laserTraits = gameState.laserTraits.filter(trait => {
+                const elapsed = currentTime - trait.createdAt;
+
+                if (elapsed > trait.duration - 500) {
+                    trait.opacity = Math.max(0, 1 - ((elapsed - (trait.duration - 500)) / 500));
+                }
+
+                return elapsed < trait.duration;
+            });
+        }
+
+        function generateLaserTrait() {
+            if (!isHost) return;
+
+            const width = 50 + Math.random() * 20;
+            const isPlayerZone = Math.random() < 0.5 ? 0 : 1;
+            const midPoint = canvas.height / 2;
+
+            const trait = {
+                x: Math.random() * (canvas.width - width),
+                y: isPlayerZone === 0 ?
+                    Math.random() * (midPoint - 50) :
+                    midPoint + Math.random() * (canvas.height / 2 - 50),
+                width: width,
+                height: 10,
+                createdAt: Date.now(),
+                duration: 3000,
+                color: isPlayerZone === 0 ? '#04fbac' : '#FF7F50',
+                opacity: 1,
+                id: Date.now() + Math.random()
+            };
+
+            gameState.laserTraits.push(trait);
+            console.log(`Trait créé à (${trait.x}, ${trait.y})`);
+        }
+
         function checkCollisions() {
             for (let i = 0; i < gameState.players.length; i++) {
                 const player = gameState.players[i];
                 if (!player.active) continue;
-                
+
                 for (let j = 0; j < gameState.players.length; j++) {
                     if (i === j) continue;
-                    
+
                     const opponent = gameState.players[j];
-                    
+
                     opponent.bullets = opponent.bullets.filter(bullet => {
                         const dx = Math.abs(bullet.x - player.x);
                         const dy = Math.abs(bullet.y - player.y);
-                        
+
                         if (dx < player.width/2 && dy < player.height/2) {
                             if (!player.shield) {
                                 if (player.powerUpLevel > 0) {
                                     player.powerUpLevel--;
-                                    
-                                    for (let k = 0; k < 20; k++) {
+
+                                    for (let k = 0; k < 5; k++) {
                                         gameState.redPoints.push({
                                             x: player.x,
                                             y: player.y,
                                             vx: (Math.random() - 0.5) * 5,
-                                            vy: (Math.random() - 0.5) * 5
+                                            vy: (Math.random() - 0.5) * 5,
+                                            id: Date.now() + Math.random()
                                         });
                                     }
                                 } else {
                                     player.impacts++;
-                                    
+
                                     if (player.impacts >= 10) {
-                                        player.impacts = 0;
                                         player.active = false;
                                         endGame(j);
                                     }
                                 }
-                                
+
                                 playSound(soundEffects.hit);
                             }
-                            
+
                             return false;
                         }
-                        
+
                         return true;
                     });
-                    
+
                     for (let k = player.assistantShips.length - 1; k >= 0; k--) {
                         const assistant = player.assistantShips[k];
-                        
+
                         opponent.bullets = opponent.bullets.filter(bullet => {
-                            const dx = Math.abs(bullet.x - assistant.x - assistant.width/2);
-                            const dy = Math.abs(bullet.y - assistant.y - assistant.height/2);
-                            
+                            const dx = Math.abs(bullet.x - assistant.x - assistant.width / 2);
+                            const dy = Math.abs(bullet.y - assistant.y - assistant.height / 2);
+
                             if (dx < assistant.width/2 && dy < assistant.height/2) {
                                 if (!assistant.shield) {
                                     assistant.health--;
-                                    
+
                                     if (assistant.health <= 0) {
-                                        for (let l = 0; l < 30; l++) {
+                                        for (let l = 0; l < 5; l++) {
                                             gameState.redPoints.push({
-                                                x: assistant.x + assistant.width/2,
-                                                y: assistant.y + assistant.height/2,
+                                                x: assistant.x + assistant.width / 2,
+                                                y: assistant.y + assistant.height / 2,
                                                 vx: (Math.random() - 0.5) * 8,
-                                                vy: (Math.random() - 0.5) * 8
+                                                vy: (Math.random() - 0.5) * 8,
+                                                id: Date.now() + Math.random()
                                             });
                                         }
-                                        
+
                                         player.assistantShips.splice(k, 1);
                                     }
                                 }
-                                
+
                                 playSound(soundEffects.hit);
                                 return false;
                             }
-                            
+
                             return true;
                         });
                     }
                 }
             }
-            
+
             gameState.players.forEach((player, index) => {
                 if (!player.active) return;
-                
+
                 gameState.powerUps = gameState.powerUps.filter(powerUp => {
-                    const dx = Math.abs(powerUp.x + powerUp.width/2 - player.x);
-                    const dy = Math.abs(powerUp.y + powerUp.height/2 - player.y);
-                    
-                    if (dx < (player.width + powerUp.width)/2 && dy < (player.height + powerUp.height)/2) {
+                    const dx = Math.abs(powerUp.x + powerUp.width / 2 - player.x);
+                    const dy = Math.abs(powerUp.y + powerUp.height / 2 - player.y);
+
+                    if (dx < (player.width + powerUp.width) / 2 && dy < (player.height + powerUp.height) / 2) {
                         if (powerUp.type === 0) {
                             activateThunder(player);
                         } else if (powerUp.type === 1) {
                             player.powerUpLevel = Math.min(player.powerUpLevel + 1, 9);
+                            createAssistantShip(player);
                         } else if (powerUp.type === 2) {
                             player.powerUpLevel = 3;
                             activateShield(player, 3000);
                         }
-                        
+
                         if (index === myPlayerIndex) {
                             sendMessage({
                                 type: 'powerUpCollected',
@@ -1291,81 +1251,83 @@
                                 powerUpType: powerUp.type
                             });
                         }
-                        
+
                         playSound(soundEffects.perfect);
                         return false;
                     }
-                    
+
                     return true;
                 });
             });
         }
 
-        function handleRemotePowerUpCollection(data) {
+        function handlePowerUpCollection(data) {
             gameState.powerUps = gameState.powerUps.filter(p => p.id !== data.powerUpId);
-            
+
             const player = gameState.players[data.playerIndex];
             if (data.powerUpType === 0) {
                 activateThunder(player);
             } else if (data.powerUpType === 1) {
                 player.powerUpLevel = Math.min(player.powerUpLevel + 1, 9);
+                createAssistantShip(player, { imageIndex: player.assistantShips.length % 6, x: player.x, y: player.y });
             } else if (data.powerUpType === 2) {
                 player.powerUpLevel = 3;
                 activateShield(player, 3000);
             }
         }
 
-        function handleRemoteRedPointCollection(data) {
+        function handleRedPointCollection(data) {
             gameState.redPoints = gameState.redPoints.filter(p => p.id !== data.pointId);
+
+            const player = gameState.players[data.playerIndex];
+            player.redPointsCollected++;
+            const redPointsElement = document.getElementById(`p${data.playerIndex + 1}RedPoints`);
+            if (redPointsElement) {
+                redPointsElement.textContent = player.redPointsCollected;
+            }
+
+            if (player.redPointsCollected >= 25) {
+                activateShield(player);
+                player.redPointsCollected -= 25;
+                if (redPointsElement) {
+                    redPointsElement.textContent = player.redPointsCollected;
+                }
+            }
         }
 
         function endGame(winnerIndex) {
             gameState.gameOver = true;
             gameState.winner = winnerIndex;
-            
-            // CORRECTION: Mise à jour du compteur de victoires
-            updateWinCounter(winnerIndex);
-            
-            // Synchronisation réseau
-            if (winnerIndex === myPlayerIndex) {
-                sendMessage({
-                    type: 'gameWon',
-                    winnerIndex: winnerIndex
-                });
-            }
-            
+            gameState.players[winnerIndex].gamesWon++;
+
             const gameOverMessage = document.getElementById('gameOverMessage');
             gameOverMessage.style.display = 'block';
-            
-            if (winnerIndex === 0) {
-                gameOverMessage.textContent = "Victoire du Joueur 1 !";
-                gameOverMessage.style.color = '#04fbac';
-            } else {
-                gameOverMessage.textContent = "Victoire du Joueur 2 !";
-                gameOverMessage.style.color = '#FF7F50';
-            }
-            
+            gameOverMessage.textContent = `Victoire du Joueur ${winnerIndex + 1} !\nParties gagnées : ${gameState.players[winnerIndex].gamesWon}`;
+            gameOverMessage.style.color = winnerIndex === 0 ? '#04fbac' : '#FF7F50';
+
             playSound(soundEffects.gameOver);
-            
+
             const replayButton = document.createElement('button');
-            replayButton.textContent = "Rejouer";
+            replayButton.textContent = 'Rejouer';
             replayButton.style.display = 'block';
             replayButton.style.margin = '20px auto 0';
             replayButton.style.padding = '10px 20px';
             replayButton.style.fontSize = '18px';
             replayButton.style.cursor = 'pointer';
-            replayButton.style.background = '#04fbac';
+            replayButton.style.backgroundColor = '#04fbac';
             replayButton.style.color = 'black';
             replayButton.style.border = 'none';
             replayButton.style.borderRadius = '5px';
             replayButton.onclick = resetGame;
             gameOverMessage.appendChild(replayButton);
+
+            updateScoreBoard();
         }
 
         function resetGame() {
             gameState.gameOver = false;
             gameState.winner = null;
-            
+
             gameState.players.forEach((player, index) => {
                 player.lives = 10;
                 player.impacts = 0;
@@ -1377,146 +1339,149 @@
                 player.thunderActive = false;
                 player.thunderCount = 0;
                 player.assistantShips = [];
-                
+
                 const midPoint = canvas.height / 2;
                 player.x = canvas.width * 0.5;
                 player.y = index === 0 ? canvas.height * 0.25 : canvas.height * 0.75;
             });
-            
+
             gameState.powerUps = [];
             gameState.redPoints = [];
             gameState.laserTraits = [];
             shieldParticles.particles = [];
             shieldParticles.orbitalParticles = [];
-            
+
             document.getElementById('gameOverMessage').style.display = 'none';
             document.getElementById('gameOverMessage').innerHTML = '';
-            document.getElementById('p1RedPoints').textContent = '0';
-            document.getElementById('p2RedPoints').textContent = '0';
-            
-            initializeLives();
+            const p1RedPoints = document.getElementById('p1RedPoints');
+            const p2RedPoints = document.getElementById('p2RedPoints');
+            if (p1RedPoints) p1RedPoints.textContent = '0';
+            if (p2RedPoints) p2RedPoints.textContent = '0';
+            document.getElementById('team1Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 25';
+            document.getElementById('team2Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 25';
+
+            if (connection && connection.open) {
+                sendMessage({ type: 'resetGame' });
+            }
+
+            initializeGame();
         }
 
-        // Fonctions de rendu
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Dessiner les traits laser
+
             gameState.laserTraits.forEach(trait => {
                 ctx.save();
                 ctx.globalAlpha = trait.opacity;
                 ctx.fillStyle = trait.color;
-                ctx.shadowColor = trait.color;
-                ctx.shadowBlur = 10;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
                 ctx.fillRect(trait.x, trait.y, trait.width, trait.height);
+                ctx.strokeRect(trait.x, trait.y, trait.width, trait.height);
                 ctx.restore();
             });
-            
-            // Dessiner les power-ups
+
             gameState.powerUps.forEach(powerUp => {
                 ctx.save();
-                ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+                ctx.translate(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2);
                 ctx.rotate(powerUp.rotation || 0);
-                
+
                 if (powerUpImgs[powerUp.type].complete) {
                     ctx.drawImage(
                         powerUpImgs[powerUp.type],
-                        -powerUp.width/2,
-                        -powerUp.height/2,
+                        -powerUp.width / 2,
+                        -powerUp.height / 2,
                         powerUp.width,
                         powerUp.height
                     );
                 } else {
-                    ctx.fillStyle = ['#00ff00', '#ff00ff', '#ffff00'][powerUp.type];
-                    ctx.fillRect(-powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
+                    ctx.fillStyle = ['#ff0000', '#ff00ff', '#ffff00'][powerUp.type];
+                    ctx.fillRect(-powerUp.width / 2, -powerUp.height / 2, powerUp.width, powerUp.height);
                 }
-                
+
                 ctx.restore();
-                
+
                 ctx.save();
-                ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
+                ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.005) * 0.2);
                 ctx.fillStyle = '#04fbac';
                 ctx.beginPath();
-                ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2 + 5, 0, Math.PI * 2);
+                ctx.arc(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2, powerUp.width / 2 + 5, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             });
-            
-            // Dessiner les points rouges
+
             gameState.redPoints.forEach(point => {
                 ctx.fillStyle = 'red';
                 ctx.fillRect(point.x - 2, point.y - 2, 4, 4);
             });
-            
-            // Dessiner les balles
+
             gameState.players.forEach(player => {
                 player.bullets.forEach(bullet => {
                     ctx.save();
                     ctx.fillStyle = bullet.color;
+                    ctx.strokeStyle = bullet.color;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(bullet.x - bullet.width/2, bullet.y - bullet.height/2, bullet.width, bullet.height);
+                    ctx.fillStyle = bullet.color;
                     ctx.shadowColor = bullet.color;
                     ctx.shadowBlur = 5;
                     ctx.beginPath();
-                    ctx.arc(bullet.x, bullet.y, bullet.width/2, 0, Math.PI * 2);
+                    ctx.arc(bullet.x, bullet.y, bullet.width / 2, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.restore();
                 });
             });
-            
-            // Dessiner les éclairs (CORRECTION: direction correcte)
-            gameState.players.forEach((player, playerIndex) => {
+
+            gameState.players.forEach((player, index) => {
                 if (!player.thunderActive) return;
-                
-                const thunderFrame = Math.floor((Date.now() - player.thunderStartTime) / 100) % 3;
+
+                const thunderFrame = Math.floor((player.now() - player.thunderStartTime) / 1000) % 3);
                 const thunderDirections = [
-                    { angle: playerIndex === 0 ? 270 : 90 }, // Direction correcte selon le joueur
-                    { angle: playerIndex === 0 ? 315 : 135 },
-                    { angle: playerIndex === 0 ? 225 : 45 }
+                    { angle: 90 },
+                    { angle: 135 },
+                    { angle: 45 }
                 ];
-                
-                for (let i = 0; i < player.thunderCount; i++) {
+
+                for (let j = 0; j < player.thunderCount; i++) {
                     const direction = thunderDirections[i];
                     ctx.save();
-                    
+
                     const angleRad = (direction.angle - 90) * Math.PI / 180;
                     ctx.translate(player.x, player.y);
-                    ctx.rotate(angleRad);
-                    
+                    ctx.save();
+                        ctx.rotate(angleRad);
+
                     if (thunderImgs[thunderFrame].complete) {
                         ctx.drawImage(
                             thunderImgs[thunderFrame],
                             -20,
-                            -400,
+                            index === 0 ? -400 : 0,
                             40,
                             400
                         );
                     }
-                    
+
                     ctx.restore();
                 }
+
             });
-            
-            // Dessiner les particules de bouclier
-            drawShieldParticles();
-            
-            // Dessiner les vaisseaux assistants (CORRECTION: orientation correcte)
+
+            drawShield();
+
             gameState.players.forEach(player => {
                 player.assistantShips.forEach(assistant => {
                     ctx.save();
-                    
                     if (assistant.health < 3) {
                         ctx.globalAlpha = 0.7 + assistant.health * 0.1;
                     }
-                    
-                    // CORRECTION: Rotation pour les assistants du joueur du haut
-                    if (assistant.playerIndex === 0) {
-                        ctx.translate(assistant.x + assistant.width/2, assistant.y + assistant.height/2);
+
+                    ctx.translate(assistant.x + assistant.width / 2, assistant.y + assistant.height / 2);
+                    if (assistant.playerIndex === 1) {
                         ctx.rotate(Math.PI);
-                        ctx.translate(-assistant.width/2, -assistant.height/2);
-                    } else {
-                        ctx.translate(assistant.x, assistant.y);
                     }
-                    
-                    if (assistantShipImgs[assistant.imageIndex] && assistantShipImgs[assistant.imageIndex].complete) {
+                    ctx.translate(-assistant.width / 2, -assistant.height / 2);
+
+                    if (assistantShipImgs[assistant.imageIndex].complete) {
                         ctx.drawImage(
                             assistantShipImgs[assistant.imageIndex],
                             0,
@@ -1528,131 +1493,121 @@
                         ctx.fillStyle = getAssistantColor(assistant.imageIndex);
                         ctx.fillRect(0, 0, assistant.width, assistant.height);
                     }
-                    
+
                     ctx.restore();
-                    
-                    // Barre de vie
+
                     ctx.fillStyle = '#04fbac';
-                    for (let i = 0; i < assistant.health; i++) {
-                        ctx.fillRect(assistant.x + i * 12, assistant.y - 10, 10, 5);
+                    for (let k = 0; k < assistant.health; k++) {
+                        ctx.fillRect(assistant.x + k * 12, assistant.y - 10, 10, 5);
                     }
                 });
             });
-            
-            // Dessiner les joueurs
-            gameState.players.forEach((player, index) => {
-                if (!player.active) return;
-                
+
+            gameState.players.forEach((playerr, index) => {
+                if (!playerr.active) return;
+
                 ctx.save();
-                
-                if (player.impacts > 0) {
+
+                if (playerr.impacts > 0) {
                     ctx.fillStyle = '#FF0000';
                     ctx.font = '16px Arial';
                     ctx.textAlign = 'center';
                     ctx.fillText(
-                        `${player.impacts}/10`,
-                        player.x,
-                        player.y - player.height/2 - 10
+                        `${playerr.impacts}/10`,
+                        playerr.x,
+                        playerr.y - playerr.height / 2 - 10
                     );
                 }
-                
+
                 const img = index === 0 ? starshipImg : starship2Img;
                 if (img.complete) {
-                    ctx.save();
-                    ctx.translate(player.x, player.y);
-                    
-                    if (index === 0) {
-                        ctx.rotate(Math.PI);
-                    }
-                    
                     ctx.drawImage(
                         img,
-                        -player.width/2,
-                        -player.height/2,
-                        player.width,
-                        player.height
+                        playerr.x - playerr.width / 2,
+                        playerr.y - playerr.height / 2,
+                        playerr.width,
+                        playerr.height
                     );
-                    ctx.restore();
                 } else {
                     ctx.fillStyle = index === 0 ? '#04fbac' : '#FF7F50';
                     ctx.fillRect(
-                        player.x - player.width/2,
-                        player.y - player.height/2,
-                        player.width,
-                        player.height
+                        playerr.x - playerr.width / 2,
+                        playerr.y - playerr.height / 2,
+                        playerr.width,
+                        playerr.height
                     );
                 }
-                
-                if (player.powerUpLevel > 0) {
+
+                if (playerr.powerUpLevel > 0) {
                     ctx.fillStyle = '#ff00ff';
                     ctx.font = '12px Arial';
                     ctx.textAlign = 'center';
                     ctx.fillText(
-                        `LV${player.powerUpLevel}`,
-                        player.x,
-                        player.y + player.height/2 + 15
+                        `LV${playerr.powerUpLevel}`,
+                        playerr.x,
+                        playerr.y + playerr.height / 2 + 15
                     );
                 }
-                
+
                 ctx.restore();
             });
-        }
 
-        function drawShieldParticles() {
-            gameState.players.forEach((player, playerIndex) => {
+        };
+
+        function drawShield() {
+            gameState.players.forEach((player, index) => {
                 if (!player.shield) return;
-                
+
                 const centerX = player.x;
                 const centerY = player.y;
-                
+
                 ctx.save();
                 const gradient = ctx.createRadialGradient(
                     centerX, centerY, player.width / 2,
                     centerX, centerY, player.width / 2 + 20
                 );
-                
-                const playerColor = playerIndex === 0 ? '4, 251, 172' : '255, 127, 80';
-                
+
+                const playerColor = index === 0 ? '4, 251, 172' : '255, 127, 80';
+
                 gradient.addColorStop(0, `rgba(${playerColor}, 0)`);
                 gradient.addColorStop(0.7, `rgba(${playerColor}, 0.1)`);
                 gradient.addColorStop(1, `rgba(${playerColor}, 0.2)`);
-                
+
                 ctx.globalAlpha = 0.5 + Math.sin(Date.now() * 0.003) * 0.2;
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, player.width / 2 + 20, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
-                
-                shieldParticles.particles.filter(p => p.playerIndex === playerIndex).forEach(particle => {
+
+                shieldParticles.particles.filter(p => p.playerIndex === index).forEach(p => {
                     ctx.save();
-                    
-                    const x = centerX + Math.cos(particle.angle) * particle.distance;
-                    const y = centerY + Math.sin(particle.angle) * particle.distance;
-                    
-                    ctx.globalAlpha = particle.opacity;
-                    ctx.fillStyle = particle.color;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = particle.color;
-                    
+
+                    const x = centerX + Math.cos(p.angle) * p.distance;
+                    const y = centerY + Math.sin(p.angle) * p.distance;
+
+                    ctx.globalAlpha = p.opacity;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowBlur = p.color;
+                    ctx.shadowColor = p.color;
+
                     ctx.beginPath();
-                    ctx.arc(x, y, particle.size, 0, Math.PI * 2);
+                    ctx.arc(x, y, p.size, 0, Math.PI * 2);
                     ctx.fill();
-                    
+
                     ctx.restore();
                 });
             });
-        }
+        };
 
-        function getAssistantColor(imageIndex) {
-            const colors = ['#c83232', '#3232c8', '#32c832', '#c8c832', '#c832c8', '#32c8c8'];
-            return colors[imageIndex] || '#04fbac';
-        }
+            function getAssistantColor(imageIndex) {
+                const colors = ['#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF'];
+                return colors[imageIndex] || '#04fbac';
+            };
 
-        // Boucle de jeu
         function gameLoop() {
             if (!gameStarted) return;
-            
+
             handleLocalPlayerInput();
             updateBullets();
             updatePowerUps();
@@ -1663,32 +1618,32 @@
             updateLaserTraits();
             checkCollisions();
             render();
-            
-            if (Date.now() % 1000 < 16) {
-                sendMessage({type: 'ping', timestamp: Date.now()});
+
+            if (Date.now() % 1000 < 50) {
+                sendMessage({ type: 'ping', timestamp: Date.now() });
             }
-            
+
             requestAnimationFrame(gameLoop);
         }
 
-        // Initialisation
         window.addEventListener('load', () => {
-            console.log('Page chargée, vérification de PeerJS...');
-            
+            console.log('Page chargée');
+            console.log('Vérification de PeerJS...');
+
             if (typeof Peer !== 'undefined') {
-                console.log('PeerJS détecté, initialisation...');
+                console.log('PeerJS détecté');
                 initPeerJS();
             } else {
                 console.log('PeerJS non détecté, attente...');
                 setTimeout(() => {
                     if (typeof Peer !== 'undefined') {
-                        console.log('PeerJS détecté après délai');
+                        console.log('PeerJS détecté après retard');
                         initPeerJS();
                     } else {
-                        console.error('PeerJS non disponible');
-                        document.getElementById('connectionStatus').textContent = 'Erreur: PeerJS non chargé';
+                        console.error('Erreur : PeerJS non chargé');
+                        document.getElementById('connectionStatus').textContent = 'Erreur : PeerJS non chargé';
                     }
-                }, 3000);
+                }, 1000);
             }
         });
 
