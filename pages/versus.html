@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Starship Battle Versus - Enhanced</title>
+    <link rel="icon" type="image/x-icon" href="../img/favicon.ico">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body {
@@ -262,10 +263,10 @@
     </div>
 
     <div id="team1Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 100</span>
+        <span>POINTS ROUGES: <span id="p1RedPoints">0</span> / 25</span>
     </div>
     <div id="team2Points" class="point-counter" style="display: none;">
-        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 100</span>
+        <span>POINTS ROUGES: <span id="p2RedPoints">0</span> / 25</span>
     </div>
 
     <div id="networkStatus" style="display: none;">
@@ -504,6 +505,9 @@
                 case 'pong':
                     networkLatency = Date.now() - data.timestamp;
                     document.getElementById('statusText').textContent = `Connecté (${networkLatency}ms)`;
+                    break;
+                case 'resetGame':
+                    resetGame();
                     break;
             }
         }
@@ -879,7 +883,7 @@
             const assistant = {
                 x: Math.random() * (canvas.width - 50),
                 y: playerIndex === 0 ? midPoint - 100 : midPoint + 100,
-                targetY: playerIndex === 0 ? player.y + 80 : player.y - 80,
+                targetY: playerIndex === 0 ? midPoint - 50 : midPoint + 50,
                 width: 40,
                 height: 40,
                 lastShootTime: 0,
@@ -915,12 +919,13 @@
                     bullet.y += bullet.vy;
                     bullet.x += bullet.vx || 0;
 
+                    // Vérifier collision avec les traits laser pour tous les tirs
                     for (const trait of gameState.laserTraits) {
                         if (
                             bullet.x > trait.x && bullet.x < trait.x + trait.width &&
                             bullet.y > trait.y && bullet.y < trait.y + trait.height
                         ) {
-                            return false;
+                            return false; // Supprimer la balle si elle touche un trait
                         }
                     }
 
@@ -973,7 +978,10 @@
 
                         if (distance < 30) {
                             player.redPointsCollected++;
-                            document.getElementById(`p${index + 1}RedPoints`).textContent = player.redPointsCollected;
+                            const redPointsElement = document.getElementById(`p${index + 1}RedPoints`);
+                            if (redPointsElement) {
+                                redPointsElement.textContent = player.redPointsCollected;
+                            }
 
                             if (index === myPlayerIndex) {
                                 sendMessage({
@@ -983,10 +991,13 @@
                                 });
                             }
 
-                            if (player.redPointsCollected >= 100) {
+                            // Activer le bouclier tous les 25 points rouges
+                            if (player.redPointsCollected >= 25) {
                                 activateShield(player);
-                                player.redPointsCollected -= 100;
-                                document.getElementById(`p${index + 1}RedPoints`).textContent = player.redPointsCollected;
+                                player.redPointsCollected -= 25;
+                                if (redPointsElement) {
+                                    redPointsElement.textContent = player.redPointsCollected;
+                                }
 
                                 if (index === myPlayerIndex) {
                                     sendMessage({
@@ -994,10 +1005,6 @@
                                         playerIndex: index
                                     });
                                 }
-                            }
-
-                            if (player.redPointsCollected % 25 === 0 && player.redPointsCollected > 0) {
-                                createAssistantShip(player);
                             }
 
                             playSound(soundEffects.coin);
@@ -1048,10 +1055,10 @@
                     if (currentTime - assistant.lastShootTime > assistant.shootInterval) {
                         const bullet = {
                             x: assistant.x + assistant.width / 2,
-                            y: assistant.y + (assistant.playerIndex === 0 ? assistant.height : 0),
+                            y: assistant.y + (assistant.playerIndex === 0 ? -assistant.height / 2 : assistant.height / 2),
                             width: 4,
                             height: 4,
-                            vy: assistant.playerIndex === 0 ? 8 : -8,
+                            vy: assistant.playerIndex === 0 ? -8 : 8, // Direction correcte des tirs
                             vx: 0,
                             color: getAssistantColor(assistant.imageIndex),
                             playerIndex: assistant.playerIndex,
@@ -1135,12 +1142,13 @@
                                 if (player.powerUpLevel > 0) {
                                     player.powerUpLevel--;
 
-                                    for (let k = 0; k < 20; k++) {
+                                    for (let k = 0; k < 5; k++) { // Réduit à 5 points rouges
                                         gameState.redPoints.push({
                                             x: player.x,
                                             y: player.y,
                                             vx: (Math.random() - 0.5) * 5,
-                                            vy: (Math.random() - 0.5) * 5
+                                            vy: (Math.random() - 0.5) * 5,
+                                            id: Date.now() + Math.random()
                                         });
                                     }
                                 } else {
@@ -1174,12 +1182,13 @@
                                     assistant.health--;
 
                                     if (assistant.health <= 0) {
-                                        for (let l = 0; l < 30; l++) {
+                                        for (let l = 0; l < 5; l++) { // Réduit à 5 points rouges
                                             gameState.redPoints.push({
                                                 x: assistant.x + assistant.width/2,
                                                 y: assistant.y + assistant.height/2,
                                                 vx: (Math.random() - 0.5) * 8,
-                                                vy: (Math.random() - 0.5) * 8
+                                                vy: (Math.random() - 0.5) * 8,
+                                                id: Date.now() + Math.random()
                                             });
                                         }
 
@@ -1300,19 +1309,28 @@
                 player.y = index === 0 ? canvas.height * 0.25 : canvas.height * 0.75;
             });
 
+            // Réinitialiser les power-ups et points rouges
             gameState.powerUps = [];
             gameState.redPoints = [];
+            gameState.laserTraits = [];
             shieldParticles.particles = [];
             shieldParticles.orbitalParticles = [];
 
             document.getElementById('gameOverMessage').style.display = 'none';
             document.getElementById('gameOverMessage').innerHTML = '';
-            document.getElementById('p1RedPoints').textContent = '0';
-            document.getElementById('p2RedPoints').textContent = '0';
-            document.getElementById('team1Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 100';
-            document.getElementById('team2Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 100';
+            const p1RedPoints = document.getElementById('p1RedPoints');
+            const p2RedPoints = document.getElementById('p2RedPoints');
+            if (p1RedPoints) p1RedPoints.textContent = '0';
+            if (p2RedPoints) p2RedPoints.textContent = '0';
+            document.getElementById('team1Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 25';
+            document.getElementById('team2Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 25';
 
             initializeLives();
+
+            // Synchroniser la réinitialisation pour les deux joueurs
+            if (connection && connection.open) {
+                sendMessage({ type: 'resetGame' });
+            }
         }
 
         function render() {
@@ -1417,13 +1435,11 @@
                         ctx.globalAlpha = 0.7 + assistant.health * 0.1;
                     }
 
+                    ctx.translate(assistant.x + assistant.width/2, assistant.y + assistant.height/2);
                     if (assistant.playerIndex === 0) {
-                        ctx.translate(assistant.x + assistant.width/2, assistant.y + assistant.height/2);
-                        ctx.rotate(Math.PI);
-                        ctx.translate(-assistant.width/2, -assistant.height/2);
-                    } else {
-                        ctx.translate(assistant.x, assistant.y);
+                        ctx.rotate(Math.PI); // Rotation pour le joueur 1
                     }
+                    ctx.translate(-assistant.width/2, -assistant.height/2);
 
                     if (assistantShipImgs[assistant.imageIndex] && assistantShipImgs[assistant.imageIndex].complete) {
                         ctx.drawImage(
