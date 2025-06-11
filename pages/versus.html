@@ -821,47 +821,52 @@ function initializeLives() {
         }
 
         function shootBullet(player, playerIndex) {
-            if (!player.active) return;
+    if (!player.active) return;
 
-            const bulletSpeed = 10;
-            const bulletColor = playerIndex === 0 ? '#04fbac' : '#FF7F50';
+    const bulletSpeed = 10;
+    const baseColor = playerIndex === 0 ? '#04fbac' : '#FF7F50';
+    const colorPalette = [
+        baseColor,      // Niveau 1: Couleur de base (vert ou corail)
+        '#FF00FF',      // Niveau 2: Magenta
+        '#FFFF00',      // Niveau 3: Jaune
+        '#00FFFF',      // Niveau 4: Cyan
+        '#FF4444'       // Niveau 5: Rouge
+    ];
 
-            const rows = [
-                { offsets: [-30, -20, -10, 0, 10, 20, 30], y: player.y + (playerIndex === 0 ? player.height/2 : -player.height/2), speed: bulletSpeed - 4, color: '#FF00FF' },
-                { offsets: [-20, -10, 0, 1, 2], y: player.y + (playerIndex === 0 ? player.height/2 + 4 : -player.height/2), speed: bulletSpeed - 3, color: bulletColor },
-                { offsets: [-15, -5, 5, 15], y: player.y + (playerIndex === 0 ? player.height/2 + 8 : -player.height/2 - 8), speed: bulletSpeed - 2, color: '#FF00FF' },
-                { offsets: [-10, 0, 10], y: player.y + (playerIndex === 0 ? player.height/2 + 12 : -player.height/2 - 12), speed: bulletSpeed - 1, color: bulletColor },
-                { offsets: [0], y: player.y + (playerIndex === 0 ? player.height/2 + 16 : -player.height/2 - 16), speed: bulletSpeed, color: bulletColor }
-            ];
+    const rows = [
+        { offsets: [0], yOffset: 0, speed: bulletSpeed, color: colorPalette[0] },                    // 1 balle centrale
+        { offsets: [-15, 15], yOffset: 5, speed: bulletSpeed - 1, color: colorPalette[1] },         // 2 balles décalées
+        { offsets: [-25, 0, 25], yOffset: 10, speed: bulletSpeed - 2, color: colorPalette[2] },     // 3 balles
+        { offsets: [-35, -15, 15, 35], yOffset: 15, speed: bulletSpeed - 3, color: colorPalette[3] }, // 4 balles
+        { offsets: [-45, -25, 0, 25, 45], yOffset: 20, speed: bulletSpeed - 4, color: colorPalette[4] } // 5 balles
+    ];
 
-            const numRows = Math.min(player.powerUpLevel + 1, rows.length);
-            const rowsToUse = rows.slice(0, numRows);
+    const numRows = Math.min(player.powerUpLevel + 1, rows.length);
 
-            rowsToUse.forEach(row => {
-                row.offsets.forEach(xOffset => {
-                    const bullet = {
-                        x: player.x + xOffset,
-                        y: row.y,
-                        color: row.color,
-                        vy: playerIndex === 0 ? bulletSpeed : -bulletSpeed,
-                        vx: 0,
-                        playerIndex: playerIndex,
-                        width: 4,
-                        height: 4
-                    };
+    rows.slice(0, numRows).forEach(row => {
+        row.offsets.forEach(xOffset => {
+            const bullet = {
+                x: player.x + xOffset,
+                y: player.y + (playerIndex === 0 ? player.height/2 + row.yOffset : -player.height/2 - row.yOffset),
+                color: row.color,
+                vy: playerIndex === 0 ? row.speed : -row.speed,
+                vx: 0,
+                playerIndex: playerIndex,
+                width: 4,
+                height: 4
+            };
+            player.bullets.push(bullet);
+        });
+    });
 
-                    player.bullets.push(bullet);
-                });
-            });
+    sendMessage({
+        type: 'bulletFired',
+        bullets: player.bullets.slice(-rows.slice(0, numRows).reduce((sum, r) => sum + r.offsets.length, 0)),
+        playerIndex: playerIndex
+    });
 
-            sendMessage({
-                type: 'bulletFired',
-                bullets: player.bullets.slice(-rowsToUse.reduce((sum, r) => sum + r.offsets.length, 0)),
-                playerIndex: playerIndex
-            });
-
-            playSound(soundEffects.shoot);
-        }
+    playSound(soundEffects.shoot);
+}
 
         function addBulletFromNetwork(data) {
             const player = gameState.players[data.playerIndex];
@@ -1120,7 +1125,7 @@ function initializeLives() {
                 if (!player.thunderActive) return;
 
                 const elapsedTime = Date.now() - player.thunderStartTime;
-                if (elapsedTime > 7000) {
+                if (elapsedTime > 3000) {
                     player.thunderActive = false;
                     player.thunderCount = 0;
                     player.thunderStartTime = 0;
