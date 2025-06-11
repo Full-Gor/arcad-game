@@ -251,13 +251,11 @@
     <!-- Interface de jeu -->
     <div id="scoreBoard" style="display: none;">
         <div class="team-score team1">
-            <span>Joueur 1 - Partie gagnées: </span>
-            <span id="team1Score">0</span>
+            <span id="team1Name">Chargement...</span> - Partie gagnées: <span id="team1Score">0</span>
             <div id="team1Lives" class="lives-container"></div>
         </div>
         <div class="team-score team2">
-            <span>Joueur 2 - Partie gagnées: </span>
-            <span id="team2Score">0</span>
+            <span id="team2Name">Chargement...</span> - Partie gagnées: <span id="team2Score">0</span>
             <div id="team2Lives" class="lives-container"></div>
         </div>
     </div>
@@ -295,6 +293,7 @@
         let myPlayerIndex = 0;
         let networkLatency = 0;
         let myPseudo = '';
+        let opponentPseudo = 'Adversaire';
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -393,9 +392,9 @@
         const livesImg = new Image();
         livesImg.src = '../img/lives.jpg';
         const thunderImgs = [new Image(), new Image(), new Image()];
-        thunderImgs[0].src = '../img/thunder1.jpg';
-        thunderImgs[1].src = '../img/thunder2.jpg';
-        thunderImgs[2].src = '../img/thunder3.jpg';
+        thunderImgs[0].src = '../img/thunderImgs1.jpg';
+        thunderImgs[1].src = '../img/thunderImgs2.jpg';
+        thunderImgs[2].src = '../img/thunderImgs3.jpg';
         const assistantShipImgs = [];
         for (let i = 1; i <= 6; i++) {
             const img = new Image();
@@ -408,7 +407,7 @@
             particleCount: 25,
             particles: [],
             orbitalParticles: [],
-            colors: ['#04fbac', '#00ffff', '#0088ff', '#80ffff'],
+            colors: ['#04fbac', '#00ffff', '#ff4444', '#0080ff'],
             minSize: 2,
             maxSize: 5,
             minSpeed: 0.02,
@@ -432,25 +431,36 @@
         function initPeerJS() {
             console.log('Initialisation de PeerJS...');
             myPseudo = generatePseudo();
-            peer = new Peer(myPseudo);
+            console.log('Pseudo généré :', myPseudo);
+            document.getElementById('peerIdSpan').textContent = myPseudo || 'Erreur de génération';
+            document.getElementById('connectionStatus').textContent = 'Initialisation...';
+
+            try {
+                peer = new Peer(myPseudo);
+            } catch (err) {
+                console.error('Erreur lors de la création de Peer :', err);
+                document.getElementById('connectionStatus').textContent = 'Erreur PeerJS : ' + err.message;
+                return;
+            }
 
             peer.on('open', function(id) {
-                console.log('Pseudo:', myPseudo);
+                console.log('PeerJS ouvert, ID:', id);
                 document.getElementById('peerIdSpan').textContent = myPseudo;
+                document.getElementById('team1Name').textContent = myPseudo;
                 document.getElementById('hostGame').disabled = false;
-                document.getElementById('copyIdBtn').style.display = 'inline-block';
-                document.getElementById('connectionStatus').textContent = 'Prêt à jouer !';
+                document.getElementById('copyIdBtn').style.display = 'block';
+                document.getElementById('connectionStatus').textContent = 'Connecté ! Partagez votre pseudo.';
             });
 
             peer.on('connection', function(conn) {
-                console.log('Connexion entrante :', conn.peer);
+                console.log('Connexion entrante de :', conn.peer);
                 setupConnection(conn);
                 isHost = true;
                 myPlayerIndex = 0;
             });
 
             peer.on('error', function(err) {
-                console.error('Erreur de PeerJS :', err);
+                console.error('Erreur PeerJS :', err);
                 document.getElementById('connectionStatus').textContent = 'Erreur : ' + err.message;
             });
         }
@@ -459,9 +469,11 @@
         function setupConnection(conn) {
             connection = conn;
 
-            conn.on('open', function() {
+            conn.on('open', () => {
                 console.log('Connexion établie !');
                 document.getElementById('connectionStatus').textContent = 'Connecté !';
+                // Envoyer le pseudo local
+                sendMessage({ type: 'init', pseudo: myPseudo });
                 startGame();
             });
 
@@ -472,23 +484,36 @@
             conn.on('close', function() {
                 console.log('Connexion fermée');
                 document.getElementById('connectionStatus').textContent = 'Connexion perdue';
+                opponentPseudo = 'Adversaire';
+                updateScoreBoard();
             });
         }
 
         // Gestion des messages réseau
         function handleNetworkMessage(data) {
             switch(data.type) {
+                case 'init':
+                    opponentPseudo = data.pseudo || 'Adversaire';
+                    console.log('Pseudo adversaire reçu :', opponentPseudo);
+                    updateScoreBoard();
+                    break;
                 case 'playerInput':
                     handleRemotePlayerInput(data);
                     break;
                 case 'bulletFired':
                     addBulletFromNetwork(data);
                     break;
+                case 'powerUpGenerated':
+                    gameState.powerUps.push(data.powerUp);
+                    break;
                 case 'powerUpCollected':
-                    handleRemotePowerUpCollection(data);
+                    handlePowerUpCollection(data);
+                    break;
+                case 'redPointGenerated':
+                    gameState.redPoints.push(data.redPoint);
                     break;
                 case 'redPointCollected':
-                    handleRemoteRedPointCollection(data);
+                    handleRedPointCollection(data);
                     break;
                 case 'shieldActivated':
                     activateShield(gameState.players[data.playerIndex]);
@@ -497,7 +522,7 @@
                     activateThunder(gameState.players[data.playerIndex]);
                     break;
                 case 'assistantCreated':
-                    createAssistantShip(gameState.players[data.playerIndex], data.assistantIndex);
+                    createAssistantShip(gameState.players[data.playerIndex], data.assistant);
                     break;
                 case 'ping':
                     sendMessage({type: 'pong', timestamp: data.timestamp});
@@ -514,7 +539,11 @@
 
         function sendMessage(data) {
             if (connection && connection.open) {
-                connection.send(data);
+                try {
+                    connection.send(data);
+                } catch (err) {
+                    console.error('Erreur envoi message :', err);
+                }
             }
         }
 
@@ -541,6 +570,7 @@
 
             gameStarted = true;
             initializeGame();
+            updateScoreBoard();
 
             if (isHost) {
                 setInterval(() => {
@@ -550,10 +580,10 @@
                 }, 5000);
 
                 setInterval(() => {
-                    if (gameState.laserTraits.length < 6) {
+                    if (gameState.laserTraits.length < 12) {
                         generateLaserTrait();
                     }
-                }, 2000);
+                }, 1000);
             }
 
             gameLoop();
@@ -593,6 +623,8 @@
         }
 
         function updateScoreBoard() {
+            document.getElementById('team1Name').textContent = myPlayerIndex === 0 ? myPseudo : opponentPseudo;
+            document.getElementById('team2Name').textContent = myPlayerIndex === 0 ? opponentPseudo : myPseudo;
             document.getElementById('team1Score').textContent = gameState.players[0].gamesWon;
             document.getElementById('team2Score').textContent = gameState.players[1].gamesWon;
         }
@@ -629,37 +661,44 @@
             }
         });
 
-        document.getElementById('hostGame').addEventListener('click', function() {
-            document.getElementById('connectionStatus').textContent = 'En attente d\'un adversaire... Partagez votre pseudo !';
+        document.getElementById('hostGame').addEventListener('click', () => {
+            document.getElementById('connectionStatus').textContent = 'En attente de votre adversaire... Partagez votre pseudo !';
             isHost = true;
             myPlayerIndex = 0;
         });
 
-        document.getElementById('copyIdBtn').addEventListener('click', function() {
+        document.getElementById('copyIdBtn').addEventListener('click', () => {
             const peerIdText = document.getElementById('peerIdSpan').textContent;
-            navigator.clipboard.writeText(peerIdText).then(function() {
+            navigator.clipboard.writeText(peerIdText).then(() => {
                 const btn = document.getElementById('copyIdBtn');
                 const originalText = btn.textContent;
                 btn.textContent = '✅ Copié !';
-                btn.style.background = '#00ff00';
+                btn.style.backgroundColor = '#00ff00';
                 setTimeout(() => {
                     btn.textContent = originalText;
-                    btn.style.background = '#04fbac';
+                    btn.style.backgroundColor = '#04fbac';
                 }, 2000);
-            }).catch(function() {
+            }).catch(() => {
                 alert('Pseudo copié : ' + peerIdText);
             });
         });
 
-        document.getElementById('joinGame').addEventListener('click', function() {
+        document.getElementById('joinGame').addEventListener('click', () => {
             const peerID = document.getElementById('joinGameInput').value.trim();
             if (peerID) {
                 console.log('Connexion à :', peerID);
-                const conn = peer.connect(peerID);
-                setupConnection(conn);
-                isHost = false;
-                myPlayerIndex = 1;
-                document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
+                try {
+                    const conn = peer.connect(peerID);
+                    setupConnection(conn);
+                    isHost = false;
+                    myPlayerIndex = 1;
+                    document.getElementById('connectionStatus').textContent = 'Connexion en cours...';
+                } catch (err) {
+                    console.error('Erreur connexion :', err);
+                    document.getElementById('connectionStatus').textContent = 'Erreur de connexion';
+                }
+            } else {
+                document.getElementById('connectionStatus').textContent = 'Entrez un pseudo valide';
             }
         });
 
@@ -750,11 +789,11 @@
             const bulletColor = playerIndex === 0 ? '#04fbac' : '#FF7F50';
 
             const rows = [
-                { offsets: [0], y: player.y + (playerIndex === 0 ? player.height/2 : -player.height/2), speed: bulletSpeed, color: bulletColor },
-                { offsets: [-10, 0, 10], y: player.y + (playerIndex === 0 ? player.height/2 : -player.height/2), speed: bulletSpeed - 1, color: bulletColor },
-                { offsets: [-15, -5, 5, 15], y: player.y + (playerIndex === 0 ? player.height/2 + 4 : -player.height/2 - 4), speed: bulletSpeed - 2, color: '#FF00FF' },
-                { offsets: [-20, -10, 0, 10, 20], y: player.y + (playerIndex === 0 ? player.height/2 + 8 : -player.height/2 - 8), speed: bulletSpeed - 3, color: bulletColor },
-                { offsets: [-30, -20, -10, 0, 10, 20, 30], y: player.y + (playerIndex === 0 ? player.height/2 + 12 : -player.height/2 - 12), speed: bulletSpeed - 4, color: '#FF00FF' }
+                { offsets: [-30, -20, -10, 0, 10, 20, 30], y: player.y + (playerIndex === 0 ? player.height/2 : -player.height/2), speed: bulletSpeed - 4, color: '#FF00FF' },
+                { offsets: [-20, -10, 0, 10, 20], y: player.y + (playerIndex === 0 ? player.height/2 + 4 : -player.height/2 - 4), speed: bulletSpeed - 3, color: bulletColor },
+                { offsets: [-15, -5, 5, 15], y: player.y + (playerIndex === 0 ? player.height/2 + 8 : -player.height/2 - 8), speed: bulletSpeed - 2, color: '#FF00FF' },
+                { offsets: [-10, 0, 10], y: player.y + (playerIndex === 0 ? player.height/2 + 12 : -player.height/2 - 12), speed: bulletSpeed - 1, color: bulletColor },
+                { offsets: [0], y: player.y + (playerIndex === 0 ? player.height/2 + 16 : -player.height/2 - 16), speed: bulletSpeed, color: bulletColor }
             ];
 
             const numRows = Math.min(player.powerUpLevel + 1, rows.length);
@@ -766,7 +805,7 @@
                         x: player.x + xOffset,
                         y: row.y,
                         color: row.color,
-                        vy: playerIndex === 0 ? bulletSpeed : -bulletSpeed, // J1 tire vers le bas, J2 vers le haut
+                        vy: playerIndex === 0 ? bulletSpeed : -bulletSpeed,
                         vx: 0,
                         playerIndex: playerIndex,
                         width: 4,
@@ -804,20 +843,24 @@
                 width: 40,
                 height: 40,
                 type: Math.floor(Math.random() * 3),
-                id: Date.now() + Math.random()
+                id: Date.now() + Math.random(),
+                rotation: 0
             };
 
             gameState.powerUps.push(powerUp);
+            sendMessage({ type: 'powerUpGenerated', powerUp });
 
             if (Math.random() > 0.5) {
                 for (let i = 0; i < 10; i++) {
-                    gameState.redPoints.push({
+                    const redPoint = {
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height,
                         vx: (Math.random() - 0.5) * 2,
                         vy: (Math.random() - 0.5) * 2,
                         id: Date.now() + Math.random() + i
-                    });
+                    };
+                    gameState.redPoints.push(redPoint);
+                    sendMessage({ type: 'redPointGenerated', redPoint });
                 }
             }
         }
@@ -874,19 +917,27 @@
             });
         }
 
-        function createAssistantShip(player, imgIndex = null) {
-            if (player.assistantShips.length >= 3) return; // Limite à 3 assistants max
+        function createAssistantShip(player, assistantData = null) {
+            if (player.assistantShips.length >= 3) return;
 
             const playerIndex = gameState.players.indexOf(player);
-            if (imgIndex === null) {
-                imgIndex = (player.assistantShips.length % 6);
+            let imgIndex, x, y;
+
+            if (assistantData) {
+                imgIndex = assistantData.imageIndex;
+                x = assistantData.x;
+                y = assistantData.y;
+            } else {
+                imgIndex = player.assistantShips.length % 6;
+                x = Math.random() * (canvas.width - 50);
+                const midPoint = canvas.height / 2;
+                y = playerIndex === 0 ? midPoint - 150 : midPoint + 150;
             }
 
-            const midPoint = canvas.height / 2;
             const assistant = {
-                x: Math.random() * (canvas.width - 50),
-                y: playerIndex === 0 ? midPoint - 150 : midPoint + 150,
-                targetY: playerIndex === 0 ? midPoint - 50 : midPoint + 50,
+                x: x,
+                y: y,
+                targetY: playerIndex === 0 ? canvas.height / 2 - 50 : canvas.height / 2 + 50,
                 width: 40,
                 height: 40,
                 lastShootTime: 0,
@@ -906,11 +957,11 @@
             player.assistantShips.push(assistant);
             console.log(`Assistant créé pour joueur ${playerIndex + 1} à (${assistant.x}, ${assistant.y})`);
 
-            if (playerIndex === myPlayerIndex) {
+            if (playerIndex === myPlayerIndex && !assistantData) {
                 sendMessage({
                     type: 'assistantCreated',
                     playerIndex: playerIndex,
-                    assistantIndex: imgIndex
+                    assistant: { x: assistant.x, y: assistant.y, imageIndex: imgIndex }
                 });
             }
 
@@ -983,36 +1034,34 @@
                         point.y += (dy / distance) * force;
 
                         if (distance < 30) {
-                            player.redPointsCollected++;
-                            const redPointsElement = document.getElementById(`p${index + 1}RedPoints`);
-                            if (redPointsElement) {
-                                redPointsElement.textContent = player.redPointsCollected;
-                            }
-
                             if (index === myPlayerIndex) {
+                                player.redPointsCollected++;
+                                const redPointsElement = document.getElementById(`p${index + 1}RedPoints`);
+                                if (redPointsElement) {
+                                    redPointsElement.textContent = player.redPointsCollected;
+                                }
+
                                 sendMessage({
                                     type: 'redPointCollected',
                                     playerIndex: index,
                                     pointId: point.id
                                 });
-                            }
 
-                            if (player.redPointsCollected >= 25) {
-                                activateShield(player);
-                                player.redPointsCollected -= 25;
-                                if (redPointsElement) {
-                                    redPointsElement.textContent = player.redPointsCollected;
-                                }
+                                if (player.redPointsCollected >= 25) {
+                                    activateShield(player);
+                                    player.redPointsCollected -= 25;
+                                    if (redPointsElement) {
+                                        redPointsElement.textContent = player.redPointsCollected;
+                                    }
 
-                                if (index === myPlayerIndex) {
                                     sendMessage({
                                         type: 'shieldActivated',
                                         playerIndex: index
                                     });
                                 }
-                            }
 
-                            playSound(soundEffects.coin);
+                                playSound(soundEffects.coin);
+                            }
                             return false;
                         }
                     }
@@ -1247,7 +1296,7 @@
             });
         }
 
-        function handleRemotePowerUpCollection(data) {
+        function handlePowerUpCollection(data) {
             gameState.powerUps = gameState.powerUps.filter(p => p.id !== data.powerUpId);
 
             const player = gameState.players[data.playerIndex];
@@ -1255,15 +1304,30 @@
                 activateThunder(player);
             } else if (data.powerUpType === 1) {
                 player.powerUpLevel = Math.min(player.powerUpLevel + 1, 9);
-                createAssistantShip(player);
+                createAssistantShip(player, { imageIndex: player.assistantShips.length % 6, x: player.x, y: player.y });
             } else if (data.powerUpType === 2) {
                 player.powerUpLevel = 3;
                 activateShield(player, 3000);
             }
         }
 
-        function handleRemoteRedPointCollection(data) {
+        function handleRedPointCollection(data) {
             gameState.redPoints = gameState.redPoints.filter(p => p.id !== data.pointId);
+
+            const player = gameState.players[data.playerIndex];
+            player.redPointsCollected++;
+            const redPointsElement = document.getElementById(`p${data.playerIndex + 1}RedPoints`);
+            if (redPointsElement) {
+                redPointsElement.textContent = player.redPointsCollected;
+            }
+
+            if (player.redPointsCollected >= 25) {
+                activateShield(player);
+                player.redPointsCollected -= 25;
+                if (redPointsElement) {
+                    redPointsElement.textContent = player.redPointsCollected;
+                }
+            }
         }
 
         function endGame(winnerIndex) {
@@ -1271,9 +1335,10 @@
             gameState.winner = winnerIndex;
             gameState.players[winnerIndex].gamesWon++;
 
+            const winnerPseudo = winnerIndex === myPlayerIndex ? myPseudo : opponentPseudo;
             const gameOverMessage = document.getElementById('gameOverMessage');
             gameOverMessage.style.display = 'block';
-            gameOverMessage.textContent = `Victoire du Joueur ${winnerIndex + 1} !\nParties gagnées : ${gameState.players[winnerIndex].gamesWon}`;
+            gameOverMessage.textContent = `Victoire de ${winnerPseudo} !\nParties gagnées : ${gameState.players[winnerIndex].gamesWon}`;
             gameOverMessage.style.color = winnerIndex === 0 ? '#04fbac' : '#FF7F50';
 
             playSound(soundEffects.gameOver);
@@ -1331,11 +1396,11 @@
             document.getElementById('team1Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 25';
             document.getElementById('team2Points').querySelector('span').textContent = 'POINTS ROUGES: 0 / 25';
 
-            initializeLives();
-
             if (connection && connection.open) {
                 sendMessage({ type: 'resetGame' });
             }
+
+            initializeGame();
         }
 
         function render() {
@@ -1366,7 +1431,7 @@
                         powerUp.height
                     );
                 } else {
-                    ctx.fillStyle = ['#ff00ff', '#ff00ff', '#ffff00'][powerUp.type];
+                    ctx.fillStyle = ['#ff0000', '#ff00ff', '#ffff00'][powerUp.type];
                     ctx.fillRect(-powerUp.width / 2, -powerUp.height / 2, powerUp.width, powerUp.height);
                 }
 
@@ -1403,10 +1468,10 @@
                 });
             });
 
-            gameState.players.forEach((player, playerIndex) => {
+            gameState.players.forEach((player, index) => {
                 if (!player.thunderActive) return;
 
-                const thunderFrame = Math.floor((Date.now() - player.thunderStartTime) / 100) % 3;
+                const thunderFrame = Math.floor((Date.now() - player.thunderStartTime) / 1000) % 3;
                 const thunderDirections = [
                     { angle: 90 },
                     { angle: 135 },
@@ -1414,9 +1479,8 @@
                 ];
 
                 for (let i = 0; i < player.thunderCount; i++) {
-                    const direction = thunderDirections[i];
+                    const direction = thunderDirections[i % thunderDirections.length];
                     ctx.save();
-
                     const angleRad = (direction.angle - 90) * Math.PI / 180;
                     ctx.translate(player.x, player.y);
                     ctx.rotate(angleRad);
@@ -1425,7 +1489,7 @@
                         ctx.drawImage(
                             thunderImgs[thunderFrame],
                             -20,
-                            playerIndex === 0 ? -400 : 0,
+                            index === 0 ? -400 : 0,
                             40,
                             400
                         );
@@ -1435,20 +1499,22 @@
                 }
             });
 
-            drawShieldParticles();
+            drawShield();
 
             gameState.players.forEach(player => {
                 player.assistantShips.forEach(assistant => {
                     ctx.save();
-
                     if (assistant.health < 3) {
                         ctx.globalAlpha = 0.7 + assistant.health * 0.1;
                     }
 
                     ctx.translate(assistant.x + assistant.width / 2, assistant.y + assistant.height / 2);
+                    if (assistant.playerIndex === 1) {
+                        ctx.rotate(Math.PI);
+                    }
                     ctx.translate(-assistant.width / 2, -assistant.height / 2);
 
-                    if (assistantShipImgs[assistant.imageIndex] && assistantShipImgs[assistant.imageIndex].complete) {
+                    if (assistantShipImgs[assistant.imageIndex].complete) {
                         ctx.drawImage(
                             assistantShipImgs[assistant.imageIndex],
                             0,
@@ -1464,8 +1530,8 @@
                     ctx.restore();
 
                     ctx.fillStyle = '#04fbac';
-                    for (let i = 0; i < assistant.health; i++) {
-                        ctx.fillRect(assistant.x + i * 12, assistant.y - 10, 10, 5);
+                    for (let k = 0; k < assistant.health; k++) {
+                        ctx.fillRect(assistant.x + k * 12, assistant.y - 10, 10, 5);
                     }
                 });
             });
@@ -1520,8 +1586,8 @@
             });
         }
 
-        function drawShieldParticles() {
-            gameState.players.forEach((player, playerIndex) => {
+        function drawShield() {
+            gameState.players.forEach((player, index) => {
                 if (!player.shield) return;
 
                 const centerX = player.x;
@@ -1533,7 +1599,7 @@
                     centerX, centerY, player.width / 2 + 20
                 );
 
-                const playerColor = playerIndex === 0 ? '4, 251, 172' : '255, 127, 80';
+                const playerColor = index === 0 ? '4, 251, 172' : '255, 127, 80';
 
                 gradient.addColorStop(0, `rgba(${playerColor}, 0)`);
                 gradient.addColorStop(0.7, `rgba(${playerColor}, 0.1)`);
@@ -1546,19 +1612,19 @@
                 ctx.fill();
                 ctx.restore();
 
-                shieldParticles.particles.filter(p => p.playerIndex === playerIndex).forEach(particle => {
+                shieldParticles.particles.filter(p => p.playerIndex === index).forEach(p => {
                     ctx.save();
 
-                    const x = centerX + Math.cos(particle.angle) * particle.distance;
-                    const y = centerY + Math.sin(particle.angle) * particle.distance;
+                    const x = centerX + Math.cos(p.angle) * p.distance;
+                    const y = centerY + Math.sin(p.angle) * p.distance;
 
-                    ctx.globalAlpha = particle.opacity;
-                    ctx.fillStyle = particle.color;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = particle.color;
+                    ctx.globalAlpha = p.opacity;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 5;
 
                     ctx.beginPath();
-                    ctx.arc(x, y, particle.size, 0, Math.PI * 2);
+                    ctx.arc(x, y, p.size, 0, Math.PI * 2);
                     ctx.fill();
 
                     ctx.restore();
@@ -1567,7 +1633,7 @@
         }
 
         function getAssistantColor(imageIndex) {
-            const colors = ['#c83232', '#3232c8', '#32c832', '#c8c832', '#c832c8', '#32c8c8'];
+            const colors = ['#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF'];
             return colors[imageIndex] || '#04fbac';
         }
 
@@ -1585,34 +1651,35 @@
             checkCollisions();
             render();
 
-            if (Date.now() % 1000 < 16) {
-                sendMessage({type: 'ping', timestamp: Date.now()});
+            if (Date.now() % 1000 < 50) {
+                sendMessage({ type: 'ping', timestamp: Date.now() });
             }
 
             requestAnimationFrame(gameLoop);
         }
 
         window.addEventListener('load', () => {
-            console.log('Page chargée, vérification de PeerJS...');
+            console.log('Page chargée');
+            console.log('Vérification de PeerJS...');
 
             if (typeof Peer !== 'undefined') {
-                console.log('PeerJS détecté, initialisation...');
+                console.log('PeerJS détecté');
                 initPeerJS();
             } else {
                 console.log('PeerJS non détecté, attente...');
                 setTimeout(() => {
                     if (typeof Peer !== 'undefined') {
-                        console.log('PeerJS détecté après délai');
+                        console.log('PeerJS détecté après retard');
                         initPeerJS();
                     } else {
-                        console.error('PeerJS non disponible');
+                        console.error('Erreur : PeerJS non chargé');
                         document.getElementById('connectionStatus').textContent = 'Erreur : PeerJS non chargé';
                     }
                 }, 1000);
             }
         });
 
-        console.log("✅ Code JavaScript chargé avec succès");
+        console.log("✅ Jeu chargé avec succès !");
     </script>
 </body>
 </html>
