@@ -423,6 +423,8 @@
         // FORMATION ASSISTANTS - Variables globales
         let isFormationActive = false;
         let formationPositions = [];
+        let separationPositions = []; // CORRECTION: Positions de séparation éloignées
+        let isSeparating = false; // CORRECTION: Mode séparation rapide
         
         // ANIMATION D'ENTRÉE STARSHIP - Variables
         let starshipIntroActive = true;
@@ -442,7 +444,7 @@
             const easeProgress = 1 - Math.pow(1 - progress, 3);
             
             // CORRECTION: Descente du milieu vers le bas + dézoom
-            const startSize = 100; // 2x plus gros
+            const startSize = 200; // CORRECTION: 4x plus gros pour un zoom plus important
             const endSize = starshipOriginalSize.width;
             const currentSize = startSize + (endSize - startSize) * easeProgress;
             
@@ -465,6 +467,48 @@
                 starship.height = starshipOriginalSize.height;
                 console.log("🚀 Animation d'entrée terminée");
             }
+        }
+        
+        // CORRECTION: Calculer les positions de séparation éloignées
+        function calculateSeparationPositions() {
+            const positions = [];
+            const playerZone = canvas.height - 120; // Zone réservée au joueur
+            
+            for (let i = 0; i < 6; i++) {
+                // Positions très éloignées dans tous les coins et côtés
+                let x, y;
+                
+                switch(i) {
+                    case 0: // Coin haut-gauche
+                        x = 50;
+                        y = 50;
+                        break;
+                    case 1: // Coin haut-droite
+                        x = canvas.width - 100;
+                        y = 50;
+                        break;
+                    case 2: // Milieu-gauche
+                        x = 50;
+                        y = playerZone / 2;
+                        break;
+                    case 3: // Milieu-droite
+                        x = canvas.width - 100;
+                        y = playerZone / 2;
+                        break;
+                    case 4: // Bas-gauche (évite zone joueur)
+                        x = 50;
+                        y = playerZone - 50;
+                        break;
+                    case 5: // Bas-droite (évite zone joueur)
+                        x = canvas.width - 100;
+                        y = playerZone - 50;
+                        break;
+                }
+                
+                positions.push({ x: x - 25, y: y }); // Centrer sur le vaisseau
+            }
+            
+            return positions;
         }
         
         // Calculer les positions de formation triangle
@@ -838,10 +882,10 @@ let miniBossShootTimer = 0;
 
         // Configuration des vaisseaux
         const starship = {
-            x: canvas.width / 2 - 50, // CORRECTION: Centré avec la nouvelle taille
-            y: canvas.height / 2 - 50, // CORRECTION: Commence au milieu de l'écran
-            width: 100, // CORRECTION: 2x plus gros (50 * 2)
-            height: 100,
+            x: canvas.width / 2 - 100, // CORRECTION: Centré avec la taille 4x plus grande
+            y: canvas.height / 2 - 100, // CORRECTION: Commence au milieu de l'écran
+            width: 200, // CORRECTION: 4x plus gros (50 * 4) pour un zoom plus important
+            height: 200,
             bullets: [],
             powerUpLevel: 0,
             player: 1,
@@ -1156,9 +1200,27 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             if (distance > 5) {
-                const speed = 10; // CORRECTION: Vitesse augmentée de 3 à 8 pour rassemblement rapide
+                const speed = 10; // Vitesse rapide pour rassemblement
                 assistantShip.x += (dx / distance) * speed;
                 assistantShip.y += (dy / distance) * speed;
+            }
+        } else if (isSeparating && separationPositions[index]) {
+            // CORRECTION: Mode séparation rapide vers positions éloignées
+            const targetPos = separationPositions[index];
+            const dx = targetPos.x - assistantShip.x;
+            const dy = targetPos.y - assistantShip.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 10) {
+                const speed = 12; // CORRECTION: Vitesse encore plus rapide pour séparation
+                assistantShip.x += (dx / distance) * speed;
+                assistantShip.y += (dy / distance) * speed;
+            } else {
+                // Position atteinte, arrêter la séparation pour cet assistant
+                if (index === assistantShips.length - 1) {
+                    // Dernier assistant arrivé, arrêter le mode séparation
+                    isSeparating = false;
+                }
             }
         } else {
             // CORRECTION: Mode libre - mouvement libre dans toutes les directions
@@ -2462,7 +2524,10 @@ thunderImgs.forEach((img, i) => img.src = `/img/thunder${i + 1}.jpg`);
             formationPositions = calculateFormationPositions();
             console.log("🔺 Formation triangle activée");
         } else {
-            console.log("🔄 Mode libre activé");
+            // CORRECTION: Générer positions de séparation éloignées et activer le mode
+            separationPositions = calculateSeparationPositions();
+            isSeparating = true;
+            console.log("🔄 Mode libre activé - Séparation rapide vers positions éloignées");
         }
         
         playSound(soundEffects.coin); // Son de confirmation
