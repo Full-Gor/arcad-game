@@ -364,6 +364,51 @@
         const powerUpFrequency = parseInt(localStorage.getItem('powerUpFrequency')) || 5;
         const livesFrequency = parseInt(localStorage.getItem('livesFrequency')) || 5;
 
+        // Object Pool pour les points rouges - OPTIMISATION ANTI-LAG
+        class RedPointPool {
+            constructor(initialSize = 500) {
+                this.pool = [];
+                this.activePoints = new Set();
+                this.maxActivePoints = 400;
+                
+                for (let i = 0; i < initialSize; i++) {
+                    this.pool.push(this.createRedPoint());
+                }
+                console.log(`🔴 RedPointPool initialisé avec ${initialSize} objets`);
+            }
+            
+            createRedPoint() {
+                return {
+                    x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0,
+                    color: 'red', isExplosion: false, isActive: false
+                };
+            }
+            
+            getPoint() {
+                if (this.activePoints.size >= this.maxActivePoints) {
+                    return null; // Refuser l'allocation pour éviter les lags
+                }
+                
+                let point = this.pool.pop();
+                if (!point) point = this.createRedPoint();
+                
+                point.isActive = true;
+                this.activePoints.add(point);
+                return point;
+            }
+            
+            releasePoint(point) {
+                if (!point.isActive) return;
+                point.isActive = false;
+                this.activePoints.delete(point);
+                point.x = point.y = point.vx = point.vy = point.life = 0;
+                point.isExplosion = false;
+                this.pool.push(point);
+            }
+        }
+        
+        const redPointPool = new RedPointPool(500);
+
         // Variables globales
         
         let gameIsRunning = true;
