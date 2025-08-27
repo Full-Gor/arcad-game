@@ -441,15 +441,7 @@
             // Interpolation fluide (easing out)
             const easeProgress = 1 - Math.pow(1 - progress, 3);
             
-            // Position : descente de l'altitude vers position finale
-            const startY = 50;
-            const endY = starshipFinalPosition.y;
-            starship.y = startY + (endY - startY) * easeProgress;
-            
-            const startX = canvas.width / 2 - 75;
-            const endX = starshipFinalPosition.x;
-            starship.x = startX + (endX - startX) * easeProgress;
-            
+            // CORRECTION: Position fixe au centre-bas, seule la taille change
             // Taille : réduction progressive (effet dézoom)
             const startSize = 150;
             const endSize = starshipOriginalSize.width;
@@ -457,6 +449,10 @@
             
             starship.width = currentSize;
             starship.height = currentSize;
+            
+            // Position centrée selon la taille actuelle
+            starship.x = canvas.width / 2 - currentSize / 2;
+            starship.y = canvas.height - currentSize - 25;
             
             // Fin de l'animation
             if (progress >= 1) {
@@ -840,8 +836,8 @@ let miniBossShootTimer = 0;
 
         // Configuration des vaisseaux
         const starship = {
-            x: canvas.width / 2 - 75, // Centré avec la taille plus grande
-            y: 50, // ANIMATION: Commence en haut (altitude élevée)
+            x: canvas.width / 2 - 75, // CORRECTION: Centré avec la taille plus grande
+            y: canvas.height - 175, // CORRECTION: Reste en bas pendant le dézoom
             width: 150, // ANIMATION: Commence très gros (3x plus grand)
             height: 150,
             bullets: [],
