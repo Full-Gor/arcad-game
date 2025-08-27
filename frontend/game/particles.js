@@ -12,18 +12,19 @@ const shieldParticles = {
     minDistance: 25
 };
 
-// Object Pool pour les points rouges - OPTIMISATION PERFORMANCE
+// Object Pool pour les points rouges - OPTIMISATION PERFORMANCE MAXIMALE
 class RedPointPool {
-    constructor(initialSize = 200) {
+    constructor(initialSize = 500) { // Augmenté pour les pics de thunder
         this.pool = [];
         this.activePoints = new Set();
+        this.maxActivePoints = 400; // Limite stricte pour éviter les surcharges
         
         // Pré-créer les objets pour éviter les allocations
         for (let i = 0; i < initialSize; i++) {
             this.pool.push(this.createRedPoint());
         }
         
-        console.log(`RedPointPool initialisé avec ${initialSize} objets`);
+        console.log(`🔴 RedPointPool initialisé avec ${initialSize} objets (limite: ${this.maxActivePoints})`);
     }
     
     createRedPoint() {
@@ -42,6 +43,12 @@ class RedPointPool {
     }
     
     getPoint() {
+        // Vérifier la limite avant d'allouer
+        if (this.activePoints.size >= this.maxActivePoints) {
+            console.warn(`🔴 Pool saturé (${this.activePoints.size}/${this.maxActivePoints}) - refus d'allocation`);
+            return null; // Refuser l'allocation pour éviter les lags
+        }
+        
         let point = this.pool.pop();
         if (!point) {
             point = this.createRedPoint();
@@ -79,7 +86,7 @@ class RedPointPool {
 }
 
 // Instance globale du pool
-const redPointPool = new RedPointPool(200);
+const redPointPool = new RedPointPool(500);
 
 // Variables pour les étoiles de fond
 export let stars = [];
@@ -113,10 +120,17 @@ export function drawStars() {
     }
 }
 
-// Fonction pour créer des particules d'explosion - OPTIMISÉE avec Object Pool
+// Fonction pour créer des particules d'explosion - OPTIMISÉE avec Object Pool + Limitation
 export function createExplosion(x, y, count = 10, colors = ['red', 'orange', 'yellow']) {
+    let created = 0;
     for (let i = 0; i < count; i++) {
         const point = redPointPool.getPoint();
+        
+        // Si le pool refuse l'allocation (saturé), arrêter pour éviter les lags
+        if (!point) {
+            console.warn(`🔴 Explosion limitée: ${created}/${count} particules créées (pool saturé)`);
+            break;
+        }
         
         // Configurer le point réutilisé
         point.x = x + (Math.random() - 0.5) * 20;
@@ -129,15 +143,20 @@ export function createExplosion(x, y, count = 10, colors = ['red', 'orange', 'ye
         point.color = colors[Math.floor(Math.random() * colors.length)];
         
         gameEntities.redPoints.push(point);
+        created++;
     }
 }
 
-// Fonction pour dessiner les points rouges/particules - OPTIMISÉE avec Object Pool
+// Fonction pour dessiner les points rouges/particules - OPTIMISÉE avec Object Pool + Nettoyage d'urgence
 export function drawRedPoints() {
-    // Limitation plus stricte pour éviter les surcharges
-    if (gameEntities.redPoints.length > 300) {
+    // Nettoyage d'urgence si trop de particules (évite les lags massifs)
+    if (gameEntities.redPoints.length > 350) {
+        emergencyPoolCleanup();
+    }
+    // Limitation normale
+    else if (gameEntities.redPoints.length > 250) {
         // Libérer les points excédentaires dans le pool
-        const excess = gameEntities.redPoints.splice(300);
+        const excess = gameEntities.redPoints.splice(250);
         excess.forEach(point => {
             if (point.isActive) {
                 redPointPool.releasePoint(point);
@@ -262,9 +281,12 @@ export function drawShieldParticles() {
     });
 }
 
-// Fonction pour créer des points rouges collectibles - OPTIMISÉE avec Object Pool
+// Fonction pour créer des points rouges collectibles - OPTIMISÉE avec Object Pool + Protection
 export function createCollectibleRedPoint(x, y) {
     const point = redPointPool.getPoint();
+    
+    // Si le pool est saturé, ignorer silencieusement (les collectibles sont moins critiques)
+    if (!point) return;
     
     point.x = x;
     point.y = y;
@@ -407,4 +429,22 @@ export function getPoolStats() {
 export function logPoolStats() {
     const stats = getPoolStats();
     console.log('🔴 RedPoint Pool Stats:', stats);
+}
+
+// Fonction d'urgence pour libérer de l'espace dans le pool - ANTI-LAG
+export function emergencyPoolCleanup() {
+    const beforeCount = gameEntities.redPoints.length;
+    
+    // Supprimer les 50% de particules les plus anciennes (celles avec le moins de vie)
+    gameEntities.redPoints.sort((a, b) => a.life - b.life);
+    const toRemove = gameEntities.redPoints.splice(0, Math.floor(gameEntities.redPoints.length / 2));
+    
+    // Libérer dans le pool
+    toRemove.forEach(point => {
+        if (point.isActive) {
+            redPointPool.releasePoint(point);
+        }
+    });
+    
+    console.warn(`🧹 Nettoyage d'urgence: ${toRemove.length} particules libérées (${beforeCount} → ${gameEntities.redPoints.length})`);
 }

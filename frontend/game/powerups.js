@@ -4,6 +4,7 @@ import { canvas, ctx, stageState, CONFIG, multiplayerConfig } from './globals.js
 import { playSound, soundEffects } from './audio.js';
 import { checkCollision } from './collisions.js';
 import { getActivePlayers } from './player.js';
+import { createExplosion } from './particles.js';
 
 // Images des power-ups
 export let powerUpImgs = [];
@@ -268,24 +269,19 @@ export function activateThunder(ship) {
     }
     window.activeThunders.push(thunder);
 
-    // Détruire tous les ennemis visibles
+    // Détruire tous les ennemis visibles - OPTIMISÉ avec Object Pool
     const enemies = window.gameEntities ? window.gameEntities.enemies : [];
-    if (enemies) {
+    if (enemies && enemies.length > 0) {
+        console.log(`🌩️ Thunder détruit ${enemies.length} ennemis avec explosions optimisées`);
+        
         enemies.forEach((enemy, index) => {
-            // Créer un effet d'explosion pour chaque ennemi détruit
-            for (let i = 0; i < 10; i++) {
-                if (window.gameEntities && window.gameEntities.redPoints) {
-                    window.gameEntities.redPoints.push({
-                        x: enemy.x + Math.random() * enemy.width,
-                        y: enemy.y + Math.random() * enemy.height,
-                        isExplosion: true,
-                        vx: (Math.random() * 2 - 1) * 3,
-                        vy: (Math.random() * 2 - 1) * 3,
-                        life: 20 + Math.floor(Math.random() * 20),
-                        color: ["yellow", "white", "blue"][Math.floor(Math.random() * 3)]
-                    });
-                }
-            }
+            // Utiliser createExplosion qui utilise le pool - BEAUCOUP PLUS PERFORMANT
+            createExplosion(
+                enemy.x + enemy.width/2, 
+                enemy.y + enemy.height/2, 
+                8, // Réduire de 10 à 8 particules par ennemi
+                ["yellow", "white", "blue", "cyan"]
+            );
         });
         
         // Vider le tableau des ennemis
