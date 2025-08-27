@@ -25,11 +25,11 @@ export function initializeEnemyImages() {
     enemyBulletImgs.forEach((img, i) => img.src = `/img/bullets${i + 2}.jpg`);
 }
 
-// Fonction pour générer des ennemis normaux
+// Fonction pour générer des ennemis normaux - TEST ANTI-CLIGNOTEMENT
 export function generateEnemies() {
-    if (!canvas || gameEntities.enemies.length > 30) return;
+    if (!canvas || gameEntities.enemies.length > 10) return; // Réduit de 30 à 10
 
-    const count = Math.min(7, 30 - gameEntities.enemies.length);
+    const count = Math.min(2, 10 - gameEntities.enemies.length); // Réduit de 7 à 2
 
     for (let i = 0; i < count; i++) {
         gameEntities.enemies.push({
