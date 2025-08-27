@@ -4,7 +4,7 @@ import { canvas, ctx, gameState, CONFIG } from './globals.js';
 import { drawStarship, updateBullets } from './player.js';
 import { drawEnemies, drawEnemyBullets, shootEnemyBullets, updateEnemies } from './enemies.js';
 import { updateBoss, drawBoss, checkBossCollisions, checkBossSpawn } from './boss.js';
-import { drawAllParticleEffects } from './particles.js';
+import { drawAllParticleEffects, logPoolStats } from './particles.js';
 import { updateMultiplayerControls } from './input.js';
 import { checkAllCollisions } from './collisions.js';
 import { updatePlayerStats, showGameOver } from './ui.js';
@@ -129,12 +129,14 @@ function gameLoop(currentTime = 0) {
         // 9. Mettre à jour l'interface utilisateur
         updatePlayerStats();
 
-        // 10. Compter les FPS
+        // 10. Compter les FPS et afficher les stats du pool
         gameState.fpsCounter++;
         gameState.fpsTimer += gameState.deltaTime;
         
         if (gameState.fpsTimer >= 1000) {
             // console.log("FPS:", gameState.fpsCounter);
+            // Afficher les stats du pool toutes les secondes pour debug
+            logPoolStats();
             gameState.fpsCounter = 0;
             gameState.fpsTimer = 0;
         }

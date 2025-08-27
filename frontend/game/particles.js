@@ -12,6 +12,75 @@ const shieldParticles = {
     minDistance: 25
 };
 
+// Object Pool pour les points rouges - OPTIMISATION PERFORMANCE
+class RedPointPool {
+    constructor(initialSize = 200) {
+        this.pool = [];
+        this.activePoints = new Set();
+        
+        // Pré-créer les objets pour éviter les allocations
+        for (let i = 0; i < initialSize; i++) {
+            this.pool.push(this.createRedPoint());
+        }
+        
+        console.log(`RedPointPool initialisé avec ${initialSize} objets`);
+    }
+    
+    createRedPoint() {
+        return {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            life: 0,
+            maxLife: 0,
+            color: 'red',
+            isExplosion: false,
+            isActive: false,
+            size: 1
+        };
+    }
+    
+    getPoint() {
+        let point = this.pool.pop();
+        if (!point) {
+            point = this.createRedPoint();
+            console.log('Pool vide - création nouveau point rouge');
+        }
+        point.isActive = true;
+        this.activePoints.add(point);
+        return point;
+    }
+    
+    releasePoint(point) {
+        if (!point.isActive) return;
+        
+        point.isActive = false;
+        this.activePoints.delete(point);
+        
+        // Réinitialiser l'objet pour réutilisation
+        point.x = 0;
+        point.y = 0;
+        point.vx = 0;
+        point.vy = 0;
+        point.life = 0;
+        point.isExplosion = false;
+        
+        this.pool.push(point);
+    }
+    
+    getActiveCount() {
+        return this.activePoints.size;
+    }
+    
+    getPoolSize() {
+        return this.pool.length;
+    }
+}
+
+// Instance globale du pool
+const redPointPool = new RedPointPool(200);
+
 // Variables pour les étoiles de fond
 export let stars = [];
 
@@ -44,25 +113,36 @@ export function drawStars() {
     }
 }
 
-// Fonction pour créer des particules d'explosion
+// Fonction pour créer des particules d'explosion - OPTIMISÉE avec Object Pool
 export function createExplosion(x, y, count = 10, colors = ['red', 'orange', 'yellow']) {
     for (let i = 0; i < count; i++) {
-        gameEntities.redPoints.push({
-            x: x + (Math.random() - 0.5) * 20,
-            y: y + (Math.random() - 0.5) * 20,
-            isExplosion: true,
-            vx: (Math.random() * 2 - 1) * 4,
-            vy: (Math.random() * 2 - 1) * 4,
-            life: 20 + Math.floor(Math.random() * 20),
-            color: colors[Math.floor(Math.random() * colors.length)]
-        });
+        const point = redPointPool.getPoint();
+        
+        // Configurer le point réutilisé
+        point.x = x + (Math.random() - 0.5) * 20;
+        point.y = y + (Math.random() - 0.5) * 20;
+        point.isExplosion = true;
+        point.vx = (Math.random() * 2 - 1) * 4;
+        point.vy = (Math.random() * 2 - 1) * 4;
+        point.life = 20 + Math.floor(Math.random() * 20);
+        point.maxLife = point.life;
+        point.color = colors[Math.floor(Math.random() * colors.length)];
+        
+        gameEntities.redPoints.push(point);
     }
 }
 
-// Fonction pour dessiner les points rouges/particules
+// Fonction pour dessiner les points rouges/particules - OPTIMISÉE avec Object Pool
 export function drawRedPoints() {
-    if (gameEntities.redPoints.length > 500) {
-        gameEntities.redPoints = gameEntities.redPoints.slice(0, 500);
+    // Limitation plus stricte pour éviter les surcharges
+    if (gameEntities.redPoints.length > 300) {
+        // Libérer les points excédentaires dans le pool
+        const excess = gameEntities.redPoints.splice(300);
+        excess.forEach(point => {
+            if (point.isActive) {
+                redPointPool.releasePoint(point);
+            }
+        });
     }
 
     for (let i = gameEntities.redPoints.length - 1; i >= 0; i--) {
@@ -72,7 +152,7 @@ export function drawRedPoints() {
             // Particule d'explosion
             ctx.save();
             ctx.fillStyle = point.color || "red";
-            ctx.globalAlpha = point.life / 40;
+            ctx.globalAlpha = Math.max(0.1, point.life / point.maxLife);
             ctx.beginPath();
             ctx.arc(point.x, point.y, Math.max(1, point.life / 10), 0, Math.PI * 2);
             ctx.fill();
@@ -83,6 +163,8 @@ export function drawRedPoints() {
             point.life--;
 
             if (point.life <= 0) {
+                // Libérer l'objet dans le pool au lieu de le détruire
+                redPointPool.releasePoint(point);
                 gameEntities.redPoints.splice(i, 1);
             }
         } else {
@@ -93,6 +175,10 @@ export function drawRedPoints() {
 
             point.y += 1;
             if (point.y > canvas.height) {
+                // Libérer l'objet dans le pool
+                if (point.isActive) {
+                    redPointPool.releasePoint(point);
+                }
                 gameEntities.redPoints.splice(i, 1);
             }
         }
@@ -176,19 +262,38 @@ export function drawShieldParticles() {
     });
 }
 
-// Fonction pour créer un effet de trail/traînée
+// Fonction pour créer des points rouges collectibles - OPTIMISÉE avec Object Pool
+export function createCollectibleRedPoint(x, y) {
+    const point = redPointPool.getPoint();
+    
+    point.x = x;
+    point.y = y;
+    point.isExplosion = false;
+    point.vx = 0;
+    point.vy = 1;
+    point.life = 999; // Durée de vie longue pour les collectibles
+    point.maxLife = 999;
+    point.color = 'red';
+    
+    gameEntities.redPoints.push(point);
+}
+
+// Fonction pour créer un effet de trail/traînée - OPTIMISÉE avec Object Pool
 export function createTrail(x, y, color = 'white', size = 2, life = 10) {
-    gameEntities.redPoints.push({
-        x: x,
-        y: y,
-        isTrail: true,
-        life: life,
-        maxLife: life,
-        size: size,
-        color: color,
-        vx: 0,
-        vy: 0
-    });
+    const point = redPointPool.getPoint();
+    
+    point.x = x;
+    point.y = y;
+    point.isTrail = true;
+    point.life = life;
+    point.maxLife = life;
+    point.size = size;
+    point.color = color;
+    point.vx = 0;
+    point.vy = 0;
+    point.isExplosion = false;
+    
+    gameEntities.redPoints.push(point);
 }
 
 // Fonction pour dessiner les effets de trail
@@ -286,4 +391,20 @@ export function clearAllParticles() {
 // Fonction pour obtenir le nombre de particules actives
 export function getParticleCount() {
     return gameEntities.redPoints.length + shieldParticles.particles.length + stars.length;
+}
+
+// Fonction de diagnostic du pool - OPTIMISATION
+export function getPoolStats() {
+    return {
+        activePoints: redPointPool.getActiveCount(),
+        poolSize: redPointPool.getPoolSize(),
+        totalRedPoints: gameEntities.redPoints.length,
+        memoryOptimization: `${Math.round((redPointPool.getPoolSize() / (redPointPool.getActiveCount() + redPointPool.getPoolSize())) * 100)}% objets réutilisés`
+    };
+}
+
+// Fonction pour afficher les stats du pool dans la console (debug)
+export function logPoolStats() {
+    const stats = getPoolStats();
+    console.log('🔴 RedPoint Pool Stats:', stats);
 }

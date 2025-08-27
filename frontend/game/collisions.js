@@ -4,7 +4,7 @@ import { gameEntities, playerState } from './globals.js';
 import { playSound, soundEffects } from './audio.js';
 import { getActivePlayers, stunPlayer, playerDeath } from './player.js';
 import { removeEnemy, removeEnemyBullet } from './enemies.js';
-import { createExplosion, createHitEffect } from './particles.js';
+import { createExplosion, createHitEffect, createCollectibleRedPoint } from './particles.js';
 import { incrementEnemiesKilled, updateRedPoints } from './ui.js';
 
 // Fonction principale de vérification des collisions
@@ -74,13 +74,12 @@ export function checkBulletEnemyCollisions() {
                     createHitEffect(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
                     createExplosion(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 8);
                     
-                    // Ajouter des points rouges
+                    // Ajouter des points rouges collectibles avec le pool
                     for (let i = 0; i < 3; i++) {
-                        gameEntities.redPoints.push({
-                            x: enemy.x + Math.random() * enemy.width,
-                            y: enemy.y + Math.random() * enemy.height,
-                            isExplosion: false
-                        });
+                        createCollectibleRedPoint(
+                            enemy.x + Math.random() * enemy.width,
+                            enemy.y + Math.random() * enemy.height
+                        );
                     }
                     
                     // Supprimer l'ennemi
