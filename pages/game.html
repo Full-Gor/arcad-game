@@ -441,18 +441,20 @@
             // Interpolation fluide (easing out)
             const easeProgress = 1 - Math.pow(1 - progress, 3);
             
-            // CORRECTION: Position fixe au centre-bas, seule la taille change
-            // Taille : réduction progressive (effet dézoom)
-            const startSize = 150;
+            // CORRECTION: Descente du milieu vers le bas + dézoom
+            const startSize = 100; // 2x plus gros
             const endSize = starshipOriginalSize.width;
             const currentSize = startSize + (endSize - startSize) * easeProgress;
             
+            // Position Y : descente du milieu vers le bas
+            const startY = canvas.height / 2 - currentSize / 2;
+            const endY = canvas.height - currentSize - 25;
+            const currentY = startY + (endY - startY) * easeProgress;
+            
             starship.width = currentSize;
             starship.height = currentSize;
-            
-            // Position centrée selon la taille actuelle
-            starship.x = canvas.width / 2 - currentSize / 2;
-            starship.y = canvas.height - currentSize - 25;
+            starship.x = canvas.width / 2 - currentSize / 2; // Toujours centré en X
+            starship.y = currentY;
             
             // Fin de l'animation
             if (progress >= 1) {
@@ -836,10 +838,10 @@ let miniBossShootTimer = 0;
 
         // Configuration des vaisseaux
         const starship = {
-            x: canvas.width / 2 - 75, // CORRECTION: Centré avec la taille plus grande
-            y: canvas.height - 175, // CORRECTION: Reste en bas pendant le dézoom
-            width: 150, // ANIMATION: Commence très gros (3x plus grand)
-            height: 150,
+            x: canvas.width / 2 - 50, // CORRECTION: Centré avec la nouvelle taille
+            y: canvas.height / 2 - 50, // CORRECTION: Commence au milieu de l'écran
+            width: 100, // CORRECTION: 2x plus gros (50 * 2)
+            height: 100,
             bullets: [],
             powerUpLevel: 0,
             player: 1,
@@ -988,6 +990,7 @@ function createAssistantShip() {
         speed: 3,
         isEntering: true,
         moveDirection: Math.random() < 0.5 ? 1 : -1, // Direction de mouvement aléatoire
+        moveDirectionY: Math.random() < 0.5 ? 1 : -1, // CORRECTION: Direction verticale
         moveTimer: Math.random() * Math.PI * 2, // Décalage de phase pour éviter mouvement synchronisé
         health: 3,
         isHit: false,
@@ -1158,13 +1161,22 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
                 assistantShip.y += (dy / distance) * speed;
             }
         } else {
-            // Mode libre - mouvement d'origine
-            assistantShip.moveTimer += 0.01;
+            // CORRECTION: Mode libre - mouvement libre dans toutes les directions
+            assistantShip.moveTimer += 0.02;
             
-            // Déplacer la position basée sur une onde sinusoïdale pour un mouvement fluide
-            assistantShip.x += Math.sin(assistantShip.moveTimer) * 2 * assistantShip.moveDirection;
+            // Ajouter une direction verticale si elle n'existe pas
+            if (typeof assistantShip.moveDirectionY === 'undefined') {
+                assistantShip.moveDirectionY = Math.random() < 0.5 ? 1 : -1;
+            }
             
-            // S'assurer que le vaisseau reste dans les limites de l'écran
+            // Mouvement en X et Y avec patterns différents
+            const moveX = Math.sin(assistantShip.moveTimer) * 1.5 * assistantShip.moveDirection;
+            const moveY = Math.cos(assistantShip.moveTimer * 0.7) * 1 * assistantShip.moveDirectionY;
+            
+            assistantShip.x += moveX;
+            assistantShip.y += moveY;
+            
+            // Rebondir sur les bords (X)
             if (assistantShip.x < 0) {
                 assistantShip.x = 0;
                 assistantShip.moveDirection *= -1;
@@ -1173,9 +1185,22 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
                 assistantShip.moveDirection *= -1;
             }
             
-            // Changer de direction aléatoirement de temps en temps
-            if (Math.random() < 0.005) {
+            // Rebondir sur les bords (Y) - peuvent aller partout sauf zone joueur
+            const playerZone = canvas.height - 120; // Zone réservée au joueur
+            if (assistantShip.y < 50) {
+                assistantShip.y = 50;
+                assistantShip.moveDirectionY *= -1;
+            } else if (assistantShip.y + assistantShip.height > playerZone) {
+                assistantShip.y = playerZone - assistantShip.height;
+                assistantShip.moveDirectionY *= -1;
+            }
+            
+            // Changer de direction aléatoirement
+            if (Math.random() < 0.003) {
                 assistantShip.moveDirection *= -1;
+            }
+            if (Math.random() < 0.002) {
+                assistantShip.moveDirectionY *= -1;
             }
         }
         
