@@ -1558,6 +1558,17 @@ function createShieldParticles(player) {
 function updateShieldParticles() {
   if (gameManager.isPaused) return;
 
+  // CORRECTION: Nettoyer les particules orphelines (sans joueur actif)
+  shieldParticles.particles = shieldParticles.particles.filter(particle => {
+    const player = [starship, starship2, starship3].find(p => p && p.player === particle.player);
+    return player && player.isActive && player.shield;
+  });
+  
+  shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(particle => {
+    const player = [starship, starship2, starship3].find(p => p && p.player === particle.player);
+    return player && player.isActive && player.shield;
+  });
+
   // Pour chaque joueur qui a un bouclier actif
   [starship, starship2, starship3].filter(player => player && player.isActive && player.shield).forEach(player => {
     // Mettre à jour les particules orbitales
@@ -1584,7 +1595,9 @@ function updateShieldParticles() {
 
 // Dessiner les particules de bouclier
 function drawShieldParticles() {
+  // CORRECTION: Vérifier que le joueur existe ET a un shield actif
   [starship, starship2, starship3].filter(player => player && player.isActive && player.shield).forEach(player => {
+    // CORRECTION: Position dynamique du centre du joueur
     const centerX = player.x + player.width / 2;
     const centerY = player.y + player.height / 2;
 
@@ -1731,11 +1744,18 @@ function activateShield(player, duration = 10000) {
   // Désactiver le bouclier après la durée spécifiée
   player.shieldTimeout = setTimeout(() => {
     player.shield = false;
-    if (shieldEffect) shieldEffect.remove();
+    if (shieldEffect) {
+      shieldEffect.remove();
+    }
     
-    // Supprimer les particules associées à ce joueur
+    // CORRECTION: Nettoyage complet des particules
     shieldParticles.particles = shieldParticles.particles.filter(p => p.player !== player.player);
     shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(p => p.player !== player.player);
+    
+    // Nettoyer le timeout
+    player.shieldTimeout = null;
+    
+    console.log(`🛡️ Shield désactivé pour joueur ${player.player}`);
   }, duration);
 }
 
@@ -4635,12 +4655,20 @@ if (redPointsTotal >= 200 && !assistantShipActive) {
 }
                         
                     if (starship.redPointsCollected >= 20) {
-    console.log("Activation du bouclier pour le joueur 1 - Points: " + starship.redPointsCollected);
+    console.log("🛡️ Activation du bouclier pour le joueur 1 - Points: " + starship.redPointsCollected);
+    console.log("🛡️ Shield actuel:", starship.shield);
+    
+    // CORRECTION: Forcer la désactivation du shield précédent si il existe
+    if (starship.shieldTimeout) {
+        clearTimeout(starship.shieldTimeout);
+        starship.shieldTimeout = null;
+    }
+    
     activateShield(starship);
     starship.redPointsCollected = 0; // Réinitialiser le compteur
     
-    // Afficher le compteur réinitialisé
-    console.log("Compteur réinitialisé à : " + starship.redPointsCollected);
+    console.log("🛡️ Compteur réinitialisé à : " + starship.redPointsCollected);
+    console.log("🛡️ Nouveau shield actuel:", starship.shield);
 }
                         
                         return false; // supprime ce point
@@ -4723,9 +4751,17 @@ if (isMultiplayer && starship2 && starship2.isActive) {
         
         // Vérifier l'activation du bouclier
         if (starship2.redPointsCollected >= 100) {
-            console.log("Activation du bouclier pour le joueur 2");
+            console.log("🛡️ Activation du bouclier pour le joueur 2 - Points: " + starship2.redPointsCollected);
+            
+            // CORRECTION: Forcer la désactivation du shield précédent si il existe
+            if (starship2.shieldTimeout) {
+                clearTimeout(starship2.shieldTimeout);
+                starship2.shieldTimeout = null;
+            }
+            
             activateShield(starship2);
             starship2.redPointsCollected = 0;
+            console.log("🛡️ Shield joueur 2 activé, compteur réinitialisé");
         }
         
         return false;
@@ -4745,9 +4781,17 @@ if (isTriplePlayer && starship3 && starship3.isActive) {
         
         // Vérifier l'activation du bouclier
         if (starship3.redPointsCollected >= 100) {
-            console.log("Activation du bouclier pour le joueur 3");
+            console.log("🛡️ Activation du bouclier pour le joueur 3 - Points: " + starship3.redPointsCollected);
+            
+            // CORRECTION: Forcer la désactivation du shield précédent si il existe
+            if (starship3.shieldTimeout) {
+                clearTimeout(starship3.shieldTimeout);
+                starship3.shieldTimeout = null;
+            }
+            
             activateShield(starship3);
             starship3.redPointsCollected = 0;
+            console.log("🛡️ Shield joueur 3 activé, compteur réinitialisé");
         }
         
         return false;
