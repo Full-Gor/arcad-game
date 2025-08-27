@@ -1142,31 +1142,8 @@ function createAssistantShip() {
     // Définir le seuil pour le prochain assistant
     redPointsForNextAssistant += 50;
     
-    // Effet d'annonce
-    const assistantMessage = document.createElement("div");
-    assistantMessage.style.position = "absolute";
-    assistantMessage.style.left = "50%";
-    assistantMessage.style.top = "40%";
-    assistantMessage.style.transform = "translate(-50%, -50%)";
-    assistantMessage.style.color = "#FFFFFF";
-    assistantMessage.style.fontSize = "30px";
-    assistantMessage.style.fontWeight = "bold";
-    assistantMessage.style.padding = "20px";
-    assistantMessage.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-    assistantMessage.style.borderRadius = "10px";
-    assistantMessage.style.textAlign = "center";
-    assistantMessage.style.zIndex = "100";
-    assistantMessage.style.textShadow = "0 0 10px #04fbac";
-    assistantMessage.textContent = `VAISSEAU ASSISTANT ${assistantShips.length} ACTIVÉ!`;
-    document.body.appendChild(assistantMessage);
-    
     // Jouer un son
     playSound(soundEffects.awesome);
-    
-    // Retirer le message après 3 secondes
-    setTimeout(() => {
-        document.body.removeChild(assistantMessage);
-    }, 3000);
 }
 // Fonction principale qui gère tous les vaisseaux assistants
 function updateAndDrawAssistantShips() {
@@ -1520,18 +1497,12 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
                 
                 // Créer les particules de bouclier pour cet assistant
                 createAssistantShieldParticles(assistantShip, assistantShipIndex);
-                
-                // Message
-                showFloatingText("BOUCLIER!", assistantShip.x, assistantShip.y - 20, "#00ffff");
             } else if (powerUp.type === 1) { // Type 1 - Amélioration d'armes
                 // Augmenter le niveau de puissance des tirs
                 assistantShip.powerUpLevel = Math.min(2, assistantShip.powerUpLevel + 1);
                 
                 // Augmenter la cadence de tir
                 assistantShip.shootInterval = Math.max(200, assistantShip.originalShootInterval - (assistantShip.powerUpLevel * 100));
-                
-                // Message
-                showFloatingText("ARMES +1", assistantShip.x, assistantShip.y - 20, "#ff00ff");
             } else if (powerUp.type === 2) { // Type 2 - Power-up spécial
                 // Effet spécial: déclenchement du bouclier + amélioration d'armes
                 assistantShip.shield.active = true;
@@ -1543,9 +1514,6 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
                 
                 assistantShip.powerUpLevel = 2; // Niveau maximal
                 assistantShip.shootInterval = 200; // Tir rapide
-                
-                // Message
-                showFloatingText("POWER-UP COMPLET!", assistantShip.x, assistantShip.y - 20, "#ffffff");
             }
             
             // Jouer un son
@@ -1581,9 +1549,6 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
             
             // Jouer un son
             playSound(soundEffects.perfect);
-            
-            // Message
-            showFloatingText("VIE +1", assistantShip.x, assistantShip.y - 20, "#ff0000");
             
             // Supprimer la vie
             bonusManager.lives.splice(i, 1);
@@ -1793,7 +1758,7 @@ function createShieldParticles(player) {
       speed: shieldParticles.minSpeed + Math.random() * (shieldParticles.maxSpeed - shieldParticles.minSpeed),
       color: shieldParticles.colors[Math.floor(Math.random() * shieldParticles.colors.length)],
       player: player.player,
-      opacity: 0.5 + Math.random() * 0.5,
+      opacity: 0.7 + Math.random() * 0.3,
       blinking: Math.random() > 0.7,
       trail: Math.random() > 0.7 // Certaines particules laissent une traînée
     });
@@ -1843,7 +1808,7 @@ function createAssistantShieldParticles(assistant, assistantIndex) {
       speed: shieldParticles.minSpeed + Math.random() * (shieldParticles.maxSpeed - shieldParticles.minSpeed),
       color: assistantColors[Math.floor(Math.random() * assistantColors.length)],
       assistantId: assistant.assistantId,
-      opacity: 0.5 + Math.random() * 0.5,
+      opacity: 0.8 + Math.random() * 0.2,
       blinking: Math.random() > 0.7,
       trail: Math.random() > 0.7
     });
@@ -1860,7 +1825,7 @@ function createAssistantShieldParticles(assistant, assistantIndex) {
       size: (1 + Math.random() * 2) * 0.8, // Taille réduite
       color: assistantColors[Math.floor(Math.random() * assistantColors.length)],
       assistantId: assistant.assistantId,
-      opacity: 0.4 + Math.random() * 0.6,
+      opacity: 0.7 + Math.random() * 0.3,
       pulseFactor: 0.5 + Math.random() * 0.5,
       pulseSpeed: 0.001 + Math.random() * 0.004,
       moveSpeed: 0.01 + Math.random() * 0.04,
@@ -2095,11 +2060,11 @@ ctx.restore();
       centerX, centerY, assistant.width / 2 + 15 // Plus petit que le joueur principal
     );
 
-    assistantGradient.addColorStop(0, `rgba(${rgbString}, 0)`);
-    assistantGradient.addColorStop(0.7, `rgba(${rgbString}, 0.1)`);
-    assistantGradient.addColorStop(1, `rgba(${rgbString}, 0.2)`);
+    assistantGradient.addColorStop(0, `rgba(${rgbString}, 0.1)`);
+    assistantGradient.addColorStop(0.7, `rgba(${rgbString}, 0.4)`);
+    assistantGradient.addColorStop(1, `rgba(${rgbString}, 0.6)`);
 
-    ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.004 + index) * 0.15; // Pulsation légèrement différente pour chaque assistant
+    ctx.globalAlpha = 0.8 + Math.sin(Date.now() * 0.004 + index) * 0.2; // Pulsation plus visible pour chaque assistant
     ctx.fillStyle = assistantGradient;
     ctx.beginPath();
     ctx.arc(centerX, centerY, assistant.width / 2 + 15, 0, Math.PI * 2);
@@ -2830,7 +2795,6 @@ thunderImgs.forEach((img, i) => img.src = `/img/thunder${i + 1}.jpg`);
         // CORRECTION: Générer positions de séparation éloignées et activer le mode
         separationPositions = calculateSeparationPositions();
         isSeparating = true;
-        console.log("🔄 Mode libre activé - Toutes formations désactivées");
         
         playSound(soundEffects.coin); // Son de confirmation
     }
@@ -2851,13 +2815,11 @@ window.addEventListener("wheel", (e) => {
         // Molette vers l'avant - Formation devant
         formationMode = 'front';
         frontFormationPositions = calculateFrontFormation();
-        console.log("⬆️ Formation horizontale devant activée");
         playSound(soundEffects.coin);
     } else if (e.deltaY > 0) {
         // Molette vers l'arrière - Formation derrière
         formationMode = 'back';
         backFormationPositions = calculateBackFormation();
-        console.log("⬇️ Formation horizontale derrière activée");
         playSound(soundEffects.coin);
     }
 });
@@ -2869,7 +2831,6 @@ window.addEventListener("mousedown", (e) => {
         e.preventDefault();
         formationMode = 'orbital';
         orbitalAngle = 0; // Réinitialiser l'angle
-        console.log("🔄 Formation orbitale activée (rayon: " + orbitalRadius + "px)");
         playSound(soundEffects.coin);
     }
 }, { passive: false });
