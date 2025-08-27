@@ -936,7 +936,10 @@ function createAssistantShip() {
             radius: 40,
             timer: 0,
             duration: 3000
-        }
+        },
+        
+        // CORRECTION: Compteur individuel pour chaque assistant
+        redPointsCollected: 0
     };
     
     // Ajouter le nouveau vaisseau au tableau
@@ -1125,10 +1128,13 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
             assistantShip.lastShootTime = currentTime;
         }
         
-        // Mettre à jour le timer du bouclier
+        // CORRECTION: Mettre à jour le timer du bouclier des assistants
         if (assistantShip.shield.active) {
-            if (Date.now() - assistantShip.shield.timer > assistantShip.shield.duration) {
+            assistantShip.shield.timer += 16; // ~60fps
+            if (assistantShip.shield.timer >= assistantShip.shield.duration) {
                 assistantShip.shield.active = false;
+                assistantShip.shield.timer = 0;
+                console.log(`🛡️ Bouclier assistant ${index+1} désactivé`);
             }
         }
     }
@@ -4653,14 +4659,10 @@ function drawRedPoints() {
                         starship.redPointsCollected++;
                         // Mettre à jour l'affichage
 document.getElementById("redPointsCount").textContent = starship.redPointsCollected;
-                        redPointsTotal++; // Compteur global pour les nouveaux assistants
-                        // Incrémenter le compteur total de points rouges
-redPointsTotal++;
+                        // CORRECTION: Compteur global unique (pas de double incrémentation)
+                        redPointsTotal++;
 
-// Vérifier si 500 points rouges ont été collectés
-if (redPointsTotal >= 200 && !assistantShipActive) {
-    createAssistantShip();
-}
+                        // CORRECTION: Logique de création d'assistants gérée ailleurs
                         
                     if (starship.redPointsCollected >= 20) {
     console.log("🛡️ Activation du bouclier pour le joueur 1 - Points: " + starship.redPointsCollected);
@@ -4685,6 +4687,55 @@ if (redPointsTotal >= 200 && !assistantShipActive) {
             }
             
             // [Le reste du code d'attraction pour les joueurs 2 et 3]
+            
+            // Appliquer l'attraction si nécessaire
+            if (attractedToPlayer) {
+                point.x += attraction.x;
+                point.y += attraction.y;
+            }
+            
+            // CORRECTION: Vérifier attraction aux assistants (avec compteurs individuels)
+            if (!attractedToPlayer) {
+                for (let i = 0; i < assistantShips.length; i++) {
+                    const assistant = assistantShips[i];
+                    if (assistant && !assistant.isEntering) {
+                        const dx = assistant.x + assistant.width/2 - point.x;
+                        const dy = assistant.y + assistant.height/2 - point.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < 80 && distance < minDistance) {
+                            attraction.x = dx / distance * 2;
+                            attraction.y = dy / distance * 2;
+                            minDistance = distance;
+                            attractedToPlayer = true;
+                            
+                            if (distance < 25) {
+                                coins += 0.3;
+                                document.getElementById("coinsCount").textContent = coins.toFixed(1);
+                                playSound(soundEffects.coin);
+                                
+                                // CORRECTION: Compteur individuel pour chaque assistant
+                                assistant.redPointsCollected++;
+                                redPointsTotal++;
+                                
+                                // Vérifier activation du bouclier pour cet assistant
+                                if (assistant.redPointsCollected >= 15) {
+                                    console.log(`🛡️ Assistant ${i+1} active son bouclier - Points: ${assistant.redPointsCollected}`);
+                                    
+                                    // Activer le bouclier de l'assistant
+                                    assistant.shield.active = true;
+                                    assistant.shield.timer = 0;
+                                    
+                                    // Réinitialiser le compteur
+                                    assistant.redPointsCollected = 0;
+                                }
+                                
+                                return false; // supprime ce point
+                            }
+                        }
+                    }
+                }
+            }
             
             // Appliquer l'attraction si nécessaire
             if (attractedToPlayer) {
@@ -4724,27 +4775,7 @@ function activateShield(player, duration = 5000) { // Réduit de 10s à 5s
  // Désactiver le bouclier après la durée spécifiée
 player.shieldTimeout = setTimeout(() => {
     player.shield = false;
-    console.log(`Bouclier désactivé pour le joueur ${player.player}`);
-    
-    // Message visuel de fin de bouclier
-    const endMessage = document.createElement("div");
-    endMessage.style.position = "absolute";
-    endMessage.style.left = "50%";
-    endMessage.style.top = "30%";
-    endMessage.style.transform = "translate(-50%, -50%)";
-    endMessage.style.color = "red";
-    endMessage.style.fontSize = "20px";
-    endMessage.style.fontWeight = "bold";
-    endMessage.style.textShadow = "0 0 10px red";
-    endMessage.style.zIndex = "1000";
-    endMessage.textContent = `BOUCLIER TERMINÉ - JOUEUR ${player.player}`;
-    document.body.appendChild(endMessage);
-    
-    setTimeout(() => {
-        if (endMessage && endMessage.parentNode) {
-            endMessage.parentNode.removeChild(endMessage);
-        }
-    }, 1500);
+    // Shield désactivé silencieusement
 }, duration);
 // Vérifier aussi pour le joueur 2
 if (isMultiplayer && starship2 && starship2.isActive) {
