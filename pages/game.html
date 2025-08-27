@@ -419,6 +419,30 @@
         const fpsLimit = 60;
         const frameDuration = 1000 / fpsLimit;
         let redPointsTotal = 0; // Compteur global pour les points rouges collectés
+        
+        // FORMATION ASSISTANTS - Variables globales
+        let isFormationActive = false;
+        let formationPositions = [];
+        
+        // Calculer les positions de formation triangle
+        function calculateFormationPositions() {
+            const centerX = starship.x + starship.width / 2;
+            const centerY = starship.y - 80; // Au-dessus du joueur
+            const spacing = 60;
+            
+            // Formation triangle pour 6 assistants :
+            //     1
+            //   2   3
+            //  4  5  6
+            return [
+                { x: centerX - 25, y: centerY - spacing * 2 },      // 1: Sommet
+                { x: centerX - spacing - 25, y: centerY - spacing }, // 2: Gauche milieu  
+                { x: centerX + spacing - 25, y: centerY - spacing }, // 3: Droite milieu
+                { x: centerX - spacing * 1.5 - 25, y: centerY },     // 4: Gauche bas
+                { x: centerX - 25, y: centerY },                     // 5: Centre bas
+                { x: centerX + spacing * 1.5 - 25, y: centerY }      // 6: Droite bas
+            ];
+        }
         // Variables pour le stage 2
 let isStage2 = false;
 let stage2EnemiesKilled = 0;
@@ -981,6 +1005,11 @@ function updateAndDrawAssistantShips() {
         createAssistantShip();
     }
     
+    // FORMATION ASSISTANTS - Mettre à jour les positions si en formation
+    if (isFormationActive && assistantShips.length > 0) {
+        formationPositions = calculateFormationPositions();
+    }
+    
     // Mettre à jour et dessiner chaque vaisseau assistant
     for (let i = assistantShips.length - 1; i >= 0; i--) {
         updateAndDrawSingleAssistantShip(assistantShips[i], i);
@@ -1074,24 +1103,39 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
             assistantShip.isEntering = false;
         }
     } else {
-        // Mouvement régulier - d'un côté à l'autre
-        assistantShip.moveTimer += 0.01;
-        
-        // Déplacer la position basée sur une onde sinusoïdale pour un mouvement fluide
-        assistantShip.x += Math.sin(assistantShip.moveTimer) * 2 * assistantShip.moveDirection;
-        
-        // S'assurer que le vaisseau reste dans les limites de l'écran
-        if (assistantShip.x < 0) {
-            assistantShip.x = 0;
-            assistantShip.moveDirection *= -1;
-        } else if (assistantShip.x + assistantShip.width > canvas.width) {
-            assistantShip.x = canvas.width - assistantShip.width;
-            assistantShip.moveDirection *= -1;
-        }
-        
-        // Changer de direction aléatoirement de temps en temps
-        if (Math.random() < 0.005) {
-            assistantShip.moveDirection *= -1;
+        // FORMATION ASSISTANTS - Logique de mouvement
+        if (isFormationActive && formationPositions[index]) {
+            // Mode formation : se diriger vers la position assignée
+            const targetPos = formationPositions[index];
+            const dx = targetPos.x - assistantShip.x;
+            const dy = targetPos.y - assistantShip.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 5) {
+                const speed = 3;
+                assistantShip.x += (dx / distance) * speed;
+                assistantShip.y += (dy / distance) * speed;
+            }
+        } else {
+            // Mode libre - mouvement d'origine
+            assistantShip.moveTimer += 0.01;
+            
+            // Déplacer la position basée sur une onde sinusoïdale pour un mouvement fluide
+            assistantShip.x += Math.sin(assistantShip.moveTimer) * 2 * assistantShip.moveDirection;
+            
+            // S'assurer que le vaisseau reste dans les limites de l'écran
+            if (assistantShip.x < 0) {
+                assistantShip.x = 0;
+                assistantShip.moveDirection *= -1;
+            } else if (assistantShip.x + assistantShip.width > canvas.width) {
+                assistantShip.x = canvas.width - assistantShip.width;
+                assistantShip.moveDirection *= -1;
+            }
+            
+            // Changer de direction aléatoirement de temps en temps
+            if (Math.random() < 0.005) {
+                assistantShip.moveDirection *= -1;
+            }
         }
         
         // Tirer automatiquement des balles
@@ -2343,6 +2387,25 @@ thunderImgs.forEach((img, i) => img.src = `/img/thunder${i + 1}.jpg`);
             soundEffects.shoot.play().catch(() => {});
         }
     }
+    // FORMATION ASSISTANTS - Clic droit
+    else if (e.button === 2 && assistantShips.length > 0 && !gameManager.isPaused) {
+        e.preventDefault(); // Empêcher le menu contextuel
+        isFormationActive = !isFormationActive;
+        
+        if (isFormationActive) {
+            formationPositions = calculateFormationPositions();
+            console.log("🔺 Formation triangle activée");
+        } else {
+            console.log("🔄 Mode libre activé");
+        }
+        
+        playSound(soundEffects.coin); // Son de confirmation
+    }
+});
+
+// Empêcher le menu contextuel du clic droit
+window.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
 });
 
     window.addEventListener("keydown", (e) => {
