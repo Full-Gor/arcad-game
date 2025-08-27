@@ -424,6 +424,51 @@
         let isFormationActive = false;
         let formationPositions = [];
         
+        // ANIMATION D'ENTRÉE STARSHIP - Variables
+        let starshipIntroActive = true;
+        let starshipIntroTimer = 0;
+        let starshipIntroDuration = 3000; // 3 secondes
+        let starshipOriginalSize = { width: 50, height: 50 };
+        let starshipFinalPosition = { x: canvas.width / 2 - 25, y: canvas.height - 100 };
+        
+        // ANIMATION D'ENTRÉE - Fonction de mise à jour
+        function updateStarshipIntro() {
+            if (!starshipIntroActive) return;
+            
+            starshipIntroTimer += 16; // ~60fps
+            const progress = Math.min(starshipIntroTimer / starshipIntroDuration, 1);
+            
+            // Interpolation fluide (easing out)
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            // Position : descente de l'altitude vers position finale
+            const startY = 50;
+            const endY = starshipFinalPosition.y;
+            starship.y = startY + (endY - startY) * easeProgress;
+            
+            const startX = canvas.width / 2 - 75;
+            const endX = starshipFinalPosition.x;
+            starship.x = startX + (endX - startX) * easeProgress;
+            
+            // Taille : réduction progressive (effet dézoom)
+            const startSize = 150;
+            const endSize = starshipOriginalSize.width;
+            const currentSize = startSize + (endSize - startSize) * easeProgress;
+            
+            starship.width = currentSize;
+            starship.height = currentSize;
+            
+            // Fin de l'animation
+            if (progress >= 1) {
+                starshipIntroActive = false;
+                starship.x = starshipFinalPosition.x;
+                starship.y = starshipFinalPosition.y;
+                starship.width = starshipOriginalSize.width;
+                starship.height = starshipOriginalSize.height;
+                console.log("🚀 Animation d'entrée terminée");
+            }
+        }
+        
         // Calculer les positions de formation triangle
         function calculateFormationPositions() {
             const centerX = starship.x + starship.width / 2;
@@ -684,7 +729,7 @@ function defeatBoss3() {
 // Modifier la fonction de génération d'ennemis existante
 // CORRECTION 7: Améliorer la fonction generateEnemies pour intégrer le stage 3
 function generateEnemies() {
-    if (gameManager.isPaused) return;
+    if (gameManager.isPaused || starshipIntroActive) return; // Pas d'ennemis pendant l'animation
 
     if (isStage3) {
         generateStage3Enemies();
@@ -795,10 +840,10 @@ let miniBossShootTimer = 0;
 
         // Configuration des vaisseaux
         const starship = {
-            x: canvas.width / 2,
-            y: canvas.height - 50,
-            width: 50,
-            height: 50,
+            x: canvas.width / 2 - 75, // Centré avec la taille plus grande
+            y: 50, // ANIMATION: Commence en haut (altitude élevée)
+            width: 150, // ANIMATION: Commence très gros (3x plus grand)
+            height: 150,
             bullets: [],
             powerUpLevel: 0,
             player: 1,
@@ -1112,7 +1157,7 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             if (distance > 5) {
-                const speed = 8; // CORRECTION: Vitesse augmentée de 3 à 8 pour rassemblement rapide
+                const speed = 10; // CORRECTION: Vitesse augmentée de 3 à 8 pour rassemblement rapide
                 assistantShip.x += (dx / distance) * speed;
                 assistantShip.y += (dy / distance) * speed;
             }
@@ -5208,6 +5253,9 @@ function update(timestamp) {
     try {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // ANIMATION D'ENTRÉE STARSHIP - Mise à jour
+        updateStarshipIntro();
+
         // Vérifier et mettre à jour l'animation du fond en fonction du stage
         const scrollingBg = document.getElementById("scrollingBackground");
         if (isStage3 && scrollingBg.style.display === "block") {
@@ -5222,7 +5270,8 @@ function update(timestamp) {
             }
         }
 
-        if (isMultiplayer) {
+        // Contrôles uniquement si l'animation d'entrée est terminée
+        if (isMultiplayer && !starshipIntroActive) {
             updateMultiplayerControls();
         }
 
