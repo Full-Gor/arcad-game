@@ -667,11 +667,11 @@ function generateEnemies() {
         return;
     }
 
-    if (enemies.length > 30) {
+    if (enemies.length > 10) { // Réduit de 30 à 10
         return;
     }
 
-    const count = Math.min(7, 30 - enemies.length);
+    const count = Math.min(2, 10 - enemies.length); // Réduit de 7 à 2
 
     for (let i = 0; i < count; i++) {
         enemies.push({
@@ -2726,8 +2726,8 @@ function checkCollision(rect1, rect2) {
                 lastKillTime = currentTime;
             }
 
-            if (enemies.length > 40) {
-                enemies = enemies.slice(0, 40);
+            if (enemies.length > 15) { // Réduit de 40 à 15
+                enemies = enemies.slice(0, 15);
             }
             if (enemyBullets.length > 60) {
                 enemyBullets = enemyBullets.slice(0, 60);
@@ -4351,11 +4351,11 @@ if (enemy.type === 7) { // enemy8 (index commence à 0)
         function generateEnemies() {
             if (gameManager.isPaused) return;
 
-            if (enemies.length > 30) {
+            if (enemies.length > 10) { // Réduit de 30 à 10
                 return;
             }
 
-            const count = Math.min(7, 30 - enemies.length);
+            const count = Math.min(2, 10 - enemies.length); // Réduit de 7 à 2
 
             for (let i = 0; i < count; i++) {
                 enemies.push({
