@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Guerre-galactique - Version Modulaire</title>
+    <style>
+        /* Styles de base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+            touch-action: none;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+        }
+
+        /* Canvas du jeu */
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: block;
+            touch-action: none;
+            cursor: none;
+        }
+
+        /* Interface utilisateur */
+        .stats {
+            position: absolute;
+            top: min(20px, 5vh);
+            left: min(20px, 5vw);
+            font-size: clamp(14px, 4vw, 20px);
+            z-index: 10;
+        }
+
+        #coinsCount {
+            position: absolute;
+            top: min(20px, 5vh);
+            right: min(20px, 5vw);
+            font-size: clamp(14px, 4vw, 20px);
+            z-index: 10;
+        }
+
+        /* Conteneur vidéo */
+        #videoContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+        }
+
+        #powerUpVideo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Écrans de fin de jeu */
+        #gameOverContainer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.9);
+            color: red;
+            font-family: Arial, sans-serif;
+        }
+
+        #continueCounter {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(50px, 20vw, 100px);
+            text-align: center;
+        }
+
+        #gameOverMessage {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #000;
+            color: red;
+            padding: min(50px, 10vw);
+            font-size: clamp(40px, 15vw, 100px);
+            border: 5px solid red;
+            z-index: 2001;
+            text-align: center;
+            width: min(90%, 500px);
+        }
+
+        .player-stats {
+            position: fixed;
+            right: min(20px, 5vw);
+            top: min(60px, 15vh);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-size: clamp(12px, 3vw, 16px);
+            z-index: 10;
+            max-width: 90vw;
+        }
+
+        .player-stats-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .player1-stats {
+            background: rgba(4, 251, 172, 0.2);
+        }
+
+        .player2-stats {
+            background: rgba(255, 127, 80, 0.2);
+        }
+
+        .player3-stats {
+            background: rgba(255, 255, 80, 0.2);
+        }
+
+        /* Style pour l'indicateur de vie du boss */
+        #bossHealthBar {
+            position: absolute;
+            top: min(50px, 10vh);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(300px, 80vw);
+            height: min(20px, 4vh);
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid red;
+            display: none;
+            z-index: 10;
+        }
+
+        #bossHealthFill {
+            height: 100%;
+            background: linear-gradient(to right, #ff0000, #ff6600);
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        .touch-indicator {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 999;
+            display: none;
+        }
+       
+        .player-mode {
+            font-size: clamp(14px, 4vw, 20px);
+        }
+
+        #stageTitle {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 2s;
+            z-index: 1000;
+            pointer-events: none;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* Animations pour les effets spéciaux */
+        @keyframes shieldPulse {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 0.6;
+                box-shadow: 0 0 15px currentColor, inset 0 0 10px currentColor;
+            }
+            50% {
+                transform: scale(1.1) rotate(180deg);
+                opacity: 0.8;
+                box-shadow: 0 0 25px currentColor, inset 0 0 20px currentColor;
+            }
+            100% {
+                transform: scale(1) rotate(360deg);
+                opacity: 0.6;
+                box-shadow: 0 0 15px currentColor, inset 0 0 10px currentColor;
+            }
+        }
+
+        .shield-effect {
+            animation: shieldPulse 10s infinite linear;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            position: absolute;
+            pointer-events: none;
+            z-index: 900;
+        }
+    </style>
+</head>
+<body>
+    <!-- Interface utilisateur -->
+    <span id="coinsCount">0</span>
+    <div class="stats">
+        Vies: <span id="livesCount">3</span><br>
+        Ennemis tués: <span id="enemiesKilledCount">0</span><br>
+        Points rouges: <span id="redPointsCount">0</span>/100
+    </div>
+   
+    <!-- Barre de vie du boss -->
+    <div id="bossHealthBar">
+        <div id="bossHealthFill"></div>
+    </div>
+
+    <div class="player-mode" id="playerModeIndicator" style="position: absolute; top: min(20px, 5vh); left: 50%; transform: translateX(-50%); color: #04fbac; z-index: 10;">Mode 1 joueur</div>
+    <div id="playerStats" class="player-stats" style="display: none;">
+        <div id="player1Stats" class="player-stats-item player1-stats">
+            Player 1: <span id="p1Lives">3</span> vies |
+            Points: <span id="p1Points">0</span> |
+            Kills: <span id="p1Kills">0</span>
+        </div>
+        <div id="player2Stats" class="player-stats-item player2-stats">
+            Player 2: <span id="p2Lives">3</span> vies |
+            Points: <span id="p2Points">0</span> |
+            Kills: <span id="p2Kills">0</span>
+        </div>
+        <div id="player3Stats" class="player-stats-item player3-stats">
+            Player 3: <span id="p3Lives">3</span> vies |
+            Points: <span id="p3Points">0</span> |
+            Kills: <span id="p3Kills">0</span>
+        </div>
+    </div>
+    <div id="stageTitle">STAGE 1</div>
+
+    <!-- Indicateur de toucher -->
+    <div id="touchIndicator" class="touch-indicator"></div>
+
+    <!-- Canvas du jeu -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Conteneur vidéo pour les power-ups -->
+    <div id="videoContainer">
+        <video id="powerUpVideo" src="video/tirePlasma.mp4" playsinline></video>
+    </div>
+
+    <!-- Conteneurs pour le game over -->
+    <div id="gameOverContainer">
+        <div id="continueCounter"></div>
+    </div>
+    <div id="gameOverMessage">GAME OVER</div>
+
+    <!-- Chargement des modules JavaScript -->
+    <script type="module" src="frontend/game/main.js"></script>
+</body>
+</html>

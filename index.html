@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Space Shooter</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+
+        .splash-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+            opacity: 0;
+            animation: fadeIn 1s ease-in forwards;
+            z-index: 1;
+        }
+
+        .menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+            color: #fff;
+            z-index: 2;
+        }
+
+        .menu-option {
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 24px;
+            color: #fcfcfc;
+            background: none;
+            border: 2px solid #04fbac;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .menu-option:hover {
+            background: #04fbac;
+            color: #000;
+            transform: scale(1.1);
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        #splash-logo {
+            width: 300px;
+            height: 220px;
+            object-fit: contain;
+        }
+
+        #splash-logo {
+            width: 300%;
+            height: auto;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .blinking {
+            animation: blink 0.2s linear 8;
+        }
+
+        .video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            display: none;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .menu-option[href*="starship-battle-3v3"] {
+    border-color: #FF7F50;  /* Orange vif */
+    color: #FF7F50;
+}
+
+.menu-option[href*="starship-battle-3v3"]:hover {
+    background: #FF7F50;
+    color: #000;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="splash-screen">
+            <img id="splash-logo" src="/img/alien.jpg" alt="Space Shooter Logo">
+        </div>
+
+        <div class="menu-screen">
+            <a href="/pages/garage.html" class="menu-option">1 JOUEUR</a>
+            <a href="/pages/garage.html?players=2" class="menu-option">2 JOUEURS</a>
+            <a href="/pages/garage.html?players=3" class="menu-option">3 JOUEURS</a>
+            <a href="/pages/versus.html" class="menu-option">VERSUS</a>
+            <button class="menu-option" data-href="/pages/option.html">Option</button>
+            <button class="menu-option" data-href="/pages/garage.html">GARRAGE</button>
+        </div>
+
+        <div class="video-container">
+            <video id="intro-video" src="/img/video1.mp4"></video>
+        </div>
+
+        <!-- Add audio elements -->
+        <audio id="hover-sound" src="/audio/survole.mp3"></audio>
+        <audio id="click-sound" src="/audio/click.mp3"></audio>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const players = urlParams.get('players');
+
+            // Get audio elements
+            const hoverSound = document.getElementById('hover-sound');
+            const clickSound = document.getElementById('click-sound');
+
+            if (players) {
+                const menuScreen = document.querySelector('.menu-screen');
+                menuScreen.style.display = 'none';
+            } else {
+                setTimeout(showMenu, 3000);
+            }
+
+            const menuOptions = document.querySelectorAll('.menu-option');
+            menuOptions.forEach(option => {
+                // Add hover sound
+                option.addEventListener('mouseenter', function() {
+                    try {
+                        hoverSound.currentTime = 0;
+                        hoverSound.play();
+                    } catch(error) {
+                        console.log('Hover sound error:', error);
+                    }
+                });
+
+                // Add click sound and 2-second delay
+                option.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Disable further clicks during delay
+                    this.style.pointerEvents = 'none';
+                    
+                    // Play click sound
+                    try {
+                        clickSound.currentTime = 0;
+                        clickSound.play();
+                    } catch(error) {
+                        console.log('Click sound error:', error);
+                    }
+                    
+                    // Navigate after 2 seconds
+                    const href = this.getAttribute('href') || this.getAttribute('data-href');
+                    setTimeout(() => {
+                        window.location.href = href;
+                    }, 2000);
+                });
+            });
+        };
+
+        function showMenu() {
+            const menuScreen = document.querySelector('.menu-screen');
+            menuScreen.style.display = 'flex';
+            menuScreen.style.opacity = '0';
+            menuScreen.style.transition = 'opacity 1s ease-in';
+            
+            setTimeout(() => {
+                menuScreen.style.opacity = '1';
+            }, 100);
+        }
+
+        function startGameSequence(button) {
+            button.classList.add('blinking');
+            
+            // Vérifier si la vidéo existe réellement
+            const video = document.getElementById('intro-video');
+            if (!video.src || video.src.includes('video1.mp4') && !checkFileExists(video.src)) {
+                console.log("Redirection directe (vidéo non disponible)");
+                setTimeout(() => {
+                    window.location.href = button.href;
+                }, 1600); // On garde juste l'animation de clignotement
+                return;
+            }
+            
+            setTimeout(() => {
+                document.querySelector('.menu-screen').style.display = 'none';
+                const videoContainer = document.querySelector('.video-container');
+                
+                videoContainer.style.display = 'block';
+                video.preload = 'auto';
+                video.muted = false;
+                
+                // Essayer de jouer la vidéo avec gestion d'erreur
+                video.play().catch(err => {
+                    console.error("Erreur de lecture vidéo:", err);
+                    window.location.href = button.href;
+                });
+
+                video.onended = () => {
+                    window.location.href = button.href;
+                };
+            }, 1600);
+        }
+
+        // Fonction pour vérifier si un fichier existe
+        function checkFileExists(url) {
+            try {
+                const http = new XMLHttpRequest();
+                http.open('HEAD', url, false);
+                http.send();
+                return http.status !== 404;
+            } catch(e) {
+                return false;
+            }
+        }
+    </script>
+</body>
+</html>

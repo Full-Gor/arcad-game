@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Options - Space Shooter</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+
+        .container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .title {
+            font-size: 48px;
+            margin-bottom: 40px;
+            color: #04fbac;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .options-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 80%;
+        }
+
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #fff;
+            text-align: center;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+            margin-bottom: 40px;
+        }
+
+        .difficulty-option {
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 24px;
+            color: #fcfcfc;
+            background: none;
+            border: 2px solid #04fbac;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .difficulty-option:hover, .difficulty-option.selected {
+            background: #04fbac;
+            color: #000;
+            transform: scale(1.1);
+        }
+
+        .back-button {
+            margin-top: 40px;
+            padding: 15px 30px;
+            font-size: 24px;
+            color: #fcfcfc;
+            background: none;
+            border: 2px solid #04fbac;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .back-button:hover {
+            background: #04fbac;
+            color: #000;
+            transform: scale(1.1);
+        }
+
+        .option-description {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ccc;
+            text-align: center;
+            height: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Options</h1>
+        
+        <div class="options-section">
+            <h2 class="section-title">Difficulté du jeu</h2>
+            
+            <div class="difficulty-buttons">
+                <button class="difficulty-option" data-difficulty="easy" data-href="/">EASY</button>
+                <button class="difficulty-option" data-difficulty="medium" data-href="/">MEDIUM</button>
+                <button class="difficulty-option" data-difficulty="hard" data-href="/">HARD</button>
+                <button class="difficulty-option" data-difficulty="master" data-href="/">MASTER</button>
+            </div>
+            
+            <div class="option-description" id="difficultyDescription">
+                Sélectionnez un niveau de difficulté
+            </div>
+        </div>
+        
+        <a href="/" class="back-button" data-href="/">RETOUR AU MENU</a>
+
+        <!-- Add audio elements -->
+        <audio id="hover-sound" src="/audio/survole.mp3"></audio>
+        <audio id="click-sound" src="/audio/click.mp3"></audio>
+    </div>
+
+    <script>
+        // Récupérer la difficulté enregistrée dans le localStorage
+        const savedDifficulty = localStorage.getItem('gameDifficulty') || 'medium';
+        
+        // Descriptions pour chaque niveau de difficulté
+        const difficultyDescriptions = {
+            'easy': 'Ennemis lents, projectiles faciles à éviter, power-ups fréquents',
+            'medium': 'Difficulté équilibrée, pour joueurs intermédiaires',
+            'hard': 'Ennemis rapides, plus de projectiles, power-ups rares',
+            'master': 'Défi extrême, pour les joueurs expérimentés'
+        };
+        
+        // Valeurs de difficulté pour chaque niveau
+        const difficultyValues = {
+            'easy': {
+                enemySpeed: 0.7,
+                enemyBulletSpeed: 2,
+                powerUpFrequency: 3,
+                livesFrequency: 3
+            },
+            'medium': {
+                enemySpeed: 1,
+                enemyBulletSpeed: 3,
+                powerUpFrequency: 5,
+                livesFrequency: 5
+            },
+            'hard': {
+                enemySpeed: 1.5,
+                enemyBulletSpeed: 4,
+                powerUpFrequency: 8,
+                livesFrequency: 8
+            },
+            'master': {
+                enemySpeed: 2,
+                enemyBulletSpeed: 5,
+                powerUpFrequency: 12,
+                livesFrequency: 15
+            }
+        };
+        
+        // Sélectionner toutes les options de difficulté
+        const difficultyOptions = document.querySelectorAll('.difficulty-option');
+        const difficultyDescription = document.getElementById('difficultyDescription');
+        const hoverSound = document.getElementById('hover-sound');
+        const clickSound = document.getElementById('click-sound');
+        const backButton = document.querySelector('.back-button');
+        
+        // Fonction pour mettre à jour la sélection et enregistrer la difficulté
+        function updateDifficultySelection(difficulty) {
+            // Désélectionner toutes les options
+            difficultyOptions.forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Sélectionner l'option choisie
+            const selectedOption = document.querySelector(`.difficulty-option[data-difficulty="${difficulty}"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            // Mettre à jour la description
+            difficultyDescription.textContent = difficultyDescriptions[difficulty] || 'Sélectionnez un niveau de difficulté';
+            
+            // Enregistrer les paramètres dans le localStorage
+            localStorage.setItem('gameDifficulty', difficulty);
+            
+            // Enregistrer les valeurs spécifiques
+            const values = difficultyValues[difficulty];
+            if (values) {
+                localStorage.setItem('enemySpeed', values.enemySpeed);
+                localStorage.setItem('enemyBulletSpeed', values.enemyBulletSpeed);
+                localStorage.setItem('powerUpFrequency', values.powerUpFrequency);
+                localStorage.setItem('livesFrequency', values.livesFrequency);
+            }
+        }
+        
+        // Ajouter les événements sonores
+        function addSoundEffects() {
+            // Fonction pour gérer la navigation avec délai
+            function navigateWithDelay(element) {
+                // Désactiver les clics pendant le délai
+                element.style.pointerEvents = 'none';
+                
+                // Jouer le son de clic
+                try {
+                    clickSound.currentTime = 0;
+                    clickSound.play();
+                } catch(error) {
+                    console.log('Click sound error:', error);
+                }
+                
+                // Récupérer l'URL de destination
+                const href = element.getAttribute('href') || element.getAttribute('data-href') || '/';
+                
+                // Naviguer après 2 secondes
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 2000);
+            }
+            
+            // Hover et click pour les options de difficulté
+            difficultyOptions.forEach(option => {
+                // Son au survol
+                option.addEventListener('mouseenter', function() {
+                    try {
+                        hoverSound.currentTime = 0;
+                        hoverSound.play();
+                    } catch(error) {
+                        console.log('Hover sound error:', error);
+                    }
+                });
+
+                // Son au clic
+                option.addEventListener('click', function() {
+                    const difficulty = this.getAttribute('data-difficulty');
+                    updateDifficultySelection(difficulty);
+                    navigateWithDelay(this);
+                });
+            });
+
+            // Son au survol pour le bouton retour
+            backButton.addEventListener('mouseenter', function() {
+                try {
+                    hoverSound.currentTime = 0;
+                    hoverSound.play();
+                } catch(error) {
+                    console.log('Hover sound error:', error);
+                }
+            });
+
+            // Son au clic pour le bouton retour
+            backButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                navigateWithDelay(this);
+            });
+        }
+        
+        // Initialiser avec la difficulté sauvegardée
+        updateDifficultySelection(savedDifficulty);
+
+        // Ajouter les événements sonores
+        addSoundEffects();
+    </script>
+</body>
+</html>
