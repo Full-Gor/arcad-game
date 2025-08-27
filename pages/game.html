@@ -896,8 +896,8 @@ const shieldParticles = {
 
 // Modifiez la fonction createAssistantShip pour initialiser correctement les propriétés
 function createAssistantShip() {
-    // Limiter à 6 assistants maximum
-    if (assistantShips.length >= 6) return;
+    // CORRECTION: Limiter à 3 assistants maximum (anti-clignotement)
+    if (assistantShips.length >= 3) return;
     // Déterminer l'image à utiliser pour ce vaisseau assistant
     const imgIndex = nextAssistantShipIndex;
     nextAssistantShipIndex = (nextAssistantShipIndex % 6) + 1; // Alterne entre 1-6
@@ -917,8 +917,8 @@ function createAssistantShip() {
         width: 50,
         height: 50,
         lastShootTime: 0,
-        shootInterval: 500 + (assistantShips.length * 100), // Intervalle de tir (plus lent pour chaque nouveau)
-        originalShootInterval: 500 + (assistantShips.length * 100),
+        shootInterval: 800 + (assistantShips.length * 200), // CORRECTION: Tir moins fréquent (anti-clignotement)
+        originalShootInterval: 800 + (assistantShips.length * 200),
         bullets: [],
         speed: 3,
         isEntering: true,
@@ -1715,7 +1715,7 @@ ctx.restore();
   });
 }
 
-function activateShield(player, duration = 10000) {
+function activateShield(player, duration = 5000) { // Réduit de 10s à 5s
   if (!player || !player.isActive) return;
   
   player.shield = true;
@@ -1743,19 +1743,27 @@ function activateShield(player, duration = 10000) {
   
   // Désactiver le bouclier après la durée spécifiée
   player.shieldTimeout = setTimeout(() => {
+    // CORRECTION: Triple nettoyage pour forcer la disparition
     player.shield = false;
+    
+    // Supprimer l'élément DOM
+    const shieldEffect = document.getElementById("shield-effect-player" + player.player);
     if (shieldEffect) {
       shieldEffect.remove();
     }
     
-    // CORRECTION: Nettoyage complet des particules
+    // Nettoyage des particules (double passage)
     shieldParticles.particles = shieldParticles.particles.filter(p => p.player !== player.player);
     shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(p => p.player !== player.player);
     
+    // Double nettoyage après 100ms pour être sûr
+    setTimeout(() => {
+      shieldParticles.particles = shieldParticles.particles.filter(p => p.player !== player.player);
+      shieldParticles.orbitalParticles = shieldParticles.orbitalParticles.filter(p => p.player !== player.player);
+    }, 100);
+    
     // Nettoyer le timeout
     player.shieldTimeout = null;
-    
-    console.log(`🛡️ Shield désactivé pour joueur ${player.player}`);
   }, duration);
 }
 
@@ -3194,7 +3202,7 @@ function activatePowerUp(ship, powerUpType) {
             }, duration);
         }
 
-        function activateShield(player, duration = 10000) {
+        function activateShield(player, duration = 5000) { // Réduit de 10s à 5s
   // Du code existant concernant l'activation du bouclier
   player.shield = true;
   
@@ -4689,7 +4697,7 @@ if (redPointsTotal >= 200 && !assistantShipActive) {
         }
     });
 }
-function activateShield(player, duration = 10000) {
+function activateShield(player, duration = 5000) { // Réduit de 10s à 5s
   if (!player || !player.isActive) return;
   
   player.shield = true;
