@@ -667,11 +667,11 @@ function generateEnemies() {
         return;
     }
 
-    if (enemies.length > 10) { // Réduit de 30 à 10
+    if (enemies.length > 30) {
         return;
     }
 
-    const count = Math.min(2, 10 - enemies.length); // Réduit de 7 à 2
+    const count = Math.min(7, 30 - enemies.length);
 
     for (let i = 0; i < count; i++) {
         enemies.push({
@@ -896,8 +896,8 @@ const shieldParticles = {
 
 // Modifiez la fonction createAssistantShip pour initialiser correctement les propriétés
 function createAssistantShip() {
-    // CORRECTION: Limiter à 3 assistants maximum (anti-clignotement)
-    if (assistantShips.length >= 3) return;
+    // Limiter à 6 assistants maximum
+    if (assistantShips.length >= 6) return;
     // Déterminer l'image à utiliser pour ce vaisseau assistant
     const imgIndex = nextAssistantShipIndex;
     nextAssistantShipIndex = (nextAssistantShipIndex % 6) + 1; // Alterne entre 1-6
@@ -917,8 +917,8 @@ function createAssistantShip() {
         width: 50,
         height: 50,
         lastShootTime: 0,
-        shootInterval: 800 + (assistantShips.length * 200), // CORRECTION: Tir moins fréquent (anti-clignotement)
-        originalShootInterval: 800 + (assistantShips.length * 200),
+        shootInterval: 500 + (assistantShips.length * 100), // Intervalle de tir (plus lent pour chaque nouveau)
+        originalShootInterval: 500 + (assistantShips.length * 100),
         bullets: [],
         speed: 3,
         isEntering: true,
@@ -1128,13 +1128,12 @@ function updateAndDrawSingleAssistantShip(assistantShip, index) {
             assistantShip.lastShootTime = currentTime;
         }
         
-        // CORRECTION: Mettre à jour le timer du bouclier des assistants
+        // CORRECTION: Timer bouclier assistants (5 secondes = 5000ms)
         if (assistantShip.shield.active) {
             assistantShip.shield.timer += 16; // ~60fps
-            if (assistantShip.shield.timer >= assistantShip.shield.duration) {
+            if (assistantShip.shield.timer >= 5000) { // Force 5 secondes
                 assistantShip.shield.active = false;
                 assistantShip.shield.timer = 0;
-                console.log(`🛡️ Bouclier assistant ${index+1} désactivé`);
             }
         }
     }
@@ -2760,8 +2759,8 @@ function checkCollision(rect1, rect2) {
                 lastKillTime = currentTime;
             }
 
-            if (enemies.length > 15) { // Réduit de 40 à 15
-                enemies = enemies.slice(0, 15);
+            if (enemies.length > 40) {
+                enemies = enemies.slice(0, 40);
             }
             if (enemyBullets.length > 60) {
                 enemyBullets = enemyBullets.slice(0, 60);
@@ -4385,11 +4384,11 @@ if (enemy.type === 7) { // enemy8 (index commence à 0)
         function generateEnemies() {
             if (gameManager.isPaused) return;
 
-            if (enemies.length > 10) { // Réduit de 30 à 10
+            if (enemies.length > 30) {
                 return;
             }
 
-            const count = Math.min(2, 10 - enemies.length); // Réduit de 7 à 2
+            const count = Math.min(7, 30 - enemies.length);
 
             for (let i = 0; i < count; i++) {
                 enemies.push({
