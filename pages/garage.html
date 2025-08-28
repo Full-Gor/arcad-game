@@ -209,7 +209,7 @@ function choisirVaisseau(element, nom, audioSrc) {
             } else {
                 // Mode 2 joueurs: aller directement au jeu
                 setTimeout(function() {
-                    window.location.href = 'game.html?players=' + playersCount;
+                    window.location.href = 'game_modular.html?players=' + playersCount;
                 }, 1500);
             }
         } else if (currentPlayer === 3) {
@@ -218,14 +218,14 @@ function choisirVaisseau(element, nom, audioSrc) {
             
             // Redirection vers la page de jeu
             setTimeout(function() {
-                window.location.href = 'game.html?players=' + playersCount;
+                window.location.href = 'game_modular.html?players=' + playersCount;
             }, 1500);
         }
     } else {
         // Mode 1 joueur
         localStorage.setItem('vaisseauChoisi', nom);
         setTimeout(function() {
-            window.location.href = 'game.html';
+            window.location.href = 'game_modular.html';
         }, 1500);
     }
 }
