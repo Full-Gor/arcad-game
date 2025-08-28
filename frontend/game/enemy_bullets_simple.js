@@ -2,6 +2,7 @@
 import { canvas, ctx } from './globals_simple.js';
 import { enemies } from './enemies_simple.js';
 import { starship } from './player_simple.js';
+import { shootFunnelLaser } from './funnel_laser_simple.js';
 
 // ========================================
 // VARIABLES ET CONFIGURATION
@@ -126,7 +127,6 @@ export function shootEnemyBullets() {
                 
             case 6: // TYPE 6 = ENEMY7 (enemy4.jpg substitut) - Laser pulsé avancé
                 if (currentTime - lastShootTime >= 3000) {
-                    console.log('⚡ ENEMY7 (type 6, enemy4.jpg) tire un laser pulsé avancé !');
                     createPulseLaser(enemy);
                     enemyShootTimers.set(enemyId, currentTime);
                 }
@@ -134,7 +134,6 @@ export function shootEnemyBullets() {
                 
             case 7: // TYPE 7 = ENEMY8 (enemy5.jpg substitut) - Tir en onde sinusoïdale avancé
                 if (currentTime - lastShootTime >= 2000) {
-                    console.log('🌊 ENEMY8 (type 7, enemy5.jpg) tire une onde sinusoïdale avancée !');
                     createWaveShot(enemy);
                     enemyShootTimers.set(enemyId, currentTime);
                 }
@@ -142,9 +141,14 @@ export function shootEnemyBullets() {
                 
             case 8: // TYPE 8 = ENEMY9 (enemy6.jpg substitut) - 🌈 SPIRALE ARC-EN-CIEL 🌈
                 if (currentTime - lastShootTime >= 800) {  // PLUS FRÉQUENT: 0.8s au lieu de 2.5s
-                    console.log('🌈 ENEMY9 (type 8, enemy6.jpg) tire une spirale arc-en-ciel !');
                     createSpiralShot(enemy);
                     enemyShootTimers.set(enemyId, currentTime);
+                }
+                break;
+                
+            case 9: // TYPE 9 = ENEMY10 - LASER ENTONNOIR
+                if (shootFunnelLaser(enemy)) {
+                    // Le timer est géré dans shootFunnelLaser
                 }
                 break;
         }
@@ -182,7 +186,6 @@ function createPulsingLaser(enemy, color, minWidth, height, speed, pulseDuration
     };
     
     pulsingLasers.push(laser);
-    console.log(`🟡 Laser pulsant créé: ${color}, pos:(${laser.x.toFixed(1)}, ${laser.y.toFixed(1)}), taille:${minWidth}→${minWidth*3}`);
 }
 
 // Créer un tir ondulant (pour ENEMY2 et ENEMY4)
@@ -349,7 +352,6 @@ function createSpiralShot(enemy) {
     const spiralCount = 3;
     const bulletPerSpiral = 12;
     
-    console.log(`🌈 Création spirale arc-en-ciel: ${spiralCount} spirales × ${bulletPerSpiral} projectiles = ${spiralCount * bulletPerSpiral} projectiles multicolores`);
     
     for (let s = 0; s < spiralCount; s++) {
         for (let i = 0; i < bulletPerSpiral; i++) {
@@ -835,12 +837,6 @@ function drawStandardBullet(bullet) {
 }
 
 function drawSpiralBullet(bullet) {
-    // Debug: compter les spirales arc-en-ciel
-    if (!drawSpiralBullet.counter) drawSpiralBullet.counter = 0;
-    if (drawSpiralBullet.counter % 30 === 0) { // Log toutes les 30 spirales
-        console.log(`🌈 Dessin spirale arc-en-ciel: couleur ${bullet.color}, position (${bullet.x.toFixed(1)}, ${bullet.y.toFixed(1)})`);
-    }
-    drawSpiralBullet.counter++;
     
     // Traînée colorée
     bullet.trail.forEach((point, i) => {
@@ -1054,9 +1050,6 @@ function drawTrails() {
 
 // Dessiner les lasers pulsants (anciens)
 function drawPulsingLasers() {
-    if (pulsingLasers.length > 0) {
-        console.log(`🎨 Dessin de ${pulsingLasers.length} lasers pulsants`);
-    }
     
     pulsingLasers.forEach((laser, index) => {
         ctx.save();

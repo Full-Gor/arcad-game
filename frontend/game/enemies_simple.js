@@ -2,6 +2,7 @@
 import { canvas, ctx } from './globals_simple.js';
 import { isIntroActive } from './player_simple.js';
 import { showEnemyInfo } from './enemy_info_display.js';
+import { hasActiveLaser } from './funnel_laser_simple.js';
 
 // Variable globale pour vérifier si le boss est actif
 let bossIsActive = false;
@@ -30,12 +31,12 @@ let difficultySettings = {
     livesFrequency: 5
 };
 
-// Variables pour la progression séquentielle des ennemis (MODE TEST: tous les types)
-let currentEnemyType = 0; // MODE TEST: Commencer par enemy1 (type 0)
+// Variables pour la progression séquentielle des ennemis (MODE TEST: ENEMY10 en premier)
+let currentEnemyType = 9; // NOUVEAU: Commencer par ENEMY10 (type 9)
 let enemiesKilledOfCurrentType = 0; // Compteur d'ennemis tués du type actuel
 const ENEMIES_PER_TYPE = 1; // MODE TEST: 1 ennemi de chaque type pour tester TRÈS rapidement
 let allWavesCompleted = false; // Flag pour savoir si toutes les vagues sont terminées
-const MAX_ENEMY_TYPE = 8; // MODE TEST: Aller jusqu'à enemy9 (type 8)
+const MAX_ENEMY_TYPE = 9; // NOUVEAU: Aller jusqu'à ENEMY10 (type 9)
 
 // Variables pour la phase post-mini-boss
 let postMiniBossPhase = false; // Phase après destruction du mini-boss
@@ -51,18 +52,22 @@ export function initializeEnemies() {
     // NOUVEAU: Charger la difficulté depuis localStorage
     loadDifficultySettings();
     
-    // MODE TEST: Charger les images des ennemis avec mapping correct
-    for (let i = 0; i < 9; i++) {
+    // MODE TEST: Charger les images des ennemis avec mapping correct + ENEMY10
+    for (let i = 0; i < 10; i++) {
         enemyImgs[i] = new Image();
         if (i < 6) {
             // Types 0-5 = ENEMY1-6 (images existantes)
             enemyImgs[i].src = `/img/enemy${i + 1}.jpg`;
             console.log(`🎯 Type ${i} (ENEMY${i + 1}) → enemy${i + 1}.jpg`);
-        } else {
+        } else if (i < 9) {
             // Types 6-8 = ENEMY7-9 (images de substitution)
             const substituteImages = ['enemy4.jpg', 'enemy5.jpg', 'enemy6.jpg'];  // Utiliser 4,5,6 pour différencier
             enemyImgs[i].src = `/img/${substituteImages[i - 6]}`;
             console.log(`🎯 Type ${i} (ENEMY${i + 1}) → ${substituteImages[i - 6]} (substitut)`);
+        } else {
+            // Type 9 = ENEMY10 (utiliser enemy1.jpg comme substitut temporaire)
+            enemyImgs[i].src = `/img/enemy1.jpg`;
+            console.log(`🎯 Type ${i} (ENEMY${i + 1}) → enemy1.jpg (substitut pour ENEMY10)`);
         }
     }
     
@@ -147,27 +152,40 @@ function createEnemyFromEdges() {
         y: 0
     };
     
-    // Choisir aléatoirement d'où l'ennemi apparaît
-    const spawnSide = Math.random();
-    
-    if (spawnSide < 0.5) {
-        // Apparition depuis le haut de l'écran (50% de chance)
-        enemy.x = Math.random() * (canvas.width - enemy.width);
+    // NOUVEAU: ENEMY10 a un comportement spécial
+    if (enemy.type === 9) { // ENEMY10
+        // ENEMY10 apparaît toujours depuis le haut et se positionne au centre
+        enemy.x = canvas.width / 2 - enemy.width / 2; // Centre horizontal
         enemy.y = -enemy.height; // Juste au-dessus de l'écran
-        enemy.vx = (Math.random() * 2 - 1) * 1 * enemySpeedMultiplier; // Mouvement horizontal léger
-        enemy.vy = (Math.random() * 1.5 + 0.5) * enemySpeedMultiplier; // Descente vers le bas
-    } else if (spawnSide < 0.75) {
-        // Apparition depuis le côté gauche (25% de chance)
-        enemy.x = -enemy.width; // Juste à gauche de l'écran
-        enemy.y = Math.random() * (canvas.height / 2); // Partie supérieure
-        enemy.vx = (Math.random() * 1.5 + 0.5) * enemySpeedMultiplier; // Mouvement vers la droite
-        enemy.vy = (Math.random() * 2 - 1) * 1 * enemySpeedMultiplier; // Mouvement vertical léger
+        enemy.vx = 0; // Pas de mouvement horizontal
+        enemy.vy = 2 * enemySpeedMultiplier; // Descente modérée
+        
+        // Position cible pour s'arrêter (1/4 du haut de l'écran)
+        enemy.targetY = canvas.height * 0.15; // 15% depuis le haut
+        enemy.isPositioning = true; // Flag pour indiquer qu'il se positionne
     } else {
-        // Apparition depuis le côté droit (25% de chance)
-        enemy.x = canvas.width; // Juste à droite de l'écran
-        enemy.y = Math.random() * (canvas.height / 2); // Partie supérieure
-        enemy.vx = -(Math.random() * 1.5 + 0.5) * enemySpeedMultiplier; // Mouvement vers la gauche
-        enemy.vy = (Math.random() * 2 - 1) * 1 * enemySpeedMultiplier; // Mouvement vertical léger
+        // Comportement normal pour les autres ennemis
+        const spawnSide = Math.random();
+        
+        if (spawnSide < 0.5) {
+            // Apparition depuis le haut de l'écran (50% de chance)
+            enemy.x = Math.random() * (canvas.width - enemy.width);
+            enemy.y = -enemy.height; // Juste au-dessus de l'écran
+            enemy.vx = (Math.random() * 2 - 1) * 1 * enemySpeedMultiplier; // Mouvement horizontal léger
+            enemy.vy = (Math.random() * 1.5 + 0.5) * enemySpeedMultiplier; // Descente vers le bas
+        } else if (spawnSide < 0.75) {
+            // Apparition depuis le côté gauche (25% de chance)
+            enemy.x = -enemy.width; // Juste à gauche de l'écran
+            enemy.y = Math.random() * (canvas.height / 2); // Partie supérieure
+            enemy.vx = (Math.random() * 1.5 + 0.5) * enemySpeedMultiplier; // Mouvement vers la droite
+            enemy.vy = (Math.random() * 2 - 1) * 1 * enemySpeedMultiplier; // Mouvement vertical léger
+        } else {
+            // Apparition depuis le côté droit (25% de chance)
+            enemy.x = canvas.width; // Juste à droite de l'écran
+            enemy.y = Math.random() * (canvas.height / 2); // Partie supérieure
+            enemy.vx = -(Math.random() * 1.5 + 0.5) * enemySpeedMultiplier; // Mouvement vers la gauche
+            enemy.vy = (Math.random() * 2 - 1) * 1 * enemySpeedMultiplier; // Mouvement vertical léger
+        }
     }
     
     return enemy;
@@ -253,9 +271,29 @@ export function updateEnemies() {
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         
-        // Déplacer l'ennemi
-        enemy.x += enemy.vx;
-        enemy.y += enemy.vy;
+        // NOUVEAU: ENEMY10 a un comportement spécial de mouvement
+        if (enemy.type === 9) { // ENEMY10
+            if (hasActiveLaser(enemy)) {
+                // Ne pas bouger ENEMY10 pendant qu'il tire le laser entonnoir
+                // Rester figé en position
+            } else if (enemy.isPositioning && enemy.y < enemy.targetY) {
+                // ENEMY10 descend vers sa position cible
+                enemy.y += enemy.vy;
+                
+                // Vérifier s'il a atteint sa position cible
+                if (enemy.y >= enemy.targetY) {
+                    enemy.y = enemy.targetY; // Fixer à la position exacte
+                    enemy.vy = 0; // Arrêter le mouvement vertical
+                    enemy.isPositioning = false; // Fin du positionnement
+                }
+            }
+            // Si ENEMY10 n'est pas en train de se positionner et n'a pas de laser actif,
+            // il reste immobile à sa position
+        } else {
+            // Déplacer les autres ennemis normalement
+            enemy.x += enemy.vx;
+            enemy.y += enemy.vy;
+        }
         
         // CORRECTION: Supprimer les ennemis qui sortent complètement de l'écran par n'importe quel côté
         if (enemy.y > canvas.height + enemy.height ||  // Sort par le bas

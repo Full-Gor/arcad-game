@@ -7,12 +7,13 @@ import { initializeEnemies, startEnemyGeneration, updateEnemies, drawEnemies, st
 import { checkCollisions, updateExplosionParticles, drawExplosionParticles } from './collisions_simple.js';
 import { initializeAudio } from './audio_simple.js';
 import { startEnemyShooting, updateEnemyBullets, drawEnemyBullets, stopEnemyShooting } from './enemy_bullets_simple.js';
+import { updateFunnelLasers, drawFunnelLasers, clearFunnelLasers } from './funnel_laser_simple.js';
 import { initializeScore, shouldSpawnBossGlobal } from './score_simple.js';
 import { initializeMiniBoss, createMiniBoss, updateMiniBoss, drawMiniBoss, isMiniBossActive } from './miniboss_simple.js';
 import { initializeBoss, createBoss, updateBoss, drawBoss, isBossActive } from './boss_simple.js';
 import { initializeShield, updateShieldParticles, drawShieldParticles, activateShield } from './shield_simple.js';
 import { initAdvancedShield, updateAdvancedShield, drawAdvancedShield, activateAdvancedShield, createAdvancedShieldImpact, isAdvancedShieldActive } from './shield_advanced.js';
-import { initSphericalShield, updateSphericalShield, drawSphericalShield, activateSphericalShield, createSphericalImpact, isSphericalShieldActive } from './shield2_main.js';
+import { initSphericalShield, updateSphericalShield, drawSphericalShield, revealFullShield, createSphericalImpact, isSphericalShieldActive } from './shield2_main.js';
 import { updateEnemyInfoDisplay, drawEnemyInfoDisplay } from './enemy_info_display.js';
 
 // Variables du jeu
@@ -103,6 +104,9 @@ function gameLoop() {
         // Mettre à jour les projectiles des ennemis
         updateEnemyBullets();
         
+        // NOUVEAU: Mettre à jour les lasers entonnoir
+        updateFunnelLasers();
+        
         // Mettre à jour l'affichage des informations sur les ennemis
         updateEnemyInfoDisplay();
         
@@ -158,6 +162,9 @@ function gameLoop() {
         // drawShieldParticles();     // Ancien système simple (DÉSACTIVÉ pour test)
         // drawAdvancedShield();      // Système avancé modulaire (DÉSACTIVÉ pour test)
         drawSphericalShield(ctx);  // NOUVEAU: Système sphérique v2 (code original) - SEUL ACTIF
+        
+        // Dessiner les lasers entonnoir (derrière)
+        drawFunnelLasers(ctx);
         
         // Dessiner les projectiles des ennemis
         drawEnemyBullets();

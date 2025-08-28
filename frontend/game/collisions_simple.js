@@ -9,8 +9,9 @@ import { isMiniBossActive, getMiniBosses, damageMiniBoss, createMiniBoss } from 
 import { isBossActive, getBoss, damageBoss, createBoss } from './boss_simple.js';
 import { activateShield, isShieldActive, createShieldImpact } from './shield_simple.js';
 import { activateAdvancedShield, isAdvancedShieldActive, createAdvancedShieldImpact } from './shield_advanced.js';
-import { activateSphericalShield, isSphericalShieldActive, createSphericalImpact } from './shield2_main.js';
+import { revealFullShield, isSphericalShieldActive, createSphericalImpact } from './shield2_main.js';
 import { enemyBullets } from './enemy_bullets_simple.js';
+import { checkLaserCollision } from './funnel_laser_simple.js';
 
 // Variables pour les effets visuels
 let redPoints = [];
@@ -125,6 +126,22 @@ export function checkCollisions() {
             }
             
             continue;
+        }
+        
+        // NOUVEAU: Vérifier collision avec laser entonnoir
+        if (checkLaserCollision(starship)) {
+            console.log('Joueur touché par le laser entonnoir !');
+            
+            // Vérifier si le bouclier est actif
+            if (isSphericalShieldActive()) {
+                console.log('🛡️ Bouclier actif ! Laser absorbé !');
+                // Créer un effet d'impact sur le bouclier
+                createSphericalImpact(starship.x + starship.width/2, starship.y + starship.height/2, starship);
+            } else {
+                console.log('💥 Pas de bouclier ! Dégâts du laser entonnoir !');
+                // starship.lives--; // À implémenter plus tard
+                playHitSound();
+            }
         }
         
         // Vérifier collision ennemi vs joueur
@@ -396,7 +413,7 @@ export function updateExplosionParticles() {
                             }
                             
                             // Activer le nouveau bouclier sphérique v2 (CODE ORIGINAL)
-                            activateSphericalShield();
+                            revealFullShield();
                             
                             // Réinitialiser le compteur
                             redPointsCollected = 0;

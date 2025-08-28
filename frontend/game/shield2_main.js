@@ -35,7 +35,7 @@ let sphericalShield = {
     // États
     isRevealing: false,
     revealTimer: 0,
-    maxRevealTime: 120,
+    maxRevealTime: 600, // NOUVEAU: 10 secondes à 60fps (10 * 60 = 600 frames)
     
     // Configuration visuelle (CODE ORIGINAL - COULEURS CYAN/ORANGE)
     colors: {
@@ -63,9 +63,9 @@ export function createSphericalImpact(impactX, impactY, player = starship, damag
 
 // Mise à jour du système (CODE ORIGINAL EXACT)
 export function updateSphericalShield() {
-    // Rotation subtile de la sphère
-    sphericalShield.rotation.y += 0.002;
-    sphericalShield.rotation.z += 0.001;
+    // NOUVEAU: Rotation plus rapide de la sphère
+    sphericalShield.rotation.y += 0.016; // 4x plus rapide
+    sphericalShield.rotation.z += 0.012; // 4x plus rapide
     
     // Gestion de la visibilité globale
     if (sphericalShield.isRevealing) {
@@ -148,10 +148,11 @@ export function drawSphericalShield(ctx) {
         const avgGlow = meridian.segments.reduce((sum, s) => sum + s.glowIntensity, 0) / meridian.segments.length;
         
         if (avgGlow > 0.1) {
-            ctx.strokeStyle = `rgba(255, 150, 0, ${avgOpacity * sphericalShield.visibility})`;
-            ctx.lineWidth = 1.5 + avgGlow;
-            ctx.shadowBlur = 10 * avgGlow;
-            ctx.shadowColor = 'rgba(255, 150, 0, 0.8)';
+            // NOUVEAU: Lignes d'impact beaucoup plus visibles
+            ctx.strokeStyle = `rgba(255, 150, 0, ${Math.min(1, avgOpacity * sphericalShield.visibility * 1.5)})`; // Plus opaque
+            ctx.lineWidth = 2.5 + avgGlow * 1.5; // Plus épaisse
+            ctx.shadowBlur = 15 * avgGlow; // Plus de lueur
+            ctx.shadowColor = 'rgba(255, 150, 0, 1.0)'; // Lueur plus intense
         } else {
             ctx.strokeStyle = `rgba(0, 255, 200, ${avgOpacity * sphericalShield.visibility})`;
             ctx.lineWidth = 1;
@@ -196,8 +197,11 @@ export function drawSphericalShield(ctx) {
         const avgGlow = parallel.segments.reduce((sum, s) => sum + s.glowIntensity, 0) / parallel.segments.length;
         
         if (avgGlow > 0.1) {
-            ctx.strokeStyle = `rgba(255, 150, 0, ${avgOpacity * sphericalShield.visibility})`;
-            ctx.lineWidth = 1.5 + avgGlow;
+            // NOUVEAU: Lignes d'impact beaucoup plus visibles (parallèles)
+            ctx.strokeStyle = `rgba(255, 150, 0, ${Math.min(1, avgOpacity * sphericalShield.visibility * 1.5)})`; // Plus opaque
+            ctx.lineWidth = 2.5 + avgGlow * 1.5; // Plus épaisse
+            ctx.shadowBlur = 15 * avgGlow; // Plus de lueur
+            ctx.shadowColor = 'rgba(255, 150, 0, 1.0)'; // Lueur plus intense
         } else {
             ctx.strokeStyle = `rgba(0, 255, 200, ${avgOpacity * sphericalShield.visibility})`;
             ctx.lineWidth = 1;
@@ -300,8 +304,8 @@ export function isSphericalShieldActive() {
     return starship && starship.shield && sphericalShield.visibility > 0;
 }
 
-// Fonction pour forcer la révélation complète (CODE ORIGINAL EXACT)
-export function revealFullShield(duration = 180) {
+// Fonction pour forcer la révélation complète (NOUVEAU: 10 secondes par défaut)
+export function revealFullShield(duration = 600) { // NOUVEAU: 10 secondes à 60fps
     sphericalShield.isRevealing = true;
     sphericalShield.targetVisibility = 1;
     sphericalShield.revealTimer = duration;

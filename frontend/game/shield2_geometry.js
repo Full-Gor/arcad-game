@@ -76,9 +76,9 @@ export function calculateSphericalDistance(phi1, theta1, phi2, theta2) {
     return Math.sqrt(dPhi * dPhi + dTheta * dTheta);
 }
 
-// Révéler les segments de grille dans un rayon donné
+// Révéler les segments de grille dans un rayon donné (NOUVEAU: Visibilité améliorée)
 export function revealGridSegments(sphericalShield, revelationPhi, revelationTheta, revelationRadius, intensity) {
-    // Révéler les segments de grille dans le rayon (CODE ORIGINAL EXACT)
+    // NOUVEAU: Révéler les segments de grille avec plus de visibilité lors des impacts
     sphericalShield.gridLines.meridians.forEach(meridian => {
         meridian.segments.forEach(segment => {
             const distance = calculateSphericalDistance(
@@ -88,8 +88,9 @@ export function revealGridSegments(sphericalShield, revelationPhi, revelationThe
             
             if (distance < revelationRadius) {
                 segment.visible = true;
-                segment.opacity = Math.min(1, segment.opacity + 0.1);
-                segment.glowIntensity = Math.max(segment.glowIntensity, intensity);
+                // NOUVEAU: Opacité et intensité beaucoup plus élevées lors des impacts
+                segment.opacity = Math.min(1, segment.opacity + 0.5); // 5x plus rapide
+                segment.glowIntensity = Math.max(segment.glowIntensity, intensity * 2.5); // 2.5x plus intense
             }
         });
     });
@@ -103,8 +104,9 @@ export function revealGridSegments(sphericalShield, revelationPhi, revelationThe
             
             if (distance < revelationRadius) {
                 segment.visible = true;
-                segment.opacity = Math.min(1, segment.opacity + 0.1);
-                segment.glowIntensity = Math.max(segment.glowIntensity, intensity);
+                // NOUVEAU: Opacité et intensité beaucoup plus élevées lors des impacts
+                segment.opacity = Math.min(1, segment.opacity + 0.5); // 5x plus rapide
+                segment.glowIntensity = Math.max(segment.glowIntensity, intensity * 2.5); // 2.5x plus intense
             }
         });
     });

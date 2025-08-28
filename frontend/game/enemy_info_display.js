@@ -68,6 +68,12 @@ const ENEMY_INFO = {
         shootPattern: "🌈 Spirale Arc-en-Ciel FRÉQUENTE",
         description: "Utilise enemy6.jpg - 36 projectiles multicolores toutes les 0.8s !",
         color: "#FF8844"
+    },
+    9: {
+        name: "ENEMY10",
+        shootPattern: "🔵 Laser Entonnoir Massif",
+        description: "Entonnoir bleu ciel qui croît 3s puis se désintègre 1.5s",
+        color: "#87CEEB"
     }
 };
 

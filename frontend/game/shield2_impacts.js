@@ -22,16 +22,16 @@ export function createSphericalImpactEffect(impactX, impactY, player, damage, sp
     sphericalShield.revealTimer = sphericalShield.maxRevealTime;
     sphericalShield.targetVisibility = 1;
     
-    // Créer une zone de révélation qui s'étend
+    // NOUVEAU: Zone de révélation plus visible et plus large
     sphericalShield.revelations.push({
         phi: phi,
         theta: theta,
         radius: 0,
-        maxRadius: Math.PI * 0.8,  // Couvre une large zone
-        intensity: 1.0,
-        life: 60,
-        maxLife: 60,
-        expansionSpeed: 0.08,
+        maxRadius: Math.PI * 1.2,  // NOUVEAU: Zone encore plus large
+        intensity: 2.0,            // NOUVEAU: Intensité doublée
+        life: 90,                  // NOUVEAU: Durée plus longue
+        maxLife: 90,
+        expansionSpeed: 0.06,      // NOUVEAU: Expansion plus lente pour plus de visibilité
         color: { ...sphericalShield.colors.impact }
     });
     
