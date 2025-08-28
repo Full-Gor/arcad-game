@@ -1,6 +1,7 @@
-// shield_simple.js - Gestion du bouclier avancé de façon modulaire
+// shield_simple.js - Premier bouclier simple activé avec ESPACE
 import { canvas, ctx } from './globals_simple.js';
 import { starship } from './player_simple.js';
+import { createSimpleShieldImpact } from './shield_effects.js';
 
 // Variables pour le système de bouclier avancé
 let shieldSystem = {
@@ -35,15 +36,15 @@ let shieldSystem = {
     plasmaFlow: 0
 };
 
-// Initialisation du système de bouclier (OPTIMISÉ)
+// Initialisation du système de bouclier
 export function initShieldSystem(player = starship) {
     const centerX = player.x + player.width / 2;
     const centerY = player.y + player.height / 2;
     
-    // Créer la grille hexagonale (RÉDUITE: 24 au lieu de 36)
+    // Créer la grille hexagonale
     shieldSystem.hexagons = [];
-    for (let i = 0; i < 24; i++) {
-        const angle = (i / 24) * Math.PI * 2;
+    for (let i = 0; i < 36; i++) {
+        const angle = (i / 36) * Math.PI * 2;
         const distance = shieldSystem.baseRadius + Math.random() * 10;
         shieldSystem.hexagons.push({
             angle: angle,
@@ -56,11 +57,11 @@ export function initShieldSystem(player = starship) {
         });
     }
     
-    // Créer les particules d'énergie orbitales (RÉDUITE: 8 au lieu de 12)
+    // Créer les particules d'énergie orbitales
     shieldSystem.orbitalParticles = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
         shieldSystem.orbitalParticles.push({
-            angle: (i / 8) * Math.PI * 2,
+            angle: (i / 12) * Math.PI * 2,
             speed: 0.01 + Math.random() * 0.02,
             radius: shieldSystem.baseRadius - 5 + Math.random() * 15,
             size: 2 + Math.random() * 2,
@@ -69,9 +70,9 @@ export function initShieldSystem(player = starship) {
         });
     }
     
-    // Particules de plasma flottantes (RÉDUITE: 20 au lieu de 30)
+    // Particules de plasma flottantes
     shieldSystem.particles = [];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
         shieldSystem.particles.push({
             angle: Math.random() * Math.PI * 2,
             distance: 30 + Math.random() * 30,
@@ -83,120 +84,28 @@ export function initShieldSystem(player = starship) {
     }
 }
 
-// Créer un impact amélioré
-export function createShieldImpact(impactX, impactY, player = starship, damage = 10) {
-    if (!player || !player.shield) return;
-    
-    const centerX = player.x + player.width / 2;
-    const centerY = player.y + player.height / 2;
-    
-    const dx = impactX - centerX;
-    const dy = impactY - centerY;
-    const angle = Math.atan2(dy, dx);
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    // Impact principal avec onde de choc
-    shieldSystem.impacts.push({
-        angle: angle,
-        intensity: 1.0,
-        radius: 0,
-        maxRadius: 40,
-        life: 45,
-        maxLife: 45,
-        shockwave: true,
-        color: { ...shieldSystem.energyColor.impact }
-    });
-    
-    // Créer des ondulations (ripples)
-    for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-            shieldSystem.ripples.push({
-                x: impactX,
-                y: impactY,
-                radius: 0,
-                maxRadius: 60 + i * 20,
-                opacity: 0.8 - i * 0.2,
-                speed: 2 - i * 0.3,
-                angle: angle
-            });
-        }, i * 100);
+// Fonction d'activation du bouclier simple
+export function activateSimpleShield() {
+    if (shieldSystem.integrity > 0 && !starship.shield) {
+        starship.shield = true;
+        console.log('🛡️ Bouclier simple activé avec ESPACE');
     }
-    
-    // Explosion de particules d'énergie (RÉDUITE: 12 au lieu de 20)
-    for (let i = 0; i < 12; i++) {
-        const spreadAngle = angle + (Math.random() - 0.5) * Math.PI * 0.5;
-        const speed = 2 + Math.random() * 4;
-        shieldSystem.energyBursts.push({
-            x: impactX,
-            y: impactY,
-            vx: Math.cos(spreadAngle) * speed,
-            vy: Math.sin(spreadAngle) * speed,
-            size: 2 + Math.random() * 3,
-            life: 30 + Math.random() * 20,
-            color: Math.random() > 0.5 ? shieldSystem.energyColor : shieldSystem.energyColor.impact,
-            trail: []
-        });
-    }
-    
-    // Activer les hexagones proches
-    shieldSystem.hexagons.forEach(hex => {
-        const hexAngle = hex.angle;
-        const angleDiff = Math.abs(angle - hexAngle);
-        const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
-        
-        if (normalizedDiff < 0.5) {
-            hex.active = true;
-            hex.activation = 1.0;
-        }
-    });
-    
-    // Créer une distorsion temporaire
-    shieldSystem.distortion = Math.min(shieldSystem.distortion + damage * 0.1, 2.0);
-    
-    // Overcharge temporaire pour effet dramatique
-    shieldSystem.overcharge = Math.min(shieldSystem.overcharge + 0.3, 1.0);
-    
-    console.log(`🛡️ Impact avancé créé à l'angle ${(angle * 180 / Math.PI).toFixed(1)}° avec ${damage} dégâts`);
 }
 
-// Fonction pour activer le bouclier avancé
-export function activateShield(player = starship, duration = 5000) {
-    if (!player) return;
-    
-    console.log('🛡️ Activation du bouclier avancé pour', duration, 'ms');
-    
-    // Activer le bouclier
-    player.shield = true;
-    
-    // Initialiser le système de bouclier avancé
-    initShieldSystem(player);
-    
-    // Réinitialiser l'intégrité
-    shieldSystem.integrity = 100;
-    shieldSystem.overcharge = 0;
-    shieldSystem.distortion = 0;
-    
-    // Nettoyer l'ancien timeout si il existe
-    if (player.shieldTimeout) {
-        clearTimeout(player.shieldTimeout);
-        player.shieldTimeout = null;
-    }
-    
-    // Désactiver le bouclier après la durée spécifiée
-    player.shieldTimeout = setTimeout(() => {
-        console.log('🛡️ Désactivation du bouclier avancé');
-        player.shield = false;
-        
-        // Nettoyer le système
-        cleanupShieldSystem(player);
-        
-        player.shieldTimeout = null;
-    }, duration);
+// Fonction de désactivation du bouclier simple
+export function deactivateSimpleShield() {
+    starship.shield = false;
+    console.log('🛡️ Bouclier simple désactivé');
 }
 
-// Mise à jour du système avancé (OPTIMISÉ)
-export function updateShieldParticles() {
-    if (!starship || !starship.shield) return;
+// Fonction de vérification si le bouclier simple est actif
+export function isSimpleShieldActive() {
+    return starship && starship.shield && shieldSystem.integrity > 0;
+}
+
+// Fonction de mise à jour du bouclier simple
+export function updateSimpleShield() {
+    if (!starship) return;
     
     shieldSystem.time++;
     shieldSystem.plasmaFlow += 0.02;
@@ -220,10 +129,10 @@ export function updateShieldParticles() {
         return ripple.radius < ripple.maxRadius && ripple.opacity > 0.01;
     });
     
-    // Mise à jour des explosions d'énergie (OPTIMISÉ: traînée plus courte)
+    // Mise à jour des explosions d'énergie
     shieldSystem.energyBursts = shieldSystem.energyBursts.filter(burst => {
-        // Ajouter à la traînée (RÉDUITE: 5 au lieu de 8)
-        if (burst.trail.length > 5) burst.trail.shift();
+        // Ajouter à la traînée
+        if (burst.trail.length > 8) burst.trail.shift();
         burst.trail.push({ x: burst.x, y: burst.y, size: burst.size });
         
         burst.x += burst.vx;
@@ -235,53 +144,46 @@ export function updateShieldParticles() {
         return burst.life > 0 && burst.size > 0.5;
     });
     
-    // Mise à jour des hexagones (OPTIMISÉ: seulement si actifs ou tous les 3 frames)
-    if (shieldSystem.time % 3 === 0) {
-        shieldSystem.hexagons.forEach(hex => {
-            if (hex.active) {
-                hex.activation *= 0.92;
-                if (hex.activation < 0.01) {
-                    hex.active = false;
-                    hex.activation = 0;
-                }
+    // Mise à jour des hexagones
+    shieldSystem.hexagons.forEach(hex => {
+        if (hex.active) {
+            hex.activation *= 0.92;
+            if (hex.activation < 0.01) {
+                hex.active = false;
+                hex.activation = 0;
             }
-            // Distorsion de la distance (calcul moins fréquent)
-            const distortionEffect = Math.sin(shieldSystem.time * 0.05 + hex.pulseOffset) * 2;
-            hex.distance = hex.baseDistance + distortionEffect + shieldSystem.distortion * 5;
-        });
-    }
+        }
+        // Distorsion de la distance
+        const distortionEffect = Math.sin(shieldSystem.time * 0.05 + hex.pulseOffset) * 2;
+        hex.distance = hex.baseDistance + distortionEffect + shieldSystem.distortion * 5;
+    });
     
-    // Mise à jour des particules orbitales (OPTIMISÉ: traînée plus courte)
-    const centerX = starship.x + starship.width/2;
-    const centerY = starship.y + starship.height/2;
-    
+    // Mise à jour des particules orbitales
     shieldSystem.orbitalParticles.forEach(particle => {
         particle.angle += particle.speed;
         
-        // Maintenir une courte traînée (RÉDUITE: 6 au lieu de 10)
-        if (particle.trail.length > 6) particle.trail.shift();
-        const x = centerX + Math.cos(particle.angle) * particle.radius;
-        const y = centerY + Math.sin(particle.angle) * particle.radius;
+        // Maintenir une courte traînée
+        if (particle.trail.length > 10) particle.trail.shift();
+        const x = starship.x + starship.width/2 + Math.cos(particle.angle) * particle.radius;
+        const y = starship.y + starship.height/2 + Math.sin(particle.angle) * particle.radius;
         particle.trail.push({ x, y });
     });
     
-    // Mise à jour des particules de plasma (OPTIMISÉ: moins fréquente)
-    if (shieldSystem.time % 2 === 0) {
-        shieldSystem.particles.forEach(particle => {
-            particle.angle += particle.speed * 0.01;
-            particle.lifespan--;
-            if (particle.lifespan <= 0) {
-                particle.lifespan = 100 + Math.random() * 100;
-                particle.distance = 30 + Math.random() * 30;
-                particle.angle = Math.random() * Math.PI * 2;
-            }
-        });
-    }
+    // Mise à jour des particules de plasma
+    shieldSystem.particles.forEach(particle => {
+        particle.angle += particle.speed * 0.01;
+        particle.lifespan--;
+        if (particle.lifespan <= 0) {
+            particle.lifespan = 100 + Math.random() * 100;
+            particle.distance = 30 + Math.random() * 30;
+            particle.angle = Math.random() * Math.PI * 2;
+        }
+    });
 }
 
-// Rendu du bouclier avancé
-export function drawShieldParticles() {
-    if (!starship || !starship.shield) return;
+// Fonction de dessin du bouclier simple
+export function drawSimpleShield() {
+    if (!isSimpleShieldActive() || !starship) return;
     
     const centerX = starship.x + starship.width / 2;
     const centerY = starship.y + starship.height / 2;
@@ -300,7 +202,10 @@ export function drawShieldParticles() {
     ctx.arc(centerX, centerY, shieldSystem.baseRadius + 20 + shieldSystem.distortion * 10, 0, Math.PI * 2);
     ctx.fill();
     
-    // 2. GRILLE HEXAGONALE (OPTIMISÉE: sans shadow)
+    // 2. GRILLE HEXAGONALE
+    ctx.strokeStyle = 'rgba(4, 251, 172, 0.3)';
+    ctx.lineWidth = 1;
+    
     shieldSystem.hexagons.forEach(hex => {
         const x = centerX + Math.cos(hex.angle) * hex.distance;
         const y = centerY + Math.sin(hex.angle) * hex.distance;
@@ -309,16 +214,20 @@ export function drawShieldParticles() {
         ctx.translate(x, y);
         ctx.rotate(hex.angle);
         
-        // Couleur selon l'activation (SIMPLIFIÉ: sans shadowBlur)
+        // Couleur selon l'activation
         if (hex.active) {
             const r = Math.floor(4 + hex.activation * 251);
             const g = Math.floor(251 - hex.activation * 100);
             const b = Math.floor(172 + hex.activation * 80);
             ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.3 + hex.activation * 0.7})`;
             ctx.lineWidth = 1 + hex.activation * 2;
+            
+            // Lueur pour les hexagones actifs
+            ctx.shadowBlur = 10 * hex.activation;
+            ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.8)`;
         } else {
             ctx.strokeStyle = `rgba(4, 251, 172, ${hex.opacity})`;
-            ctx.lineWidth = 1;
+            ctx.shadowBlur = 0;
         }
         
         // Dessiner l'hexagone
@@ -351,30 +260,30 @@ export function drawShieldParticles() {
         ctx.stroke();
     });
     
-    // 4. LIGNE DE PLASMA PRINCIPALE (OPTIMISÉE: sans shadow, moins de points)
+    // 4. LIGNE DE PLASMA PRINCIPALE
     ctx.strokeStyle = 'rgba(4, 251, 172, 0.8)';
     ctx.lineWidth = 2;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = 'rgba(4, 251, 172, 0.5)';
     
-    // Dessiner avec variation selon les impacts (RÉDUIT: 32 au lieu de 64)
+    // Dessiner avec variation selon les impacts
     ctx.beginPath();
-    for (let i = 0; i <= 32; i++) {
-        const angle = (i / 32) * Math.PI * 2;
+    for (let i = 0; i <= 64; i++) {
+        const angle = (i / 64) * Math.PI * 2;
         let radius = shieldSystem.baseRadius;
         
-        // Déformation par les impacts (OPTIMISÉ: seulement si impacts actifs)
-        if (shieldSystem.impacts.length > 0) {
-            shieldSystem.impacts.forEach(impact => {
-                const angleDiff = Math.abs(angle - impact.angle);
-                const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
-                if (normalizedDiff < 0.5) {
-                    const influence = (1 - normalizedDiff / 0.5) * impact.intensity;
-                    radius += Math.sin(influence * Math.PI) * 10;
-                }
-            });
-        }
+        // Déformation par les impacts
+        shieldSystem.impacts.forEach(impact => {
+            const angleDiff = Math.abs(angle - impact.angle);
+            const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+            if (normalizedDiff < 0.5) {
+                const influence = (1 - normalizedDiff / 0.5) * impact.intensity;
+                radius += Math.sin(influence * Math.PI) * 10;
+            }
+        });
         
-        // Ajout de l'effet plasma (RÉDUIT: moins d'ondulations)
-        radius += Math.sin(angle * 4 + shieldSystem.plasmaFlow) * 1.5;
+        // Ajout de l'effet plasma
+        radius += Math.sin(angle * 8 + shieldSystem.plasmaFlow) * 2;
         
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
@@ -385,61 +294,60 @@ export function drawShieldParticles() {
     ctx.closePath();
     ctx.stroke();
     
-    // 5. PARTICULES ORBITALES AVEC TRAÎNÉES (OPTIMISÉES: gradients simplifiés)
+    // 5. PARTICULES ORBITALES AVEC TRAÎNÉES
     shieldSystem.orbitalParticles.forEach(particle => {
         const x = centerX + Math.cos(particle.angle) * particle.radius;
         const y = centerY + Math.sin(particle.angle) * particle.radius;
         
-        // Traînée (SIMPLIFIÉE: moins de points)
-        if (particle.trail.length > 2) {
+        // Traînée
+        if (particle.trail.length > 1) {
             ctx.strokeStyle = 'rgba(4, 251, 172, 0.3)';
             ctx.lineWidth = particle.size * 0.5;
             ctx.beginPath();
-            // OPTIMISÉ: seulement 1 point sur 2
-            for (let i = 0; i < particle.trail.length; i += 2) {
-                const point = particle.trail[i];
+            particle.trail.forEach((point, i) => {
                 if (i === 0) ctx.moveTo(point.x, point.y);
                 else ctx.lineTo(point.x, point.y);
-            }
+            });
             ctx.stroke();
         }
         
-        // Particule principale (SIMPLIFIÉ: sans gradient complexe)
-        ctx.fillStyle = 'rgba(4, 251, 172, 0.8)';
-        ctx.beginPath();
-        ctx.arc(x, y, particle.size, 0, Math.PI * 2);
-        ctx.fill();
+        // Particule principale
+        const particleGradient = ctx.createRadialGradient(x, y, 0, x, y, particle.size);
+        particleGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        particleGradient.addColorStop(0.5, 'rgba(4, 251, 172, 0.8)');
+        particleGradient.addColorStop(1, 'rgba(4, 251, 172, 0)');
         
-        // Centre plus lumineux
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillStyle = particleGradient;
         ctx.beginPath();
-        ctx.arc(x, y, particle.size * 0.5, 0, Math.PI * 2);
+        ctx.arc(x, y, particle.size * 2, 0, Math.PI * 2);
         ctx.fill();
     });
     
-    // 6. EXPLOSIONS D'ÉNERGIE (OPTIMISÉES: traînées et gradients simplifiés)
+    // 6. EXPLOSIONS D'ÉNERGIE
     shieldSystem.energyBursts.forEach(burst => {
-        // Traînée (SIMPLIFIÉE: ligne simple)
+        // Traînée
         if (burst.trail.length > 1) {
-            ctx.strokeStyle = `rgba(${burst.color.r}, ${burst.color.g}, ${burst.color.b}, 0.4)`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(burst.trail[0].x, burst.trail[0].y);
-            ctx.lineTo(burst.x, burst.y);
-            ctx.stroke();
+            ctx.strokeStyle = `rgba(${burst.color.r}, ${burst.color.g}, ${burst.color.b}, 0.3)`;
+            burst.trail.forEach((point, i) => {
+                ctx.lineWidth = point.size * 0.5 * ((i + 1) / burst.trail.length);
+                ctx.beginPath();
+                if (i > 0) {
+                    ctx.moveTo(burst.trail[i-1].x, burst.trail[i-1].y);
+                    ctx.lineTo(point.x, point.y);
+                    ctx.stroke();
+                }
+            });
         }
         
-        // Particule d'énergie (SIMPLIFIÉ: sans gradient)
-        const opacity = burst.life / 50;
-        ctx.fillStyle = `rgba(${burst.color.r}, ${burst.color.g}, ${burst.color.b}, ${opacity})`;
+        // Particule d'énergie
+        const energyGradient = ctx.createRadialGradient(burst.x, burst.y, 0, burst.x, burst.y, burst.size);
+        energyGradient.addColorStop(0, `rgba(255, 255, 255, ${burst.life / 50})`);
+        energyGradient.addColorStop(0.3, `rgba(${burst.color.r}, ${burst.color.g}, ${burst.color.b}, ${burst.life / 50})`);
+        energyGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.fillStyle = energyGradient;
         ctx.beginPath();
         ctx.arc(burst.x, burst.y, burst.size, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Centre plus lumineux
-        ctx.fillStyle = `rgba(255, 255, 255, ${opacity * 0.8})`;
-        ctx.beginPath();
-        ctx.arc(burst.x, burst.y, burst.size * 0.5, 0, Math.PI * 2);
         ctx.fill();
     });
     
@@ -455,43 +363,43 @@ export function drawShieldParticles() {
         ctx.fill();
     });
     
-    // 8. EFFET DE SURCHARGE (OPTIMISÉ: sans shadow)
+    // 8. EFFET DE SURCHARGE
     if (shieldSystem.overcharge > 0.1) {
-        ctx.strokeStyle = `rgba(255, 255, 255, ${shieldSystem.overcharge * 0.4})`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${shieldSystem.overcharge * 0.3})`;
         ctx.lineWidth = 3;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
         ctx.beginPath();
         ctx.arc(centerX, centerY, shieldSystem.baseRadius + 5, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        // Double cercle pour effet de lueur sans shadow
-        ctx.strokeStyle = `rgba(255, 255, 255, ${shieldSystem.overcharge * 0.2})`;
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, shieldSystem.baseRadius + 8, 0, Math.PI * 2);
         ctx.stroke();
     }
     
     ctx.restore();
 }
 
-// Fonction pour nettoyer le système de bouclier avancé
-function cleanupShieldSystem(player) {
-    // Nettoyer tous les éléments du système
-    shieldSystem.hexagons = [];
-    shieldSystem.particles = [];
-    shieldSystem.orbitalParticles = [];
-    shieldSystem.impacts = [];
-    shieldSystem.ripples = [];
-    shieldSystem.energyBursts = [];
+// Fonction pour absorber un projectile avec le bouclier simple (retourne true si absorbé)
+export function absorbProjectile(projectile) {
+    if (!isSimpleShieldActive() || !starship) return false;
     
-    // Réinitialiser les états
-    shieldSystem.integrity = 100;
-    shieldSystem.overcharge = 0;
-    shieldSystem.distortion = 0;
-    shieldSystem.time = 0;
-    shieldSystem.plasmaFlow = 0;
+    const shieldCenterX = starship.x + starship.width / 2;
+    const shieldCenterY = starship.y + starship.height / 2;
+    const shieldRadius = shieldSystem.baseRadius;
     
-    console.log('🛡️ Système de bouclier avancé nettoyé');
+    const projectileCenterX = projectile.x + projectile.width / 2;
+    const projectileCenterY = projectile.y + projectile.height / 2;
+    
+    const distance = Math.sqrt(
+        Math.pow(projectileCenterX - shieldCenterX, 2) +
+        Math.pow(projectileCenterY - shieldCenterY, 2)
+    );
+    
+    if (distance <= shieldRadius) {
+        // Créer un effet d'impact
+        createSimpleShieldImpact(projectileCenterX, projectileCenterY, starship, 10);
+        return true;
+    }
+    
+    return false;
 }
 
 // Fonction helper pour vérifier si le bouclier est actif
@@ -504,40 +412,5 @@ export function regenerateShield(amount = 1) {
     shieldSystem.integrity = Math.min(100, shieldSystem.integrity + amount);
 }
 
-// Fonction pour désactiver manuellement le bouclier
-export function deactivateShield(player = starship) {
-    if (player) {
-        player.shield = false;
-        if (player.shieldTimeout) {
-            clearTimeout(player.shieldTimeout);
-            player.shieldTimeout = null;
-        }
-        cleanupShieldSystem(player);
-        console.log('🛡️ Bouclier avancé désactivé manuellement');
-    }
-}
-
-// Fonction d'initialisation du bouclier avancé
-export function initializeShield() {
-    // S'assurer que le joueur a les propriétés nécessaires
-    if (starship) {
-        starship.shield = false;
-        starship.shieldTimeout = null;
-        starship.player = starship.player || 1;
-    }
-    
-    // Initialiser le système de bouclier avancé
-    shieldSystem.hexagons = [];
-    shieldSystem.particles = [];
-    shieldSystem.orbitalParticles = [];
-    shieldSystem.impacts = [];
-    shieldSystem.ripples = [];
-    shieldSystem.energyBursts = [];
-    shieldSystem.integrity = 100;
-    shieldSystem.overcharge = 0;
-    shieldSystem.distortion = 0;
-    shieldSystem.time = 0;
-    shieldSystem.plasmaFlow = 0;
-    
-    console.log('🛡️ Module bouclier avancé initialisé');
-}
+// Export du système pour les autres modules
+export { shieldSystem };

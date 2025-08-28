@@ -1,8 +1,9 @@
-// input_simple.js - Gestion des contrôles souris de façon modulaire
+// input_simple.js - Gestion des contrôles souris et clavier de façon modulaire
 import { canvas } from './globals_simple.js';
 import { starship } from './player_simple.js';
 import { startShooting, stopShooting } from './bullets_simple.js';
 import { startShootSound, stopShootSound } from './audio_simple.js';
+import { activateSimpleShield, deactivateSimpleShield } from './shield_simple.js';
 
 // Variables pour gérer l'état des contrôles
 let inputInitialized = false;
@@ -19,6 +20,10 @@ export function initializeInput() {
     // Contrôles souris - tir
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mouseup", handleMouseUp);
+    
+    // Contrôles clavier - bouclier
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
     
     inputInitialized = true;
     console.log('Contrôles souris initialisés !');
@@ -64,6 +69,21 @@ function handleMouseUp(event) {
     }
 }
 
+// Fonction de gestion des touches pressées
+function handleKeyDown(event) {
+    if (event.code === 'Space') {
+        event.preventDefault(); // Empêcher le scroll de la page
+        activateSimpleShield();
+    }
+}
+
+// Fonction de gestion des touches relâchées
+function handleKeyUp(event) {
+    if (event.code === 'Space') {
+        deactivateSimpleShield();
+    }
+}
+
 // Fonction pour nettoyer les event listeners (optionnel)
 export function cleanupInput() {
     if (!inputInitialized) return;
@@ -71,6 +91,8 @@ export function cleanupInput() {
     window.removeEventListener("mousemove", handleMouseMove);
     window.removeEventListener("mousedown", handleMouseDown);
     window.removeEventListener("mouseup", handleMouseUp);
+    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keyup", handleKeyUp);
     inputInitialized = false;
     console.log('Contrôles nettoyés');
 }

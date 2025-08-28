@@ -7,9 +7,9 @@ import { playHitSound, playCoinSound } from './audio_simple.js';
 import { handleKill } from './score_simple.js';
 import { isMiniBossActive, getMiniBosses, damageMiniBoss, createMiniBoss } from './miniboss_simple.js';
 import { isBossActive, getBoss, damageBoss, createBoss } from './boss_simple.js';
-import { activateShield, isShieldActive, createShieldImpact } from './shield_simple.js';
-import { activateAdvancedShield, isAdvancedShieldActive, createAdvancedShieldImpact } from './shield_advanced.js';
+
 import { revealFullShield, isSphericalShieldActive, createSphericalImpact } from './shield2_main.js';
+// import { isSimpleShieldActive, absorbProjectile } from './shield_simple.js';
 import { enemyBullets } from './enemy_bullets_simple.js';
 import { checkLaserCollision } from './funnel_laser_simple.js';
 
@@ -310,26 +310,43 @@ export function checkCollisions() {
         
         let collisionDetected = false;
         
-        if (isSphericalShieldActive()) {  // NOUVEAU: Utiliser le bouclier sphérique v2
-            // BOUCLIER ACTIF: Collision avec zone élargie (bouclier à 20px du starship)
+        // NOUVEAU: Vérifier d'abord le bouclier simple (ESPACE)
+        // if (isSimpleShieldActive()) {
+        //     if (absorbProjectile(enemyBullet)) {
+        //         console.log('🛡️ Projectile absorbé par le bouclier simple (ESPACE) !');
+        //         collisionDetected = true;
+        //     }
+        // }
+        // Sinon, vérifier le bouclier sphérique (20 points rouges)
+        // else {
+            const shieldActive = isSphericalShieldActive();
+            console.log('🔍 DEBUG: isSphericalShieldActive() =', shieldActive);
+            
+            if (shieldActive) {  // NOUVEAU: Utiliser le bouclier sphérique v2
+            console.log('🔍 DEBUG: Bouclier actif, vérification collision...');
+            
+            // BOUCLIER ACTIF: Collision avec zone élargie (bouclier à 55px du starship - rayon du bouclier)
             const shieldZone = {
-                x: starship.x - 20,
-                y: starship.y - 20,
-                width: starship.width + 40,  // +20px de chaque côté
-                height: starship.height + 40 // +20px de chaque côté
+                x: starship.x - 55,
+                y: starship.y - 55,
+                width: starship.width + 110,  // +55px de chaque côté (rayon du bouclier)
+                height: starship.height + 110 // +55px de chaque côté (rayon du bouclier)
             };
             
             if (checkCollision(enemyBullet, shieldZone)) {
-                console.log('🛡️ Projectile ennemi touche le bouclier ! (20px du starship)');
+                console.log('🛡️ Projectile ennemi touche le bouclier ! (55px du starship)');
                 collisionDetected = true;
                 
                 // NOUVEAU: Créer un effet d'impact visuel sur le bouclier
                 const impactX = enemyBullet.x + enemyBullet.width / 2;
                 const impactY = enemyBullet.y + enemyBullet.height / 2;
+                console.log('🔍 DEBUG: Appel createSphericalImpact avec:', impactX, impactY);
                 createSphericalImpact(impactX, impactY, starship);  // NOUVEAU: Impact sur bouclier sphérique v2
                 
                 // Le bouclier absorbe le projectile - pas de dégâts
                 console.log('🛡️ Projectile absorbé par le bouclier avec effet d\'impact !');
+            } else {
+                console.log('🔍 DEBUG: Projectile ne touche pas la zone bouclier');
             }
         } else {
             // PAS DE BOUCLIER: Collision directe avec le starship

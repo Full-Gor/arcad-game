@@ -1,305 +1,226 @@
-// shield_geometry.js - Gestion de la géométrie sphérique du bouclier
-import { canvas, ctx } from './globals_simple.js';
+// shield_geometry.js - Géométrie du bouclier simple
+import { starship } from './player_simple.js';
+import { shieldSystem } from './shield_simple.js';
+import { isSimpleShieldActive } from './shield_simple.js';
 
-// Initialisation de la structure géodésique sphérique
-export function initSphericalGeometry(sphericalShield, shieldCollections) {
-    console.log('🔧 Initialisation de la géométrie sphérique...');
+// Initialisation de la géométrie du bouclier simple
+export function initSimpleShieldGeometry(player = starship) {
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
     
-    // Réinitialiser les collections
-    shieldCollections.gridLines.meridians = [];
-    shieldCollections.gridLines.parallels = [];
-    shieldCollections.gridLines.vertices = [];
-    
-    // Créer les méridiens (longitude - lignes verticales)
-    const meridianCount = 16;
-    for (let i = 0; i < meridianCount; i++) {
-        const angle = (i / meridianCount) * Math.PI * 2;
-        const meridian = {
+    // Créer la grille hexagonale
+    shieldSystem.hexagons = [];
+    for (let i = 0; i < 36; i++) {
+        const angle = (i / 36) * Math.PI * 2;
+        const distance = shieldSystem.baseRadius + Math.random() * 10;
+        shieldSystem.hexagons.push({
             angle: angle,
-            opacity: 0,
-            segments: []
-        };
-        
-        // Créer les segments pour chaque méridien
-        for (let j = 0; j <= 32; j++) {
-            const theta = (j / 32) * Math.PI;
-            meridian.segments.push({
-                theta: theta,
-                visible: false,
-                opacity: 0,
-                glowIntensity: 0
-            });
-        }
-        
-        shieldCollections.gridLines.meridians.push(meridian);
+            distance: distance,
+            baseDistance: distance,
+            opacity: 0.1 + Math.random() * 0.2,
+            pulseOffset: Math.random() * Math.PI * 2,
+            active: false,
+            activation: 0
+        });
     }
     
-    // Créer les parallèles (latitude - lignes horizontales)
-    const parallelCount = 12;
-    for (let i = 0; i < parallelCount; i++) {
-        const theta = ((i + 1) / (parallelCount + 1)) * Math.PI;
-        const parallel = {
-            theta: theta,
-            opacity: 0,
-            segments: []
-        };
-        
-        // Créer les segments pour chaque parallèle
-        for (let j = 0; j <= 32; j++) {
-            const phi = (j / 32) * Math.PI * 2;
-            parallel.segments.push({
-                phi: phi,
-                visible: false,
-                opacity: 0,
-                glowIntensity: 0
-            });
-        }
-        
-        shieldCollections.gridLines.parallels.push(parallel);
+    // Créer les particules d'énergie orbitales
+    shieldSystem.orbitalParticles = [];
+    for (let i = 0; i < 12; i++) {
+        shieldSystem.orbitalParticles.push({
+            angle: (i / 12) * Math.PI * 2,
+            speed: 0.01 + Math.random() * 0.02,
+            radius: shieldSystem.baseRadius - 5 + Math.random() * 15,
+            size: 2 + Math.random() * 2,
+            trail: [],
+            pulseSpeed: 0.001 + Math.random() * 0.003
+        });
     }
     
-    // Créer les vertices (intersections)
-    for (let i = 0; i < meridianCount; i++) {
-        for (let j = 0; j < parallelCount; j++) {
-            const meridian = shieldCollections.gridLines.meridians[i];
-            const parallel = shieldCollections.gridLines.parallels[j];
-            
-            shieldCollections.gridLines.vertices.push({
-                meridianIndex: i,
-                parallelIndex: j,
-                angle: meridian.angle,
-                theta: parallel.theta,
-                opacity: 0,
-                pulse: 0,
-                active: false
-            });
-        }
+    // Particules de plasma flottantes
+    shieldSystem.particles = [];
+    for (let i = 0; i < 30; i++) {
+        shieldSystem.particles.push({
+            angle: Math.random() * Math.PI * 2,
+            distance: 30 + Math.random() * 30,
+            speed: 0.5 + Math.random() * 1.5,
+            size: 1 + Math.random() * 3,
+            opacity: 0.3 + Math.random() * 0.4,
+            lifespan: 100 + Math.random() * 100
+        });
     }
     
-    console.log(`✅ Géométrie créée: ${meridianCount} méridiens, ${parallelCount} parallèles, ${shieldCollections.gridLines.vertices.length} vertices`);
+    console.log('🔧 Géométrie du bouclier simple initialisée');
 }
 
-// Mise à jour de la géométrie sphérique
-export function updateSphericalGeometry(sphericalShield, shieldCollections) {
-    // Mise à jour des vertices actifs
-    shieldCollections.gridLines.vertices.forEach(vertex => {
-        if (vertex.active) {
-            vertex.pulse *= 0.95;
-            if (vertex.pulse < 0.01) {
-                vertex.active = false;
-                vertex.pulse = 0;
-            }
+// Calcul de distance pour le bouclier simple
+export function calculateSimpleShieldDistance(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+// Révéler des segments de grille pour le bouclier simple
+export function revealSimpleShieldSegments(centerX, centerY, radius, intensity) {
+    if (!shieldSystem.hexagons) return;
+    
+    // Activer les vertices dans le rayon
+    shieldSystem.hexagons.forEach(hex => {
+        const distance = calculateSimpleShieldDistance(centerX, centerY, hex.x, hex.y);
+        if (distance < radius) {
+            hex.active = true;
+            hex.intensity = Math.max(hex.intensity || 0, intensity);
         }
     });
-    
-    // Fade out progressif des segments quand pas d'impact
-    if (!sphericalShield.isRevealing) {
-        shieldCollections.gridLines.meridians.forEach(meridian => {
-            meridian.segments.forEach(segment => {
-                segment.opacity *= 0.98;
-                segment.glowIntensity *= 0.95;
-                if (segment.opacity < 0.01) {
-                    segment.visible = false;
-                }
-            });
-        });
-        
-        shieldCollections.gridLines.parallels.forEach(parallel => {
-            parallel.segments.forEach(segment => {
-                segment.opacity *= 0.98;
-                segment.glowIntensity *= 0.95;
-                if (segment.opacity < 0.01) {
-                    segment.visible = false;
-                }
-            });
-        });
-    }
 }
 
-// Dessiner la grille géodésique
-export function drawSphericalGrid(ctx, centerX, centerY, sphericalShield, shieldCollections) {
-    // 1. DESSINER LES MÉRIDIENS (lignes verticales)
-    shieldCollections.gridLines.meridians.forEach((meridian, mIndex) => {
-        ctx.beginPath();
-        let firstPoint = true;
-        let hasVisibleSegments = false;
+// Activer les vertices proches pour le bouclier simple
+export function activateNearbySimpleShieldVertices(centerX, centerY, radius) {
+    if (!shieldSystem.hexagons) return;
+    
+    shieldSystem.hexagons.forEach(hex => {
+        const hexAngle = hex.angle;
+        const distance = calculateSimpleShieldDistance(centerX, centerY, 
+            centerX + Math.cos(hexAngle) * hex.distance, 
+            centerY + Math.sin(hexAngle) * hex.distance);
         
-        meridian.segments.forEach((segment, sIndex) => {
-            if (!segment.visible) return;
-            hasVisibleSegments = true;
-            
-            // Projection 3D -> 2D avec rotation
-            const coords = project3DTo2D(
-                sphericalShield.radius * Math.sin(segment.theta) * Math.cos(meridian.angle),
-                sphericalShield.radius * Math.cos(segment.theta),
-                sphericalShield.radius * Math.sin(segment.theta) * Math.sin(meridian.angle),
-                centerX, centerY, sphericalShield.rotation
-            );
-            
-            if (firstPoint) {
-                ctx.moveTo(coords.x, coords.y);
-                firstPoint = false;
-            } else {
-                ctx.lineTo(coords.x, coords.y);
+        if (distance < radius) {
+            hex.active = true;
+            hex.activation = 1.0;
+        }
+    });
+}
+
+// Mise à jour de la géométrie du bouclier simple
+export function updateSimpleShieldGeometry() {
+    if (!starship) return;
+    
+    // Mise à jour des hexagones
+    shieldSystem.hexagons.forEach(hex => {
+        if (hex.active) {
+            hex.activation *= 0.92;
+            if (hex.activation < 0.01) {
+                hex.active = false;
+                hex.activation = 0;
             }
-        });
+        }
+        // Distorsion de la distance
+        const distortionEffect = Math.sin(shieldSystem.time * 0.05 + hex.pulseOffset) * 2;
+        hex.distance = hex.baseDistance + distortionEffect + shieldSystem.distortion * 5;
+    });
+    
+    // Mise à jour des particules orbitales
+    shieldSystem.orbitalParticles.forEach(particle => {
+        particle.angle += particle.speed;
         
-        if (hasVisibleSegments) {
-            // Calculer les propriétés moyennes pour le style
-            const avgOpacity = meridian.segments.reduce((sum, s) => sum + s.opacity, 0) / meridian.segments.length;
-            const avgGlow = meridian.segments.reduce((sum, s) => sum + s.glowIntensity, 0) / meridian.segments.length;
+        // Maintenir une courte traînée
+        if (particle.trail.length > 10) particle.trail.shift();
+        const x = starship.x + starship.width/2 + Math.cos(particle.angle) * particle.radius;
+        const y = starship.y + starship.height/2 + Math.sin(particle.angle) * particle.radius;
+        particle.trail.push({ x, y });
+    });
+    
+    // Mise à jour des particules de plasma
+    shieldSystem.particles.forEach(particle => {
+        particle.angle += particle.speed * 0.01;
+        particle.lifespan--;
+        if (particle.lifespan <= 0) {
+            particle.lifespan = 100 + Math.random() * 100;
+            particle.distance = 30 + Math.random() * 30;
+            particle.angle = Math.random() * Math.PI * 2;
+        }
+    });
+}
+
+// Dessiner la géométrie hexagonale du bouclier simple
+export function drawSimpleShieldGeometry(ctx) {
+    if (!starship || !isSimpleShieldActive()) return;
+    
+    const centerX = starship.x + starship.width / 2;
+    const centerY = starship.y + starship.height / 2;
+    
+    // Dessiner la grille hexagonale
+    ctx.strokeStyle = 'rgba(4, 251, 172, 0.3)';
+    ctx.lineWidth = 1;
+    
+    shieldSystem.hexagons.forEach(hex => {
+        const x = centerX + Math.cos(hex.angle) * hex.distance;
+        const y = centerY + Math.sin(hex.angle) * hex.distance;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(hex.angle);
+        
+        // Couleur selon l'activation
+        if (hex.active) {
+            const r = Math.floor(4 + hex.activation * 251);
+            const g = Math.floor(251 - hex.activation * 100);
+            const b = Math.floor(172 + hex.activation * 80);
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.3 + hex.activation * 0.7})`;
+            ctx.lineWidth = 1 + hex.activation * 2;
             
-            applyGridLineStyle(ctx, avgOpacity, avgGlow, sphericalShield);
+            // Lueur pour les hexagones actifs
+            ctx.shadowBlur = 10 * hex.activation;
+            ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.8)`;
+        } else {
+            ctx.strokeStyle = `rgba(4, 251, 172, ${hex.opacity})`;
+            ctx.shadowBlur = 0;
+        }
+        
+        // Dessiner l'hexagone
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const hx = Math.cos(angle) * shieldSystem.hexagonSize;
+            const hy = Math.sin(angle) * shieldSystem.hexagonSize;
+            if (i === 0) ctx.moveTo(hx, hy);
+            else ctx.lineTo(hx, hy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    });
+    
+    // Dessiner les particules orbitales avec traînées
+    shieldSystem.orbitalParticles.forEach(particle => {
+        const x = centerX + Math.cos(particle.angle) * particle.radius;
+        const y = centerY + Math.sin(particle.angle) * particle.radius;
+        
+        // Traînée
+        if (particle.trail.length > 1) {
+            ctx.strokeStyle = 'rgba(4, 251, 172, 0.3)';
+            ctx.lineWidth = particle.size * 0.5;
+            ctx.beginPath();
+            particle.trail.forEach((point, i) => {
+                if (i === 0) ctx.moveTo(point.x, point.y);
+                else ctx.lineTo(point.x, point.y);
+            });
             ctx.stroke();
         }
+        
+        // Particule principale
+        const particleGradient = ctx.createRadialGradient(x, y, 0, x, y, particle.size);
+        particleGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        particleGradient.addColorStop(0.5, 'rgba(4, 251, 172, 0.8)');
+        particleGradient.addColorStop(1, 'rgba(4, 251, 172, 0)');
+        
+        ctx.fillStyle = particleGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, particle.size * 2, 0, Math.PI * 2);
+        ctx.fill();
     });
     
-    // 2. DESSINER LES PARALLÈLES (lignes horizontales)
-    shieldCollections.gridLines.parallels.forEach(parallel => {
+    // Dessiner les particules de plasma flottantes
+    shieldSystem.particles.forEach(particle => {
+        const x = centerX + Math.cos(particle.angle) * particle.distance;
+        const y = centerY + Math.sin(particle.angle) * particle.distance;
+        const opacity = particle.opacity * (particle.lifespan / 200);
+        
+        ctx.fillStyle = `rgba(4, 251, 172, ${opacity})`;
         ctx.beginPath();
-        let firstPoint = true;
-        let hasVisibleSegments = false;
-        
-        parallel.segments.forEach(segment => {
-            if (!segment.visible) return;
-            hasVisibleSegments = true;
-            
-            // Projection 3D -> 2D
-            const coords = project3DTo2D(
-                sphericalShield.radius * Math.sin(parallel.theta) * Math.cos(segment.phi),
-                sphericalShield.radius * Math.cos(parallel.theta),
-                sphericalShield.radius * Math.sin(parallel.theta) * Math.sin(segment.phi),
-                centerX, centerY, sphericalShield.rotation
-            );
-            
-            if (firstPoint) {
-                ctx.moveTo(coords.x, coords.y);
-                firstPoint = false;
-            } else {
-                ctx.lineTo(coords.x, coords.y);
-            }
-        });
-        
-        if (hasVisibleSegments) {
-            const avgOpacity = parallel.segments.reduce((sum, s) => sum + s.opacity, 0) / parallel.segments.length;
-            const avgGlow = parallel.segments.reduce((sum, s) => sum + s.glowIntensity, 0) / parallel.segments.length;
-            
-            applyGridLineStyle(ctx, avgOpacity, avgGlow, sphericalShield);
-            ctx.stroke();
-        }
-    });
-}
-
-// Dessiner les vertices actifs (intersections qui pulsent)
-export function drawActiveVertices(ctx, centerX, centerY, sphericalShield, shieldCollections) {
-    shieldCollections.gridLines.vertices.forEach(vertex => {
-        if (!vertex.active || vertex.pulse < 0.1) return;
-        
-        const coords = project3DTo2D(
-            sphericalShield.radius * Math.sin(vertex.theta) * Math.cos(vertex.angle),
-            sphericalShield.radius * Math.cos(vertex.theta),
-            sphericalShield.radius * Math.sin(vertex.theta) * Math.sin(vertex.angle),
-            centerX, centerY, sphericalShield.rotation
-        );
-        
-        const pulseGradient = ctx.createRadialGradient(
-            coords.x, coords.y, 0, 
-            coords.x, coords.y, 5 * vertex.pulse
-        );
-        pulseGradient.addColorStop(0, `rgba(255, 255, 255, ${vertex.pulse})`);
-        pulseGradient.addColorStop(0.5, `rgba(255, 150, 0, ${vertex.pulse * 0.7})`);
-        pulseGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
-        
-        ctx.fillStyle = pulseGradient;
-        ctx.beginPath();
-        ctx.arc(coords.x, coords.y, 5 * vertex.pulse, 0, Math.PI * 2);
+        ctx.arc(x, y, particle.size, 0, Math.PI * 2);
         ctx.fill();
     });
 }
 
-// Fonction utilitaire pour la projection 3D vers 2D
-function project3DTo2D(x3d, y3d, z3d, centerX, centerY, rotation) {
-    // Appliquer la rotation
-    const rotatedX = x3d * Math.cos(rotation.y) - z3d * Math.sin(rotation.y);
-    const rotatedZ = x3d * Math.sin(rotation.y) + z3d * Math.cos(rotation.y);
-    
-    // Projection perspective
-    const perspective = 1 + rotatedZ / 200;
-    const projX = centerX + rotatedX * perspective;
-    const projY = centerY + y3d * perspective;
-    
-    return { x: projX, y: projY, z: rotatedZ };
-}
 
-// Appliquer le style des lignes de grille (tout en orange comme dans le code original)
-function applyGridLineStyle(ctx, opacity, glowIntensity, sphericalShield) {
-    if (glowIntensity > 0.1) {
-        // Style d'impact (orange brillant)
-        ctx.strokeStyle = `rgba(255, 150, 0, ${opacity * sphericalShield.visibility})`;
-        ctx.lineWidth = 1.5 + glowIntensity;
-        ctx.shadowBlur = 10 * glowIntensity;
-        ctx.shadowColor = 'rgba(255, 150, 0, 0.8)';
-    } else {
-        // Style normal (orange plus doux - pas cyan !)
-        ctx.strokeStyle = `rgba(255, 200, 100, ${opacity * sphericalShield.visibility})`;
-        ctx.lineWidth = 1;
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = 'rgba(255, 200, 100, 0.5)';
-    }
-}
-
-// Fonction utilitaire pour calculer la distance sphérique
-export function calculateSphericalDistance(phi1, theta1, phi2, theta2) {
-    const dPhi = phi2 - phi1;
-    const dTheta = theta2 - theta1;
-    return Math.sqrt(dPhi * dPhi + dTheta * dTheta);
-}
-
-// Révéler les segments de grille dans un rayon donné
-export function revealGridSegments(sphericalShield, shieldCollections, revelationPhi, revelationTheta, revelationRadius, intensity) {
-    // Révéler les segments de méridiens
-    shieldCollections.gridLines.meridians.forEach(meridian => {
-        meridian.segments.forEach(segment => {
-            const distance = calculateSphericalDistance(
-                revelationPhi, revelationTheta,
-                meridian.angle, segment.theta
-            );
-            
-            if (distance < revelationRadius) {
-                segment.visible = true;
-                segment.opacity = Math.min(1, segment.opacity + 0.1);
-                segment.glowIntensity = Math.max(segment.glowIntensity, intensity);
-            }
-        });
-    });
-    
-    // Révéler les segments de parallèles
-    shieldCollections.gridLines.parallels.forEach(parallel => {
-        parallel.segments.forEach(segment => {
-            const distance = calculateSphericalDistance(
-                revelationPhi, revelationTheta,
-                segment.phi, parallel.theta
-            );
-            
-            if (distance < revelationRadius) {
-                segment.visible = true;
-                segment.opacity = Math.min(1, segment.opacity + 0.1);
-                segment.glowIntensity = Math.max(segment.glowIntensity, intensity);
-            }
-        });
-    });
-}
-
-// Activer les vertices proches d'un impact
-export function activateNearbyVertices(shieldCollections, impactPhi, impactTheta, radius = 0.5) {
-    shieldCollections.gridLines.vertices.forEach(vertex => {
-        const angleDiff = Math.abs(vertex.angle - impactPhi);
-        const thetaDiff = Math.abs(vertex.theta - impactTheta);
-        const distance = Math.sqrt(angleDiff * angleDiff + thetaDiff * thetaDiff);
-        
-        if (distance < radius) {
-            vertex.active = true;
-            vertex.pulse = 1.0;
-        }
-    });
-}

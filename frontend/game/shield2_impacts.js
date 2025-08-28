@@ -51,6 +51,9 @@ export function createSphericalImpactEffect(impactX, impactY, player, damage, sp
     createImpactParticles(sphericalShield, impactX, impactY);
     
     console.log(`💥 Impact sphérique v2 créé à φ=${phi.toFixed(2)}, θ=${theta.toFixed(2)}`);
+    console.log('🔍 DEBUG: Révélations actives:', sphericalShield.revelations.length);
+    console.log('🔍 DEBUG: Ondes d\'énergie actives:', sphericalShield.energyWaves.length);
+    console.log('🔍 DEBUG: Particules d\'impact créées');
 }
 
 // Mise à jour du système d'impacts (CODE ORIGINAL EXACT)

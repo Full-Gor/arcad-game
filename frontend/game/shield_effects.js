@@ -1,247 +1,182 @@
-// shield_effects.js - Effets visuels du bouclier sphérique
-import { canvas, ctx } from './globals_simple.js';
-import { drawSphericalGrid, drawActiveVertices } from './shield_geometry.js';
+// shield_effects.js - Effets visuels du bouclier simple
+import { starship } from './player_simple.js';
+import { shieldSystem } from './shield_simple.js';
 
-// Initialisation des systèmes d'effets
-export function initShieldEffects(sphericalShield, shieldCollections) {
-    console.log('✨ Initialisation des effets de bouclier...');
+// Créer un impact amélioré pour le bouclier simple
+export function createSimpleShieldImpact(impactX, impactY, player = starship, damage = 10) {
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
     
-    // Réinitialiser les collections d'effets
-    shieldCollections.energyWaves = [];
-    shieldCollections.pulsePoints = [];
+    const dx = impactX - centerX;
+    const dy = impactY - centerY;
+    const angle = Math.atan2(dy, dx);
+    const distance = Math.sqrt(dx * dx + dy * dy);
     
-    console.log('✅ Effets de bouclier initialisés');
-}
-
-// Mise à jour des effets visuels
-export function updateShieldEffects(sphericalShield, shieldCollections) {
-    // Mise à jour des ondes d'énergie
-    shieldCollections.energyWaves = shieldCollections.energyWaves.filter(wave => {
-        wave.radius += wave.speed;
-        wave.opacity *= 0.98;
-        return wave.radius < wave.maxRadius && wave.opacity > 0.01;
+    // Impact principal avec onde de choc
+    shieldSystem.impacts.push({
+        angle: angle,
+        intensity: 1.0,
+        radius: 0,
+        maxRadius: 40,
+        life: 45,
+        maxLife: 45,
+        shockwave: true,
+        color: { ...shieldSystem.energyColor.impact }
     });
     
-    // Mise à jour des particules de pulse
-    shieldCollections.pulsePoints = shieldCollections.pulsePoints.filter(point => {
-        // Gestion de la traînée
-        if (point.trail.length > 5) point.trail.shift();
-        point.trail.push({ x: point.x, y: point.y });
-        
-        // Mouvement et physics
-        point.x += point.vx;
-        point.y += point.vy;
-        point.vx *= 0.95;
-        point.vy *= 0.95;
-        point.life--;
-        point.size *= 0.98;
-        
-        return point.life > 0;
-    });
-}
-
-// Rendu des effets visuels
-export function drawShieldEffects(ctx, centerX, centerY, sphericalShield, shieldCollections) {
-    ctx.save();
-    
-    // 1. Dessiner la grille géodésique
-    drawSphericalGrid(ctx, centerX, centerY, sphericalShield, shieldCollections);
-    
-    // 2. Dessiner les vertices actifs
-    drawActiveVertices(ctx, centerX, centerY, sphericalShield, shieldCollections);
-    
-    // 3. Dessiner les ondes d'énergie
-    drawEnergyWaves(ctx, centerX, centerY, sphericalShield, shieldCollections);
-    
-    // 4. Dessiner les particules de pulse
-    drawPulseParticles(ctx, sphericalShield, shieldCollections);
-    
-    ctx.restore();
-}
-
-// Dessiner les ondes d'énergie qui parcourent la sphère
-function drawEnergyWaves(ctx, centerX, centerY, sphericalShield, shieldCollections) {
-    shieldCollections.energyWaves.forEach(wave => {
-        ctx.strokeStyle = `rgba(${wave.color.r}, ${wave.color.g}, ${wave.color.b}, ${wave.opacity * sphericalShield.visibility})`;
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = `rgba(${wave.color.r}, ${wave.color.g}, ${wave.color.b}, 0.5)`;
-        
-        // Dessiner un cercle sur la surface de la sphère
-        ctx.beginPath();
-        for (let i = 0; i <= 32; i++) {
-            const angle = (i / 32) * Math.PI * 2;
-            const waveTheta = wave.originTheta + wave.radius * Math.cos(angle);
-            const wavePhi = wave.originPhi + wave.radius * Math.sin(angle);
-            
-            // Projection 3D vers 2D
-            const coords = project3DWavePoint(
-                waveTheta, wavePhi, 
-                sphericalShield.radius, 
-                centerX, centerY, 
-                sphericalShield.rotation
-            );
-            
-            if (i === 0) ctx.moveTo(coords.x, coords.y);
-            else ctx.lineTo(coords.x, coords.y);
-        }
-        ctx.stroke();
-    });
-}
-
-// Dessiner les particules d'impact
-function drawPulseParticles(ctx, sphericalShield, shieldCollections) {
-    shieldCollections.pulsePoints.forEach(point => {
-        // Dessiner la traînée
-        if (point.trail.length > 1) {
-            ctx.strokeStyle = 'rgba(255, 150, 0, 0.3)';
-            ctx.lineWidth = point.size * 0.5;
-            ctx.beginPath();
-            point.trail.forEach((p, i) => {
-                if (i === 0) ctx.moveTo(p.x, p.y);
-                else ctx.lineTo(p.x, p.y);
-            });
-            ctx.stroke();
-        }
-        
-        // Dessiner la particule principale
-        const particleGradient = ctx.createRadialGradient(
-            point.x, point.y, 0,
-            point.x, point.y, point.size
-        );
-        particleGradient.addColorStop(0, `rgba(255, 255, 255, ${point.life / 50})`);
-        particleGradient.addColorStop(0.5, `rgba(255, 150, 0, ${point.life / 50})`);
-        particleGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
-        
-        ctx.fillStyle = particleGradient;
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, point.size, 0, Math.PI * 2);
-        ctx.fill();
-    });
-}
-
-// Créer une onde d'énergie
-export function createEnergyWave(shieldCollections, originPhi, originTheta, color, delay = 0) {
-    setTimeout(() => {
-        shieldCollections.energyWaves.push({
-            originPhi: originPhi,
-            originTheta: originTheta,
-            radius: 0,
-            maxRadius: Math.PI,
-            speed: 0.05,
-            opacity: 1.0,
-            thickness: 0.1,
-            color: color
-        });
-    }, delay);
-}
-
-// Créer des particules d'impact
-export function createImpactParticles(shieldCollections, impactX, impactY, count = 15) {
-    for (let i = 0; i < count; i++) {
-        const spreadAngle = Math.random() * Math.PI * 2;
-        const spreadSpeed = 1 + Math.random() * 3;
-        
-        shieldCollections.pulsePoints.push({
-            x: impactX,
-            y: impactY,
-            vx: Math.cos(spreadAngle) * spreadSpeed,
-            vy: Math.sin(spreadAngle) * spreadSpeed,
-            size: 2 + Math.random() * 2,
-            life: 30 + Math.random() * 20,
-            trail: []
-        });
-    }
-}
-
-// Créer un effet de pulsation énergétique
-export function createEnergyPulse(shieldCollections, centerX, centerY, radius, intensity = 1.0) {
-    // Créer plusieurs ondes concentriques
+    // Créer des ondulations (ripples)
     for (let i = 0; i < 3; i++) {
         setTimeout(() => {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * radius;
-            
-            shieldCollections.pulsePoints.push({
-                x: centerX + Math.cos(angle) * distance,
-                y: centerY + Math.sin(angle) * distance,
-                vx: Math.cos(angle) * (2 + Math.random() * 2),
-                vy: Math.sin(angle) * (2 + Math.random() * 2),
-                size: 3 + Math.random() * 3,
-                life: 40 + Math.random() * 30,
-                trail: []
+            shieldSystem.ripples.push({
+                x: impactX,
+                y: impactY,
+                radius: 0,
+                maxRadius: 60 + i * 20,
+                opacity: 0.8 - i * 0.2,
+                speed: 2 - i * 0.3,
+                angle: angle
             });
-        }, i * 50);
+        }, i * 100);
     }
-}
-
-// Fonction utilitaire pour projeter un point d'onde
-function project3DWavePoint(theta, phi, radius, centerX, centerY, rotation) {
-    const x3d = radius * Math.sin(theta) * Math.cos(phi);
-    const y3d = radius * Math.cos(theta);
-    const z3d = radius * Math.sin(theta) * Math.sin(phi);
     
-    // Rotation
-    const rotatedX = x3d * Math.cos(rotation.y) - z3d * Math.sin(rotation.y);
-    const rotatedZ = x3d * Math.sin(rotation.y) + z3d * Math.cos(rotation.y);
-    
-    // Projection perspective
-    const perspective = 1 + rotatedZ / 200;
-    const projX = centerX + rotatedX * perspective;
-    const projY = centerY + y3d * perspective;
-    
-    return { x: projX, y: projY };
-}
-
-// Créer un effet de révélation progressive
-export function createRevealationEffect(shieldCollections, centerX, centerY, radius) {
-    // Créer des particules qui révèlent la grille
-    const particleCount = 20;
-    for (let i = 0; i < particleCount; i++) {
-        const angle = (i / particleCount) * Math.PI * 2;
-        const distance = radius * 0.8;
-        
-        shieldCollections.pulsePoints.push({
-            x: centerX + Math.cos(angle) * distance,
-            y: centerY + Math.sin(angle) * distance,
-            vx: Math.cos(angle) * 0.5,
-            vy: Math.sin(angle) * 0.5,
-            size: 1.5,
-            life: 60,
+    // Explosion de particules d'énergie
+    for (let i = 0; i < 20; i++) {
+        const spreadAngle = angle + (Math.random() - 0.5) * Math.PI * 0.5;
+        const speed = 2 + Math.random() * 4;
+        shieldSystem.energyBursts.push({
+            x: impactX,
+            y: impactY,
+            vx: Math.cos(spreadAngle) * speed,
+            vy: Math.sin(spreadAngle) * speed,
+            size: 2 + Math.random() * 3,
+            life: 30 + Math.random() * 20,
+            color: Math.random() > 0.5 ? shieldSystem.energyColor : shieldSystem.energyColor.impact,
             trail: []
         });
     }
+    
+    // Activer les hexagones proches
+    shieldSystem.hexagons.forEach(hex => {
+        const hexAngle = hex.angle;
+        const angleDiff = Math.abs(angle - hexAngle);
+        const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+        
+        if (normalizedDiff < 0.5) {
+            hex.active = true;
+            hex.activation = 1.0;
+        }
+    });
+    
+    // Créer une distorsion temporaire
+    shieldSystem.distortion = Math.min(shieldSystem.distortion + damage * 0.1, 2.0);
+    
+    // Overcharge temporaire pour effet dramatique
+    shieldSystem.overcharge = Math.min(shieldSystem.overcharge + 0.3, 1.0);
+    
+    console.log('💥 Impact sur le bouclier simple à', impactX, impactY);
 }
 
-// Créer un effet de surcharge énergétique
-export function createOverchargeEffect(shieldCollections, centerX, centerY, sphericalShield) {
-    // Effet de surcharge avec particules intenses
-    for (let i = 0; i < 30; i++) {
+// Fonction pour créer des particules d'impact pour le bouclier simple
+export function createSimpleImpactParticles(impactX, impactY, count = 15) {
+    for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const distance = Math.random() * sphericalShield.radius;
-        const speed = 2 + Math.random() * 4;
-        
-        shieldCollections.pulsePoints.push({
-            x: centerX + Math.cos(angle) * distance,
-            y: centerY + Math.sin(angle) * distance,
+        const speed = 1 + Math.random() * 3;
+        const particle = {
+            x: impactX,
+            y: impactY,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
-            size: 3 + Math.random() * 4,
-            life: 50 + Math.random() * 40,
-            trail: []
-        });
-    }
-    
-    // Ondes d'énergie multiples
-    for (let i = 0; i < 5; i++) {
-        const phi = Math.random() * Math.PI * 2;
-        const theta = Math.random() * Math.PI;
+            life: 30 + Math.random() * 20,
+            maxLife: 30 + Math.random() * 20,
+            size: 2 + Math.random() * 2,
+            color: 'rgba(4, 251, 172, 1)'
+        };
         
-        createEnergyWave(
-            shieldCollections, 
-            phi, theta, 
-            sphericalShield.colors.energy, 
-            i * 100
-        );
+        shieldSystem.particles.push(particle);
     }
+}
+
+// Fonction pour mettre à jour les effets du bouclier simple
+export function updateSimpleShieldEffects() {
+    // Mise à jour des impacts
+    shieldSystem.impacts = shieldSystem.impacts.filter(impact => {
+        impact.life--;
+        impact.intensity = impact.life / impact.maxLife;
+        impact.radius += 2;
+        return impact.life > 0;
+    });
+    
+    // Mise à jour des ondulations
+    shieldSystem.ripples = shieldSystem.ripples.filter(ripple => {
+        ripple.radius += ripple.speed;
+        ripple.opacity *= 0.95;
+        return ripple.radius < ripple.maxRadius && ripple.opacity > 0.01;
+    });
+    
+    // Mise à jour des explosions d'énergie
+    shieldSystem.energyBursts = shieldSystem.energyBursts.filter(burst => {
+        // Ajouter à la traînée
+        if (burst.trail.length > 8) burst.trail.shift();
+        burst.trail.push({ x: burst.x, y: burst.y, size: burst.size });
+        
+        burst.x += burst.vx;
+        burst.y += burst.vy;
+        burst.vx *= 0.95;
+        burst.vy *= 0.95;
+        burst.life--;
+        burst.size *= 0.98;
+        return burst.life > 0 && burst.size > 0.5;
+    });
+}
+
+// Fonction pour dessiner les effets du bouclier simple
+export function drawSimpleShieldEffects(ctx) {
+    if (!starship) return;
+    
+    const centerX = starship.x + starship.width / 2;
+    const centerY = starship.y + starship.height / 2;
+    
+    // Dessiner les ondulations (Ripples)
+    shieldSystem.ripples.forEach(ripple => {
+        ctx.strokeStyle = `rgba(4, 251, 172, ${ripple.opacity})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, ripple.radius, ripple.angle - 1, ripple.angle + 1);
+        ctx.stroke();
+        
+        // Effet de distorsion
+        ctx.strokeStyle = `rgba(255, 255, 255, ${ripple.opacity * 0.3})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, ripple.radius + 5, ripple.angle - 0.5, ripple.angle + 0.5);
+        ctx.stroke();
+    });
+    
+    // Dessiner les explosions d'énergie
+    shieldSystem.energyBursts.forEach(burst => {
+        // Traînée
+        if (burst.trail.length > 1) {
+            ctx.strokeStyle = `rgba(${burst.color.r}, ${burst.color.g}, ${burst.color.b}, 0.3)`;
+            burst.trail.forEach((point, i) => {
+                ctx.lineWidth = point.size * 0.5 * ((i + 1) / burst.trail.length);
+                ctx.beginPath();
+                if (i > 0) {
+                    ctx.moveTo(burst.trail[i-1].x, burst.trail[i-1].y);
+                    ctx.lineTo(point.x, point.y);
+                    ctx.stroke();
+                }
+            });
+        }
+        
+        // Particule d'énergie
+        const energyGradient = ctx.createRadialGradient(burst.x, burst.y, 0, burst.x, burst.y, burst.size);
+        energyGradient.addColorStop(0, `rgba(255, 255, 255, ${burst.life / 50})`);
+        energyGradient.addColorStop(0.3, `rgba(${burst.color.r}, ${burst.color.g}, ${burst.color.b}, ${burst.life / 50})`);
+        energyGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.fillStyle = energyGradient;
+        ctx.beginPath();
+        ctx.arc(burst.x, burst.y, burst.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
 }

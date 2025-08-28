@@ -11,10 +11,9 @@ import { updateFunnelLasers, drawFunnelLasers, clearFunnelLasers } from './funne
 import { initializeScore, shouldSpawnBossGlobal } from './score_simple.js';
 import { initializeMiniBoss, createMiniBoss, updateMiniBoss, drawMiniBoss, isMiniBossActive } from './miniboss_simple.js';
 import { initializeBoss, createBoss, updateBoss, drawBoss, isBossActive } from './boss_simple.js';
-import { initializeShield, updateShieldParticles, drawShieldParticles, activateShield } from './shield_simple.js';
-import { initAdvancedShield, updateAdvancedShield, drawAdvancedShield, activateAdvancedShield, createAdvancedShieldImpact, isAdvancedShieldActive } from './shield_advanced.js';
 import { initSphericalShield, updateSphericalShield, drawSphericalShield, revealFullShield, createSphericalImpact, isSphericalShieldActive } from './shield2_main.js';
 import { updateEnemyInfoDisplay, drawEnemyInfoDisplay } from './enemy_info_display.js';
+import { updateSimpleShield, drawSimpleShield, initShieldSystem } from './shield_simple.js';
 
 // Variables du jeu
 let gameRunning = false;
@@ -57,9 +56,8 @@ function initGame() {
     initializeBoss();
     
     // Initialiser les systèmes de bouclier
-    // initializeShield();        // Ancien système simple (DÉSACTIVÉ pour test)
-    // initAdvancedShield();      // Système avancé modulaire (DÉSACTIVÉ pour test)
-    initSphericalShield();     // NOUVEAU: Système sphérique v2 (code original) - SEUL ACTIF
+    initShieldSystem();        // NOUVEAU: Bouclier simple activé avec ESPACE
+    initSphericalShield();     // NOUVEAU: Système sphérique v2 (code original)
     
     // Initialiser les contrôles
     initializeInput();
@@ -124,9 +122,8 @@ function gameLoop() {
         updateExplosionParticles();
         
         // Mettre à jour les systèmes de bouclier
-        // updateShieldParticles();   // Ancien système simple (DÉSACTIVÉ pour test)
-        // updateAdvancedShield();    // Système avancé modulaire (DÉSACTIVÉ pour test)
-        updateSphericalShield();   // NOUVEAU: Système sphérique v2 (code original) - SEUL ACTIF
+        updateSimpleShield();      // NOUVEAU: Bouclier simple activé avec ESPACE
+        updateSphericalShield();   // NOUVEAU: Système sphérique v2 (code original)
         
         // NOUVEAU: Vérifier si le boss doit apparaître (priorité absolue)
         if (shouldSpawnBossGlobal() && !bossTriggered && !isBossActive()) {
@@ -159,9 +156,8 @@ function gameLoop() {
         drawExplosionParticles();
         
         // Dessiner les systèmes de bouclier
-        // drawShieldParticles();     // Ancien système simple (DÉSACTIVÉ pour test)
-        // drawAdvancedShield();      // Système avancé modulaire (DÉSACTIVÉ pour test)
-        drawSphericalShield(ctx);  // NOUVEAU: Système sphérique v2 (code original) - SEUL ACTIF
+        drawSimpleShield();        // NOUVEAU: Bouclier simple activé avec ESPACE
+        drawSphericalShield(ctx);  // NOUVEAU: Système sphérique v2 (code original)
         
         // Dessiner les lasers entonnoir (derrière)
         drawFunnelLasers(ctx);

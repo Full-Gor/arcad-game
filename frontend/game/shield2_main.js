@@ -37,10 +37,10 @@ let sphericalShield = {
     revealTimer: 0,
     maxRevealTime: 600, // NOUVEAU: 10 secondes à 60fps (10 * 60 = 600 frames)
     
-    // Configuration visuelle (CODE ORIGINAL - COULEURS CYAN/ORANGE)
+    // Configuration visuelle (TEST MAGENTA)
     colors: {
-        grid: { r: 0, g: 255, b: 200 },      // Cyan pour la grille
-        energy: { r: 100, g: 200, b: 255 },   // Bleu électrique
+        grid: { r: 255, g: 0, b: 255 },      // Magenta pour la grille
+        energy: { r: 255, g: 100, b: 255 },   // Magenta électrique
         impact: { r: 255, g: 150, b: 0 }      // Orange pour impacts
     }
 };
@@ -67,9 +67,9 @@ export function updateSphericalShield() {
     sphericalShield.rotation.y += 0.016; // 4x plus rapide
     sphericalShield.rotation.z += 0.012; // 4x plus rapide
     
-    // Gestion de la visibilité globale
+    // Gestion de la visibilité globale (RALENTI)
     if (sphericalShield.isRevealing) {
-        sphericalShield.visibility += (sphericalShield.targetVisibility - sphericalShield.visibility) * 0.1;
+        sphericalShield.visibility += (sphericalShield.targetVisibility - sphericalShield.visibility) * 0.05; // 2x plus lent
         sphericalShield.revealTimer--;
         
         if (sphericalShield.revealTimer <= 0) {
@@ -77,7 +77,7 @@ export function updateSphericalShield() {
             sphericalShield.targetVisibility = 0;
         }
     } else {
-        sphericalShield.visibility *= 0.95;
+        sphericalShield.visibility *= 0.98; // Plus lent aussi
         if (sphericalShield.visibility < 0.01) {
             sphericalShield.visibility = 0;
         }
@@ -103,9 +103,9 @@ export function drawSphericalShield(ctx) {
             centerX, centerY, 0,
             centerX, centerY, sphericalShield.radius + 10
         );
-        auraGradient.addColorStop(0, `rgba(0, 255, 200, ${sphericalShield.visibility * 0.05})`);
-        auraGradient.addColorStop(0.7, `rgba(0, 255, 200, ${sphericalShield.visibility * 0.02})`);
-        auraGradient.addColorStop(1, 'rgba(0, 255, 200, 0)');
+        auraGradient.addColorStop(0, `rgba(255, 0, 255, ${sphericalShield.visibility * 0.05})`);
+        auraGradient.addColorStop(0.7, `rgba(255, 0, 255, ${sphericalShield.visibility * 0.02})`);
+        auraGradient.addColorStop(1, 'rgba(255, 0, 255, 0)');
         
         ctx.fillStyle = auraGradient;
         ctx.beginPath();
@@ -154,10 +154,10 @@ export function drawSphericalShield(ctx) {
             ctx.shadowBlur = 15 * avgGlow; // Plus de lueur
             ctx.shadowColor = 'rgba(255, 150, 0, 1.0)'; // Lueur plus intense
         } else {
-            ctx.strokeStyle = `rgba(0, 255, 200, ${avgOpacity * sphericalShield.visibility})`;
+            ctx.strokeStyle = `rgba(255, 0, 255, ${avgOpacity * sphericalShield.visibility})`;
             ctx.lineWidth = 1;
             ctx.shadowBlur = 5;
-            ctx.shadowColor = 'rgba(0, 255, 200, 0.5)';
+            ctx.shadowColor = 'rgba(255, 0, 255, 0.5)';
         }
         
         ctx.stroke();
@@ -203,7 +203,7 @@ export function drawSphericalShield(ctx) {
             ctx.shadowBlur = 15 * avgGlow; // Plus de lueur
             ctx.shadowColor = 'rgba(255, 150, 0, 1.0)'; // Lueur plus intense
         } else {
-            ctx.strokeStyle = `rgba(0, 255, 200, ${avgOpacity * sphericalShield.visibility})`;
+            ctx.strokeStyle = `rgba(255, 0, 255, ${avgOpacity * sphericalShield.visibility})`;
             ctx.lineWidth = 1;
         }
         
@@ -267,30 +267,10 @@ export function drawSphericalShield(ctx) {
         ctx.stroke();
     });
     
-    // 6. PARTICULES D'IMPACT
+    // 6. PARTICULES D'IMPACT (ADAPTÉ DU PREMIER BOUCLIER)
     sphericalShield.pulsePoints.forEach(point => {
-        // Traînée
-        if (point.trail.length > 1) {
-            ctx.strokeStyle = 'rgba(255, 150, 0, 0.3)';
-            ctx.lineWidth = point.size * 0.5;
-            ctx.beginPath();
-            point.trail.forEach((p, i) => {
-                if (i === 0) ctx.moveTo(p.x, p.y);
-                else ctx.lineTo(p.x, p.y);
-            });
-            ctx.stroke();
-        }
-        
-        // Particule
-        const particleGradient = ctx.createRadialGradient(
-            point.x, point.y, 0,
-            point.x, point.y, point.size
-        );
-        particleGradient.addColorStop(0, `rgba(255, 255, 255, ${point.life / 50})`);
-        particleGradient.addColorStop(0.5, `rgba(255, 150, 0, ${point.life / 50})`);
-        particleGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
-        
-        ctx.fillStyle = particleGradient;
+        const alpha = point.life / point.maxLife;
+        ctx.fillStyle = `rgba(255, 150, 0, ${alpha})`;
         ctx.beginPath();
         ctx.arc(point.x, point.y, point.size, 0, Math.PI * 2);
         ctx.fill();
@@ -301,7 +281,8 @@ export function drawSphericalShield(ctx) {
 
 // Fonction de vérification (CODE ORIGINAL EXACT)
 export function isSphericalShieldActive() {
-    return starship && starship.shield && sphericalShield.visibility > 0;
+    console.log('🔍 DEBUG: isSphericalShieldActive - starship:', !!starship, 'shield:', starship?.shield, 'visibility:', sphericalShield.visibility, 'isRevealing:', sphericalShield.isRevealing);
+    return starship && starship.shield && (sphericalShield.visibility > 0 || sphericalShield.isRevealing);
 }
 
 // Fonction pour forcer la révélation complète (NOUVEAU: 10 secondes par défaut)
@@ -310,13 +291,13 @@ export function revealFullShield(duration = 600) { // NOUVEAU: 10 secondes à 60
     sphericalShield.targetVisibility = 1;
     sphericalShield.revealTimer = duration;
     
-    // Révéler toute la grille progressivement
+    // Révéler toute la grille progressivement (RALENTI)
     sphericalShield.gridLines.meridians.forEach(meridian => {
         meridian.segments.forEach((segment, i) => {
             setTimeout(() => {
                 segment.visible = true;
                 segment.opacity = 1;
-            }, i * 10);
+            }, i * 50); // 5x plus lent (50ms au lieu de 10ms)
         });
     });
     
@@ -325,7 +306,7 @@ export function revealFullShield(duration = 600) { // NOUVEAU: 10 secondes à 60
             setTimeout(() => {
                 segment.visible = true;
                 segment.opacity = 1;
-            }, i * 10);
+            }, i * 50); // 5x plus lent (50ms au lieu de 10ms)
         });
     });
 }
@@ -334,8 +315,13 @@ export function revealFullShield(duration = 600) { // NOUVEAU: 10 secondes à 60
 export function activateSphericalShield() {
     if (!starship) return;
     
-    starship.shield = true;
-    console.log('🛡️ Bouclier sphérique v2 activé');
+    console.log('🛡️ Activation du bouclier sphérique v2 (code original) !');
+    sphericalShield.active = true;
+    sphericalShield.isRevealing = true;
+    sphericalShield.visibility = 0;
+    starship.shield = true; // NOUVEAU: Activer le flag shield du starship
+    console.log('🛡️ starship.shield défini à true');
+    revealFullShield();
 }
 
 // Export de la variable principale pour les autres modules
