@@ -2,8 +2,10 @@
 import { canvas } from './globals_simple.js';
 import { starship } from './player_simple.js';
 import { startShooting, stopShooting } from './bullets_simple.js';
+import { createPlayerFunnelLaser } from './funnel_laser_simple.js';
 import { startShootSound, stopShootSound } from './audio_simple.js';
 import { activateSimpleShield, deactivateSimpleShield } from './shield_simple.js';
+import { activateShield3, deactivateShield3, isShield3Active } from './shield3_main.js';
 
 // Variables pour gérer l'état des contrôles
 let inputInitialized = false;
@@ -74,6 +76,20 @@ function handleKeyDown(event) {
     if (event.code === 'Space') {
         event.preventDefault(); // Empêcher le scroll de la page
         activateSimpleShield();
+    } else if (event.code === 'KeyF') { // F pour Funnel laser joueur
+        event.preventDefault();
+        createPlayerFunnelLaser();
+    } else if (event.code === 'KeyC' || event.key === 'c' || event.key === 'C') {
+        // Toggle Shield3 avec la touche C
+        event.preventDefault();
+        if (isShield3Active()) {
+            deactivateShield3();
+        } else {
+            activateShield3();
+        }
+    } else if (event.key === 'f' || event.key === 'F') {
+        event.preventDefault();
+        createPlayerFunnelLaser();
     }
 }
 
@@ -81,6 +97,8 @@ function handleKeyDown(event) {
 function handleKeyUp(event) {
     if (event.code === 'Space') {
         deactivateSimpleShield();
+    } else if (event.code === 'KeyC' || event.key === 'c' || event.key === 'C') {
+        // Mode toggle: ne rien faire au relâchement
     }
 }
 

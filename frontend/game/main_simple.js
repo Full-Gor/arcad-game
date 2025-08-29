@@ -1,6 +1,6 @@
 // main_simple.js - Point d'entrée principal simplifié
 import { initializeCanvas, setupCanvasResize, canvas, ctx } from './globals_simple.js';
-import { initializePlayer, drawPlayer, updateStarshipIntro, isIntroActive } from './player_simple.js';
+import { initializePlayer, drawPlayer, updateStarshipIntro, isIntroActive, starship } from './player_simple.js';
 import { initializeInput } from './input_simple.js';
 import { initializeBullets, handleShooting, drawBullets } from './bullets_simple.js';
 import { initializeEnemies, startEnemyGeneration, updateEnemies, drawEnemies, stopEnemyGeneration, areAllWavesCompleted } from './enemies_simple.js';
@@ -12,6 +12,11 @@ import { initializeScore, shouldSpawnBossGlobal } from './score_simple.js';
 import { initializeMiniBoss, createMiniBoss, updateMiniBoss, drawMiniBoss, isMiniBossActive } from './miniboss_simple.js';
 import { initializeBoss, createBoss, updateBoss, drawBoss, isBossActive } from './boss_simple.js';
 import { initSphericalShield, updateSphericalShield, drawSphericalShield, revealFullShield, createSphericalImpact, isSphericalShieldActive } from './shield2_main.js';
+import { initShield3, updateShield3, drawShield3 } from './shield3_main.js';
+import { initPowerUpSystem } from './power_shield_common.js';
+import { updatePowerShield1, drawPowerShield1, spawnPowerShield1 } from './power_shield1.js';
+import { updatePowerShield2, drawPowerShield2, spawnPowerShield2 } from './power_shield2.js';
+import { updatePowerShield3, drawPowerShield3, spawnPowerShield3 } from './power_shield3.js';
 import { updateEnemyInfoDisplay, drawEnemyInfoDisplay } from './enemy_info_display.js';
 import { updateSimpleShield, drawSimpleShield, initShieldSystem } from './shield_simple.js';
 
@@ -58,10 +63,17 @@ function initGame() {
     // Initialiser les systèmes de bouclier
     initShieldSystem();        // NOUVEAU: Bouclier simple activé avec ESPACE
     initSphericalShield();     // NOUVEAU: Système sphérique v2 (code original)
+    initShield3();             // NOUVEAU: Bouclier 3 (absorption + riposte)
+    initPowerUpSystem(canvas.width, canvas.height);
     
     // Initialiser les contrôles
     initializeInput();
     
+    // Exposer les spawns power-ups pour collisions
+    window.spawnPowerShield1 = spawnPowerShield1;
+    window.spawnPowerShield2 = spawnPowerShield2;
+    window.spawnPowerShield3 = spawnPowerShield3;
+
     // Démarrer la génération automatique d'ennemis
     startEnemyGeneration();
     
@@ -124,6 +136,11 @@ function gameLoop() {
         // Mettre à jour les systèmes de bouclier
         updateSimpleShield();      // NOUVEAU: Bouclier simple activé avec ESPACE
         updateSphericalShield();   // NOUVEAU: Système sphérique v2 (code original)
+        updateShield3();           // NOUVEAU: Bouclier 3 (absorption + riposte)
+        // Power-ups
+        updatePowerShield1(starship);
+        updatePowerShield2(starship);
+        updatePowerShield3(starship);
         
         // NOUVEAU: Vérifier si le boss doit apparaître (priorité absolue)
         if (shouldSpawnBossGlobal() && !bossTriggered && !isBossActive()) {
@@ -158,6 +175,11 @@ function gameLoop() {
         // Dessiner les systèmes de bouclier
         drawSimpleShield();        // NOUVEAU: Bouclier simple activé avec ESPACE
         drawSphericalShield(ctx);  // NOUVEAU: Système sphérique v2 (code original)
+        drawShield3(ctx);          // NOUVEAU: Bouclier 3 (absorption + riposte)
+        // Dessiner les power-ups
+        drawPowerShield1(ctx);
+        drawPowerShield2(ctx);
+        drawPowerShield3(ctx);
         
         // Dessiner les lasers entonnoir (derrière)
         drawFunnelLasers(ctx);

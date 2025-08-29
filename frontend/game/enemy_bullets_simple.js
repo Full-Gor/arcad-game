@@ -259,8 +259,8 @@ function createFollowingSonicWave(enemy) {
 }
 
 // Variables pour les anciens types
-let pulsingLasers = [];
-let waveBullets = [];
+export let pulsingLasers = [];
+export let waveBullets = [];
 
 // ========================================
 // LASER PULSÉ AVANCÉ (pour ENEMY7-9)
@@ -289,7 +289,8 @@ function createPulseLaser(enemy) {
             duration: 2000,
             startTime: Date.now(),
             opacity: 1,
-            particles: []
+            particles: [],
+            enemyReference: enemy
         };
         
         enemyLasers.push(laser);
@@ -636,6 +637,12 @@ function updateLasers() {
     for (let i = enemyLasers.length - 1; i >= 0; i--) {
         const laser = enemyLasers[i];
         const elapsed = Date.now() - laser.startTime;
+        // Suivre le vaisseau (tracking horizontal lent)
+        if (laser.type === PROJECTILE_TYPES.PULSE_LASER && starship) {
+            const targetX = starship.x + starship.width / 2;
+            const dx = targetX - laser.x;
+            laser.x += Math.sign(dx) * Math.min(Math.abs(dx), 3); // limiter la vitesse de suivi
+        }
         
         if (elapsed > laser.duration) {
             // Effet de disparition

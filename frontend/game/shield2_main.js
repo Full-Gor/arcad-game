@@ -35,13 +35,13 @@ let sphericalShield = {
     // États
     isRevealing: false,
     revealTimer: 0,
-    maxRevealTime: 600, // NOUVEAU: 10 secondes à 60fps (10 * 60 = 600 frames)
+    maxRevealTime: 300, // RÉTABLI: ~5s à 60fps
     
-    // Configuration visuelle (TEST MAGENTA)
+    // Configuration visuelle RÉTABLIE (cyan + rouge néon pour les impacts)
     colors: {
-        grid: { r: 255, g: 0, b: 255 },      // Magenta pour la grille
-        energy: { r: 255, g: 100, b: 255 },   // Magenta électrique
-        impact: { r: 255, g: 150, b: 0 }      // Orange pour impacts
+        grid: { r: 0, g: 255, b: 255 },       // Cyan pour la grille/aura
+        energy: { r: 0, g: 200, b: 255 },     // Cyan électrique pour ondes
+        impact: { r: 255, g: 0, b: 80 }       // Rouge néon pour impacts
     }
 };
 
@@ -63,13 +63,13 @@ export function createSphericalImpact(impactX, impactY, player = starship, damag
 
 // Mise à jour du système (CODE ORIGINAL EXACT)
 export function updateSphericalShield() {
-    // NOUVEAU: Rotation plus rapide de la sphère
-    sphericalShield.rotation.y += 0.016; // 4x plus rapide
-    sphericalShield.rotation.z += 0.012; // 4x plus rapide
+    // RÉTABLI: vitesses de rotation plus douces
+    sphericalShield.rotation.y += 0.004;
+    sphericalShield.rotation.z += 0.003;
     
-    // Gestion de la visibilité globale (RALENTI)
+    // RÉTABLI: révélation/fondu plus nerveux
     if (sphericalShield.isRevealing) {
-        sphericalShield.visibility += (sphericalShield.targetVisibility - sphericalShield.visibility) * 0.05; // 2x plus lent
+        sphericalShield.visibility += (sphericalShield.targetVisibility - sphericalShield.visibility) * 0.1;
         sphericalShield.revealTimer--;
         
         if (sphericalShield.revealTimer <= 0) {
@@ -77,7 +77,7 @@ export function updateSphericalShield() {
             sphericalShield.targetVisibility = 0;
         }
     } else {
-        sphericalShield.visibility *= 0.98; // Plus lent aussi
+        sphericalShield.visibility *= 0.95;
         if (sphericalShield.visibility < 0.01) {
             sphericalShield.visibility = 0;
         }
@@ -103,8 +103,8 @@ export function drawSphericalShield(ctx) {
             centerX, centerY, 0,
             centerX, centerY, sphericalShield.radius + 10
         );
-        auraGradient.addColorStop(0, `rgba(255, 0, 255, ${sphericalShield.visibility * 0.05})`);
-        auraGradient.addColorStop(0.7, `rgba(255, 0, 255, ${sphericalShield.visibility * 0.02})`);
+        auraGradient.addColorStop(0, `rgba(${sphericalShield.colors.grid.r}, ${sphericalShield.colors.grid.g}, ${sphericalShield.colors.grid.b}, ${sphericalShield.visibility * 0.05})`);
+        auraGradient.addColorStop(0.7, `rgba(${sphericalShield.colors.grid.r}, ${sphericalShield.colors.grid.g}, ${sphericalShield.colors.grid.b}, ${sphericalShield.visibility * 0.02})`);
         auraGradient.addColorStop(1, 'rgba(255, 0, 255, 0)');
         
         ctx.fillStyle = auraGradient;
@@ -148,16 +148,16 @@ export function drawSphericalShield(ctx) {
         const avgGlow = meridian.segments.reduce((sum, s) => sum + s.glowIntensity, 0) / meridian.segments.length;
         
         if (avgGlow > 0.1) {
-            // NOUVEAU: Lignes d'impact beaucoup plus visibles
-            ctx.strokeStyle = `rgba(255, 150, 0, ${Math.min(1, avgOpacity * sphericalShield.visibility * 1.5)})`; // Plus opaque
-            ctx.lineWidth = 2.5 + avgGlow * 1.5; // Plus épaisse
-            ctx.shadowBlur = 15 * avgGlow; // Plus de lueur
-            ctx.shadowColor = 'rgba(255, 150, 0, 1.0)'; // Lueur plus intense
+            // Affinage du rouge néon (plus mince)
+            ctx.strokeStyle = `rgba(${sphericalShield.colors.impact.r}, ${sphericalShield.colors.impact.g}, ${sphericalShield.colors.impact.b}, ${Math.min(0.9, avgOpacity * sphericalShield.visibility * 1.2)})`;
+            ctx.lineWidth = 1.6 + avgGlow * 1.1; // plus mince
+            ctx.shadowBlur = 10 * avgGlow; // lueur un peu réduite
+            ctx.shadowColor = `rgba(${sphericalShield.colors.impact.r}, ${sphericalShield.colors.impact.g}, ${sphericalShield.colors.impact.b}, 0.9)`;
         } else {
-            ctx.strokeStyle = `rgba(255, 0, 255, ${avgOpacity * sphericalShield.visibility})`;
+            ctx.strokeStyle = `rgba(${sphericalShield.colors.grid.r}, ${sphericalShield.colors.grid.g}, ${sphericalShield.colors.grid.b}, ${avgOpacity * sphericalShield.visibility})`;
             ctx.lineWidth = 1;
             ctx.shadowBlur = 5;
-            ctx.shadowColor = 'rgba(255, 0, 255, 0.5)';
+            ctx.shadowColor = `rgba(${sphericalShield.colors.grid.r}, ${sphericalShield.colors.grid.g}, ${sphericalShield.colors.grid.b}, 0.5)`;
         }
         
         ctx.stroke();
@@ -197,13 +197,13 @@ export function drawSphericalShield(ctx) {
         const avgGlow = parallel.segments.reduce((sum, s) => sum + s.glowIntensity, 0) / parallel.segments.length;
         
         if (avgGlow > 0.1) {
-            // NOUVEAU: Lignes d'impact beaucoup plus visibles (parallèles)
-            ctx.strokeStyle = `rgba(255, 150, 0, ${Math.min(1, avgOpacity * sphericalShield.visibility * 1.5)})`; // Plus opaque
-            ctx.lineWidth = 2.5 + avgGlow * 1.5; // Plus épaisse
-            ctx.shadowBlur = 15 * avgGlow; // Plus de lueur
-            ctx.shadowColor = 'rgba(255, 150, 0, 1.0)'; // Lueur plus intense
+            // Affinage du rouge néon (plus mince)
+            ctx.strokeStyle = `rgba(${sphericalShield.colors.impact.r}, ${sphericalShield.colors.impact.g}, ${sphericalShield.colors.impact.b}, ${Math.min(0.9, avgOpacity * sphericalShield.visibility * 1.2)})`;
+            ctx.lineWidth = 1.6 + avgGlow * 1.1;
+            ctx.shadowBlur = 10 * avgGlow;
+            ctx.shadowColor = `rgba(${sphericalShield.colors.impact.r}, ${sphericalShield.colors.impact.g}, ${sphericalShield.colors.impact.b}, 0.9)`;
         } else {
-            ctx.strokeStyle = `rgba(255, 0, 255, ${avgOpacity * sphericalShield.visibility})`;
+            ctx.strokeStyle = `rgba(${sphericalShield.colors.grid.r}, ${sphericalShield.colors.grid.g}, ${sphericalShield.colors.grid.b}, ${avgOpacity * sphericalShield.visibility})`;
             ctx.lineWidth = 1;
         }
         
@@ -227,8 +227,8 @@ export function drawSphericalShield(ctx) {
         
         const pulseGradient = ctx.createRadialGradient(projX, projY, 0, projX, projY, 5 * vertex.pulse);
         pulseGradient.addColorStop(0, `rgba(255, 255, 255, ${vertex.pulse})`);
-        pulseGradient.addColorStop(0.5, `rgba(255, 150, 0, ${vertex.pulse * 0.7})`);
-        pulseGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+        pulseGradient.addColorStop(0.5, `rgba(${sphericalShield.colors.impact.r}, ${sphericalShield.colors.impact.g}, ${sphericalShield.colors.impact.b}, ${vertex.pulse * 0.7})`);
+        pulseGradient.addColorStop(1, `rgba(${sphericalShield.colors.impact.r}, ${sphericalShield.colors.impact.g}, ${sphericalShield.colors.impact.b}, 0)`);
         
         ctx.fillStyle = pulseGradient;
         ctx.beginPath();
@@ -270,7 +270,8 @@ export function drawSphericalShield(ctx) {
     // 6. PARTICULES D'IMPACT (ADAPTÉ DU PREMIER BOUCLIER)
     sphericalShield.pulsePoints.forEach(point => {
         const alpha = point.life / point.maxLife;
-        ctx.fillStyle = `rgba(255, 150, 0, ${alpha})`;
+        // IMPACT EN MAGENTA
+        ctx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
         ctx.beginPath();
         ctx.arc(point.x, point.y, point.size, 0, Math.PI * 2);
         ctx.fill();
@@ -282,11 +283,22 @@ export function drawSphericalShield(ctx) {
 // Fonction de vérification (CODE ORIGINAL EXACT)
 export function isSphericalShieldActive() {
     console.log('🔍 DEBUG: isSphericalShieldActive - starship:', !!starship, 'shield:', starship?.shield, 'visibility:', sphericalShield.visibility, 'isRevealing:', sphericalShield.isRevealing);
-    return starship && starship.shield && (sphericalShield.visibility > 0 || sphericalShield.isRevealing);
+    // NOUVEAU: Vérifier que c'est BIEN le bouclier sphérique qui est actif, pas le simple
+    return starship && sphericalShield.active && (sphericalShield.visibility > 0 || sphericalShield.isRevealing);
+}
+
+// Désactiver le bouclier sphérique
+export function deactivateSphericalShield() {
+    sphericalShield.active = false;
+    sphericalShield.isRevealing = false;
+    sphericalShield.targetVisibility = 0;
+    sphericalShield.visibility = 0;
 }
 
 // Fonction pour forcer la révélation complète (NOUVEAU: 10 secondes par défaut)
 export function revealFullShield(duration = 600) { // NOUVEAU: 10 secondes à 60fps
+    // Activer explicitement le système lors d'une révélation initiée
+    sphericalShield.active = true;
     sphericalShield.isRevealing = true;
     sphericalShield.targetVisibility = 1;
     sphericalShield.revealTimer = duration;
@@ -297,7 +309,7 @@ export function revealFullShield(duration = 600) { // NOUVEAU: 10 secondes à 60
             setTimeout(() => {
                 segment.visible = true;
                 segment.opacity = 1;
-            }, i * 50); // 5x plus lent (50ms au lieu de 10ms)
+            }, i * 10); // RÉTABLI: timing plus rapide
         });
     });
     
@@ -306,7 +318,7 @@ export function revealFullShield(duration = 600) { // NOUVEAU: 10 secondes à 60
             setTimeout(() => {
                 segment.visible = true;
                 segment.opacity = 1;
-            }, i * 50); // 5x plus lent (50ms au lieu de 10ms)
+            }, i * 10); // RÉTABLI: timing plus rapide
         });
     });
 }
@@ -319,8 +331,8 @@ export function activateSphericalShield() {
     sphericalShield.active = true;
     sphericalShield.isRevealing = true;
     sphericalShield.visibility = 0;
-    starship.shield = true; // NOUVEAU: Activer le flag shield du starship
-    console.log('🛡️ starship.shield défini à true');
+    // NOUVEAU: Ne plus modifier starship.shield pour éviter le conflit avec le bouclier simple
+    console.log('🛡️ Bouclier sphérique activé (sans modifier starship.shield)');
     revealFullShield();
 }
 

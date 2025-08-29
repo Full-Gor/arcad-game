@@ -9,8 +9,9 @@ import { isMiniBossActive, getMiniBosses, damageMiniBoss, createMiniBoss } from 
 import { isBossActive, getBoss, damageBoss, createBoss } from './boss_simple.js';
 
 import { revealFullShield, isSphericalShieldActive, createSphericalImpact } from './shield2_main.js';
-// import { isSimpleShieldActive, absorbProjectile } from './shield_simple.js';
-import { enemyBullets } from './enemy_bullets_simple.js';
+import { isSimpleShieldActive, absorbProjectile } from './shield_simple.js';
+import { isShield3Active, createShield3AbsorptionImpact } from './shield3_main.js';
+import { enemyBullets, enemyLasers, pulsingLasers, waveBullets } from './enemy_bullets_simple.js';
 import { checkLaserCollision } from './funnel_laser_simple.js';
 
 // Variables pour les effets visuels
@@ -37,6 +38,34 @@ function checkCollision(rect1, rect2) {
             rect1.x + rect1.width > rect2.x &&
             rect1.y < rect2.y + rect2.height &&
             rect1.y + rect1.height > rect2.y);
+}
+
+// Helpers bouclier sphérique
+function getShieldCircle() {
+    const centerX = starship.x + starship.width / 2;
+    const centerY = starship.y + starship.height / 2;
+    const radius = 55; // Doit correspondre à sphericalShield.radius
+    return { centerX, centerY, radius };
+}
+
+function getShieldZoneRect() {
+    const r = 55;
+    return {
+        x: starship.x - r,
+        y: starship.y - r,
+        width: starship.width + r * 2,
+        height: starship.height + r * 2
+    };
+}
+
+function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+function circleRectIntersects(cx, cy, r, rect) {
+    const closestX = clamp(cx, rect.x, rect.x + rect.width);
+    const closestY = clamp(cy, rect.y, rect.y + rect.height);
+    const dx = cx - closestX;
+    const dy = cy - closestY;
+    return { hit: (dx * dx + dy * dy) <= r * r, px: closestX, py: closestY };
 }
 
 // Fonction pour créer des particules d'explosion (copiée de game.html ligne 5326-5338)
@@ -102,6 +131,13 @@ export function checkCollisions() {
         // Supprimer l'ennemi s'il a été touché
         if (enemyHit) {
             enemies.splice(i, 1);
+            // Spawn d'un power-up aléatoire (1/3 pour chaque bouclier)
+            try {
+                const r = Math.floor(Math.random() * 3);
+                if (r === 0 && window.spawnPowerShield1) window.spawnPowerShield1();
+                else if (r === 1 && window.spawnPowerShield2) window.spawnPowerShield2();
+                else if (window.spawnPowerShield3) window.spawnPowerShield3();
+            } catch (_) {}
             
             // NOUVEAU: Faire progresser le type d'ennemi (phase normale)
             progressEnemyType();
@@ -304,68 +340,178 @@ export function checkCollisions() {
     }
     
     // NOUVEAU: Vérifier les collisions entre projectiles ennemis et joueur/bouclier
+    // 1) Projectiles standards (enemyBullets) déjà gérés ci-dessous
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const enemyBullet = enemyBullets[i];
         if (!enemyBullet || !starship) continue;
         
         let collisionDetected = false;
         
-        // NOUVEAU: Vérifier d'abord le bouclier simple (ESPACE)
-        // if (isSimpleShieldActive()) {
-        //     if (absorbProjectile(enemyBullet)) {
-        //         console.log('🛡️ Projectile absorbé par le bouclier simple (ESPACE) !');
-        //         collisionDetected = true;
-        //     }
-        // }
-        // Sinon, vérifier le bouclier sphérique (20 points rouges)
-        // else {
+        // NOUVEAU: Priorité bouclier simple (ESPACE)
+        if (isSimpleShieldActive()) {
+            if (absorbProjectile(enemyBullet)) {
+                console.log('🛡️ Projectile absorbé par le bouclier simple (ESPACE) !');
+                collisionDetected = true;
+            }
+        }
+        // Puis bouclier 3 (C) absorption + riposte
+        else if (isShield3Active()) {
+            const { centerX, centerY, radius } = getShieldCircle();
+            const px = enemyBullet.x + (enemyBullet.width ? enemyBullet.width / 2 : 0);
+            const py = enemyBullet.y + (enemyBullet.height ? enemyBullet.height / 2 : 0);
+            const dx = px - centerX;
+            const dy = py - centerY;
+            if (dx * dx + dy * dy <= radius * radius) {
+                createShield3AbsorptionImpact(px, py, starship, 10);
+                collisionDetected = true;
+            }
+        }
+        // Sinon, bouclier sphérique (20 points rouges)
+        else {
             const shieldActive = isSphericalShieldActive();
             console.log('🔍 DEBUG: isSphericalShieldActive() =', shieldActive);
             
             if (shieldActive) {  // NOUVEAU: Utiliser le bouclier sphérique v2
-            console.log('🔍 DEBUG: Bouclier actif, vérification collision...');
+                console.log('🔍 DEBUG: Bouclier actif, vérification collision...');
             
-            // BOUCLIER ACTIF: Collision avec zone élargie (bouclier à 55px du starship - rayon du bouclier)
-            const shieldZone = {
-                x: starship.x - 55,
-                y: starship.y - 55,
-                width: starship.width + 110,  // +55px de chaque côté (rayon du bouclier)
-                height: starship.height + 110 // +55px de chaque côté (rayon du bouclier)
-            };
-            
-            if (checkCollision(enemyBullet, shieldZone)) {
-                console.log('🛡️ Projectile ennemi touche le bouclier ! (55px du starship)');
-                collisionDetected = true;
-                
-                // NOUVEAU: Créer un effet d'impact visuel sur le bouclier
-                const impactX = enemyBullet.x + enemyBullet.width / 2;
-                const impactY = enemyBullet.y + enemyBullet.height / 2;
-                console.log('🔍 DEBUG: Appel createSphericalImpact avec:', impactX, impactY);
-                createSphericalImpact(impactX, impactY, starship);  // NOUVEAU: Impact sur bouclier sphérique v2
-                
-                // Le bouclier absorbe le projectile - pas de dégâts
-                console.log('🛡️ Projectile absorbé par le bouclier avec effet d\'impact !');
+                // BOUCLIER ACTIF: Collision cercle vs formes
+                const { centerX, centerY, radius } = getShieldCircle();
+
+                // Cas onde sonique suiveuse (ENEMY6)
+                if (enemyBullet.type === 'following_sonic_wave') {
+                    // Collision si l'un des anneaux touche le cercle du bouclier
+                    const hitRing = enemyBullet.rings?.some(r => {
+                        if (r.radius <= 0) return false;
+                        const dx = enemyBullet.x - centerX;
+                        const dy = enemyBullet.y - centerY;
+                        const dist = Math.hypot(dx, dy);
+                        return Math.abs(dist - r.radius) <= radius; // anneau croise le cercle de bouclier
+                    });
+                    if (hitRing) {
+                        const impactX = centerX;
+                        const impactY = centerY;
+                        createSphericalImpact(impactX, impactY, starship);
+                        collisionDetected = true;
+                    }
+                }
+                // Projectiles rectangulaires/points
+                else {
+                    const px = enemyBullet.x + (enemyBullet.width ? enemyBullet.width / 2 : 0);
+                    const py = enemyBullet.y + (enemyBullet.height ? enemyBullet.height / 2 : 0);
+                    const dx = px - centerX;
+                    const dy = py - centerY;
+                    if (dx * dx + dy * dy <= radius * radius) {
+                        const impactX = px;
+                        const impactY = py;
+                        createSphericalImpact(impactX, impactY, starship);
+                        collisionDetected = true;
+                    }
+                }
+
+                if (collisionDetected) {
+                    console.log('🛡️ Projectile ennemi touche le bouclier ! (55px du starship)');
+                    // Le bouclier absorbe le projectile - pas de dégâts
+                    console.log('🛡️ Projectile absorbé par le bouclier avec effet d\'impact !');
+                } else {
+                    console.log('🔍 DEBUG: Projectile ne touche pas la zone bouclier');
+                }
             } else {
-                console.log('🔍 DEBUG: Projectile ne touche pas la zone bouclier');
-            }
-        } else {
-            // PAS DE BOUCLIER: Collision directe avec le starship
-            if (checkCollision(enemyBullet, starship)) {
-                console.log('💥 Projectile ennemi touche directement le starship !');
-                collisionDetected = true;
-                
-                // Dégâts infligés
-                console.log('💥 Projectile inflige des dégâts !');
-                // starship.lives--; // À implémenter plus tard
-                
-                // Son de dégât
-                playHitSound();
+                // PAS DE BOUCLIER: Collision directe avec le starship
+                if (checkCollision(enemyBullet, starship)) {
+                    console.log('💥 Projectile ennemi touche directement le starship !');
+                    collisionDetected = true;
+                    
+                    // Dégâts infligés
+                    console.log('💥 Projectile inflige des dégâts !');
+                    // starship.lives--; // À implémenter plus tard
+                    
+                    // Son de dégât
+                    playHitSound();
+                }
             }
         }
         
         // Supprimer le projectile si collision détectée
         if (collisionDetected) {
             enemyBullets.splice(i, 1);
+        }
+    }
+
+    // 2) Lasers avancés (enemyLasers: ENEMY7+)
+    for (let i = enemyLasers.length - 1; i >= 0; i--) {
+        const laser = enemyLasers[i];
+        if (!laser || !starship) continue;
+        let collisionDetected = false;
+        if (isSimpleShieldActive()) {
+            // Absorption simple: si la base du laser croise le cercle
+            const { centerX, centerY, radius } = getShieldCircle();
+            const rect = { x: laser.x - laser.width/2, y: laser.y, width: laser.width, height: laser.length };
+            const hitInfo = circleRectIntersects(centerX, centerY, radius, rect);
+            if (hitInfo.hit) {
+                collisionDetected = true;
+            }
+        } else if (isShield3Active()) {
+            const { centerX, centerY, radius } = getShieldCircle();
+            const rect = { x: laser.x - laser.width/2, y: laser.y, width: laser.width, height: laser.length };
+            const hitInfo = circleRectIntersects(centerX, centerY, radius, rect);
+            if (hitInfo.hit) {
+                collisionDetected = true;
+                createShield3AbsorptionImpact(hitInfo.px, hitInfo.py, starship, 12);
+            }
+        } else if (isSphericalShieldActive()) {
+            const { centerX, centerY, radius } = getShieldCircle();
+            const rect = { x: laser.x - laser.width/2, y: laser.y, width: laser.width, height: laser.length };
+            const hitInfo = circleRectIntersects(centerX, centerY, radius, rect);
+            if (hitInfo.hit) {
+                collisionDetected = true;
+                createSphericalImpact(hitInfo.px, hitInfo.py, starship);
+            }
+        } else {
+            // Pas de bouclier → collision rect vs starship (approximation)
+            const laserRect = { x: laser.x - laser.width/2, y: laser.y, width: laser.width, height: laser.length };
+            if (checkCollision(laserRect, starship)) {
+                collisionDetected = true;
+                playHitSound();
+            }
+        }
+        if (collisionDetected) {
+            enemyLasers.splice(i, 1);
+        }
+    }
+
+    // 3) Anciens types: pulsingLasers (ENEMY1/5) et waveBullets (ENEMY2/4)
+    const shieldActive = isSphericalShieldActive();
+    const simpleActive = isSimpleShieldActive();
+    const s3Active = isShield3Active();
+    if (shieldActive || simpleActive || s3Active) {
+        const { centerX, centerY, radius } = getShieldCircle();
+        // pulsingLasers: rectangle centré
+        for (let i = pulsingLasers.length - 1; i >= 0; i--) {
+            const l = pulsingLasers[i];
+            const rect = { x: l.x, y: l.y, width: l.currentWidth || l.width || l.minWidth, height: l.height };
+            // Test cercle-rectangle
+            const closestX = clamp(centerX, rect.x, rect.x + rect.width);
+            const closestY = clamp(centerY, rect.y, rect.y + rect.height);
+            const dx = centerX - closestX;
+            const dy = centerY - closestY;
+            if (dx * dx + dy * dy <= radius * radius) {
+                if (s3Active) createShield3AbsorptionImpact(closestX, closestY, starship, 10);
+                else createSphericalImpact(closestX, closestY, starship);
+                pulsingLasers.splice(i, 1);
+            }
+        }
+        // waveBullets: petits cercles
+        for (let i = waveBullets.length - 1; i >= 0; i--) {
+            const b = waveBullets[i];
+            const px = b.x + b.width / 2;
+            const py = b.y + b.height / 2;
+            const dx = px - centerX;
+            const dy = py - centerY;
+            if (dx * dx + dy * dy <= radius * radius) {
+                if (s3Active) createShield3AbsorptionImpact(px, py, starship, 8);
+                else createSphericalImpact(px, py, starship);
+                waveBullets.splice(i, 1);
+            }
         }
     }
 }
@@ -420,14 +566,11 @@ export function updateExplosionParticles() {
                         playCoinSound();
                         
                         // NOUVEAU: Vérifier activation du bouclier sphérique v2 (CODE ORIGINAL)
-                        if (redPointsCollected >= SHIELD_ACTIVATION_THRESHOLD) {
+                        if (redPointsCollected >= SHIELD_ACTIVATION_THRESHOLD && !isSimpleShieldActive()) {
                             console.log('🛡️ Activation du bouclier sphérique v2 (code original) ! Points collectés:', redPointsCollected);
                             
-                            // IMPORTANT: Désactiver les anciens boucliers pour éviter le mélange
-                            if (starship.shield) {
-                                starship.shield = false;
-                                console.log('🔄 Anciens boucliers désactivés');
-                            }
+                            // NOUVEAU: Ne plus désactiver starship.shield pour éviter le conflit
+                            // Le bouclier sphérique et le bouclier simple sont maintenant indépendants
                             
                             // Activer le nouveau bouclier sphérique v2 (CODE ORIGINAL)
                             revealFullShield();

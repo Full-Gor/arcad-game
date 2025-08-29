@@ -1,6 +1,7 @@
 // funnel_laser_simple.js - Système de laser entonnoir pour ENEMY10
 import { canvas, ctx } from './globals_simple.js';
 import { enemies } from './enemies_simple.js';
+import { starship } from './player_simple.js';
 
 // Variables principales (depuis votre code original)
 export let enemyBullets = [];
@@ -12,6 +13,7 @@ const maxEnemyBullets = 100;
 
 // NOUVEAU: Variables pour le laser entonnoir
 export let funnelLasers = [];
+export let playerFunnelLasers = [];
 let laserParticles = [];
 let enemiesWithActiveLasers = new Set(); // Track des ennemis qui tirent
 
@@ -70,6 +72,41 @@ function createFunnelLaser(enemy) {
     
     // Marquer cet ennemi comme ayant un laser actif
     enemiesWithActiveLasers.add(enemy);
+}
+
+// CRÉER UN LASER ENTONNOIR POUR LE JOUEUR (orienté vers le haut)
+export function createPlayerFunnelLaser() {
+    if (!starship || !canvas) return;
+    const laser = {
+        id: Date.now() + Math.random(),
+        enemy: null,
+        startTime: Date.now(),
+        phase: 'growing',
+        growDuration: 2000,
+        disintegrateDuration: 1000,
+        x: starship.x + starship.width / 2,
+        y: starship.y, // départ du vaisseau
+        currentWidth: 1,
+        maxWidth: 160,
+        length: canvas.height, // tir vers le haut
+        funnelRadius: 1,
+        maxFunnelRadius: 80,
+        funnelHeight: 60,
+        opacity: 1,
+        glowIntensity: 0,
+        maxGlowIntensity: 25,
+        disintegrationParticles: [],
+        particleSpawnRate: 0,
+        edgeColor: '#87CEEB',
+        coreColor: '#FFFFFF',
+        glowColor: '#00BFFF',
+        funnelSegments: 32,
+        funnelWaveAmplitude: 0,
+        funnelWaveFrequency: 0.1,
+        funnelWavePhase: 0,
+        orientation: -1 // -1 = vers le haut
+    };
+    playerFunnelLasers.push(laser);
 }
 
 // ========================================
@@ -149,6 +186,41 @@ export function updateFunnelLasers() {
             }
         }
     }
+    // MàJ laser joueur (mêmes phases, orientation inversée)
+    for (let i = playerFunnelLasers.length - 1; i >= 0; i--) {
+        const laser = playerFunnelLasers[i];
+        const elapsed = Date.now() - laser.startTime;
+        // suivre le joueur
+        laser.x = starship.x + starship.width / 2;
+        laser.y = starship.y - 2; // léger offset pour éviter le chevauchement visuel
+        if (laser.phase === 'growing') {
+            const growProgress = Math.min(elapsed / laser.growDuration, 1);
+            const easeProgress = easeInOutCubic(growProgress);
+            laser.currentWidth = 1 + (laser.maxWidth - 1) * easeProgress;
+            laser.funnelRadius = 1 + (laser.maxFunnelRadius - 1) * easeProgress;
+            laser.glowIntensity = laser.maxGlowIntensity * easeProgress;
+            laser.funnelWaveAmplitude = 3 * Math.sin(elapsed * 0.003);
+            laser.funnelWavePhase += 0.05;
+            if (elapsed >= laser.growDuration) {
+                laser.phase = 'disintegrating';
+                laser.disintegrationStartTime = Date.now();
+                initializeDisintegration(laser);
+            }
+        } else if (laser.phase === 'disintegrating') {
+            const disintegrateElapsed = Date.now() - laser.disintegrationStartTime;
+            const disintegrateProgress = Math.min(disintegrateElapsed / laser.disintegrateDuration, 1);
+            laser.opacity = 1 - disintegrateProgress;
+            laser.currentWidth = laser.maxWidth * (1 - disintegrateProgress * 0.5);
+            laser.funnelWaveAmplitude = 10 + 20 * disintegrateProgress;
+            laser.funnelWavePhase += 0.1 + disintegrateProgress * 0.2;
+            if (Math.random() < 0.8) generateDisintegrationParticles(laser);
+            updateLaserParticles(laser);
+            if (disintegrateProgress >= 1) {
+                laser.phase = 'complete';
+                playerFunnelLasers.splice(i, 1);
+            }
+        }
+    }
 }
 
 // ========================================
@@ -156,7 +228,7 @@ export function updateFunnelLasers() {
 // ========================================
 
 export function drawFunnelLasers(ctx) {
-    funnelLasers.forEach(laser => {
+    const drawOne = (laser) => {
         ctx.save();
         ctx.globalAlpha = laser.opacity;
         
@@ -175,7 +247,9 @@ export function drawFunnelLasers(ctx) {
         applyLaserGlow(ctx, laser);
         
         ctx.restore();
-    });
+    };
+    funnelLasers.forEach(drawOne);
+    playerFunnelLasers.forEach(drawOne);
 }
 
 // Dessiner l'entonnoir au sommet du laser
@@ -183,9 +257,12 @@ function drawFunnelTop(ctx, laser) {
     ctx.save();
     
     // Créer un gradient radial pour l'entonnoir
+    const centerY = (laser.orientation === -1)
+        ? (laser.y - laser.funnelRadius * 0.3)  // décaler vers le haut pour ne pas dépasser sous le vaisseau
+        : laser.y;
     const funnelGradient = ctx.createRadialGradient(
-        laser.x, laser.y, 0,
-        laser.x, laser.y, laser.funnelRadius
+        laser.x, centerY, 0,
+        laser.x, centerY, laser.funnelRadius
     );
     funnelGradient.addColorStop(0, laser.coreColor);
     funnelGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.9)');
@@ -205,7 +282,7 @@ function drawFunnelTop(ctx, laser) {
         
         // Calculer la position en créant une forme d'entonnoir elliptique
         const x = laser.x + Math.cos(angle) * radius;
-        const y = laser.y + Math.sin(angle) * radius * 0.3; // Écrasé verticalement pour l'effet plat
+        const y = centerY + Math.sin(angle) * radius * 0.3; // Écrasé verticalement pour l'effet plat
         
         if (i === 0) {
             ctx.moveTo(x, y);
@@ -237,12 +314,22 @@ function drawFunnelTop(ctx, laser) {
     connectionGradient.addColorStop(1, 'transparent');
     
     ctx.fillStyle = connectionGradient;
-    ctx.fillRect(
-        laser.x - laser.currentWidth/2,
-        laser.y,
-        laser.currentWidth,
-        laser.funnelHeight
-    );
+    // connexion entonnoir → selon orientation
+    if (laser.orientation === -1) {
+        ctx.fillRect(
+            laser.x - laser.currentWidth/2,
+            laser.y - laser.funnelHeight,
+            laser.currentWidth,
+            laser.funnelHeight
+        );
+    } else {
+        ctx.fillRect(
+            laser.x - laser.currentWidth/2,
+            laser.y,
+            laser.currentWidth,
+            laser.funnelHeight
+        );
+    }
     
     ctx.restore();
 }
@@ -266,12 +353,23 @@ function drawLaserBeam(ctx, laser) {
     
     // Dessiner le faisceau principal
     ctx.fillStyle = beamGradient;
-    ctx.fillRect(
-        laser.x - laser.currentWidth/2,
-        laser.y + laser.funnelHeight,
-        laser.currentWidth,
-        laser.length - laser.funnelHeight
-    );
+    if (laser.orientation === -1) {
+        // vers le haut
+        ctx.fillRect(
+            laser.x - laser.currentWidth/2,
+            laser.y - laser.length,
+            laser.currentWidth,
+            laser.length - laser.funnelHeight
+        );
+    } else {
+        // vers le bas (ennemi)
+        ctx.fillRect(
+            laser.x - laser.currentWidth/2,
+            laser.y + laser.funnelHeight,
+            laser.currentWidth,
+            laser.length - laser.funnelHeight
+        );
+    }
     
     // Ajouter un coeur blanc brillant au centre
     if (laser.currentWidth > 20) {

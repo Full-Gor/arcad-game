@@ -1,5 +1,8 @@
 // shield2_effects.js - Gestion des effets visuels du bouclier sphérique (CODE ORIGINAL)
 
+const MAX_PULSE_POINTS = 300;
+const MAX_ENERGY_WAVES = 64;
+
 // Mise à jour des effets visuels sphériques (CODE ORIGINAL EXACT)
 export function updateSphericalEffects(sphericalShield) {
     // Mise à jour des ondes d'énergie
@@ -44,9 +47,6 @@ export function updateSphericalEffects(sphericalShield) {
     }
     
     // Mise à jour des particules de pulse (ADAPTÉ DU PREMIER BOUCLIER)
-    if (sphericalShield.pulsePoints.length > 0) {
-        console.log('🔍 DEBUG: Mise à jour de', sphericalShield.pulsePoints.length, 'particules');
-    }
     
     sphericalShield.pulsePoints = sphericalShield.pulsePoints.filter(point => {
         point.x += point.vx;
@@ -57,6 +57,11 @@ export function updateSphericalEffects(sphericalShield) {
         
         return point.life > 0;
     });
+
+    // Cap performance
+    if (sphericalShield.pulsePoints.length > MAX_PULSE_POINTS) {
+        sphericalShield.pulsePoints.splice(0, sphericalShield.pulsePoints.length - MAX_PULSE_POINTS);
+    }
 }
 
 // Créer une onde d'énergie qui parcourt la sphère (CODE ORIGINAL EXACT)
@@ -72,12 +77,15 @@ export function createEnergyWave(sphericalShield, phi, theta, color, speed, dela
             thickness: 0.1,
             color: color
         });
+        if (sphericalShield.energyWaves.length > MAX_ENERGY_WAVES) {
+            sphericalShield.energyWaves.shift();
+        }
     }, delay);
 }
 
 // Créer des particules d'impact (ADAPTÉ DU PREMIER BOUCLIER)
 export function createImpactParticles(sphericalShield, impactX, impactY) {
-    console.log('🔍 DEBUG: Création de particules d\'impact à', impactX, impactY);
+    // Création de particules d'impact
     
     // Particules d'impact (adapté du premier bouclier)
     for (let i = 0; i < 15; i++) {
@@ -91,12 +99,14 @@ export function createImpactParticles(sphericalShield, impactX, impactY) {
             life: 30 + Math.random() * 20,
             maxLife: 30 + Math.random() * 20,
             size: 2 + Math.random() * 2,
-            color: 'rgba(255, 150, 0, 1)'
+            color: `rgba(${sphericalShield.colors.impact.r}, ${sphericalShield.colors.impact.g}, ${sphericalShield.colors.impact.b}, 1)`
         };
         
         // Ajouter au système de particules du bouclier sphérique
         sphericalShield.pulsePoints.push(particle);
     }
-    
-    console.log('🔍 DEBUG: Particules créées. Total pulsePoints:', sphericalShield.pulsePoints.length);
+    // Cap performance
+    if (sphericalShield.pulsePoints.length > MAX_PULSE_POINTS) {
+        sphericalShield.pulsePoints.splice(0, sphericalShield.pulsePoints.length - MAX_PULSE_POINTS);
+    }
 }
