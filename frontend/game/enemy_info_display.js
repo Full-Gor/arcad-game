@@ -79,6 +79,7 @@ const ENEMY_INFO = {
 
 // Fonction pour déclencher l'affichage d'informations sur un ennemi
 export function showEnemyInfo(enemyType) {
+    // Mode test: possibilité de couper l'affichage via variable importée
     if (ENEMY_INFO[enemyType]) {
         currentEnemyInfo.type = enemyType;
         currentEnemyInfo.name = ENEMY_INFO[enemyType].name;
@@ -87,8 +88,7 @@ export function showEnemyInfo(enemyType) {
         currentEnemyInfo.color = ENEMY_INFO[enemyType].color;
         currentEnemyInfo.displayTime = Date.now();
         currentEnemyInfo.fadeOpacity = 1;
-        
-        console.log(`📋 AFFICHAGE INFO: ${currentEnemyInfo.name} - ${currentEnemyInfo.shootPattern}`);
+        // Log coupé pour ne pas polluer la console pendant test
     }
 }
 

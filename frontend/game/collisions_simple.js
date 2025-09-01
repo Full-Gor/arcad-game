@@ -1,5 +1,6 @@
 // collisions_simple.js - Gestion des collisions de façon modulaire
 import { canvas, ctx } from './globals_simple.js';
+import { createGoldenShieldImpact, getReflectedProjectiles } from './golden_shield_system.js';
 import { starship } from './player_simple.js';
 import { bullets } from './bullets_simple.js';
 import { enemies, progressEnemyType, incrementPostMiniBossKills, activatePostMiniBossPhase } from './enemies_simple.js';
@@ -106,16 +107,25 @@ export function checkCollisions() {
         
         let enemyHit = false;
         
-        // Vérifier chaque projectile du joueur
-        for (let j = bullets.length - 1; j >= 0; j--) {
-            const bullet = bullets[j];
+        // Vérifier chaque projectile du joueur (incluant les projectiles réfléchis)
+        const reflectedProjectiles = getReflectedProjectiles();
+        const allPlayerProjectiles = [...bullets, ...reflectedProjectiles];
+        
+        for (let j = allPlayerProjectiles.length - 1; j >= 0; j--) {
+            const bullet = allPlayerProjectiles[j];
             if (!bullet || !enemy) continue;
             
             if (checkCollision(bullet, enemy)) {
                 console.log('Ennemi touché !');
                 
-                // Supprimer le projectile
-                bullets.splice(j, 1);
+                // Supprimer le projectile (gérer les deux types)
+                if (j < bullets.length) {
+                    bullets.splice(j, 1);
+                } else {
+                    // C'est un projectile réfléchi
+                    const reflectedIndex = j - bullets.length;
+                    reflectedProjectiles.splice(reflectedIndex, 1);
+                }
                 enemyHit = true;
                 
                 // Créer les effets d'explosion
@@ -219,16 +229,25 @@ export function checkCollisions() {
             const miniBoss = miniBosses[i];
             if (!miniBoss) continue;
             
-            // Vérifier collision bullets vs mini-boss
-            for (let j = bullets.length - 1; j >= 0; j--) {
-                const bullet = bullets[j];
+            // Vérifier collision bullets vs mini-boss (incluant les projectiles réfléchis)
+            const reflectedProjectiles = getReflectedProjectiles();
+            const allPlayerProjectiles = [...bullets, ...reflectedProjectiles];
+            
+            for (let j = allPlayerProjectiles.length - 1; j >= 0; j--) {
+                const bullet = allPlayerProjectiles[j];
                 if (!bullet || !miniBoss) continue;
                 
                 if (checkCollision(bullet, miniBoss)) {
                     console.log('Mini-boss touché !');
                     
-                    // Supprimer le projectile
-                    bullets.splice(j, 1);
+                    // Supprimer le projectile (gérer les deux types)
+                    if (j < bullets.length) {
+                        bullets.splice(j, 1);
+                    } else {
+                        // C'est un projectile réfléchi
+                        const reflectedIndex = j - bullets.length;
+                        reflectedProjectiles.splice(reflectedIndex, 1);
+                    }
                     
                     // Endommager le mini-boss
                     const destroyed = damageMiniBoss(i, 1);
@@ -279,16 +298,25 @@ export function checkCollisions() {
     if (isBossActive()) {
         const boss = getBoss();
         if (boss) {
-            // Vérifier collision bullets vs boss
-            for (let j = bullets.length - 1; j >= 0; j--) {
-                const bullet = bullets[j];
+            // Vérifier collision bullets vs boss (incluant les projectiles réfléchis)
+            const reflectedProjectiles = getReflectedProjectiles();
+            const allPlayerProjectiles = [...bullets, ...reflectedProjectiles];
+            
+            for (let j = allPlayerProjectiles.length - 1; j >= 0; j--) {
+                const bullet = allPlayerProjectiles[j];
                 if (!bullet || !boss) continue;
                 
                 if (checkCollision(bullet, boss)) {
                     console.log('Boss principal touché !');
                     
-                    // Supprimer le projectile
-                    bullets.splice(j, 1);
+                    // Supprimer le projectile (gérer les deux types)
+                    if (j < bullets.length) {
+                        bullets.splice(j, 1);
+                    } else {
+                        // C'est un projectile réfléchi
+                        const reflectedIndex = j - bullets.length;
+                        reflectedProjectiles.splice(reflectedIndex, 1);
+                    }
                     
                     // Endommager le boss
                     const destroyed = damageBoss(1);
@@ -347,8 +375,25 @@ export function checkCollisions() {
         
         let collisionDetected = false;
         
-        // NOUVEAU: Priorité bouclier simple (ESPACE)
-        if (isSimpleShieldActive()) {
+        // NOUVEAU: Priorité bouclier doré alvéolaire (V)
+        if (window.isGoldenShieldActive) {
+            const centerX = starship.x + starship.width / 2;
+            const centerY = starship.y + starship.height / 2;
+            const bulletX = enemyBullet.x + (enemyBullet.width ? enemyBullet.width / 2 : 0);
+            const bulletY = enemyBullet.y + (enemyBullet.height ? enemyBullet.height / 2 : 0);
+            const dx = bulletX - centerX;
+            const dy = bulletY - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance <= 60) { // Rayon du bouclier doré
+                if (createGoldenShieldImpact(bulletX, bulletY, enemyBullet, starship)) {
+                    console.log('🛡️ Projectile réfléchi par le bouclier doré !');
+                    collisionDetected = true;
+                }
+            }
+        }
+        // Puis bouclier simple (ESPACE)
+        else if (isSimpleShieldActive()) {
             if (absorbProjectile(enemyBullet)) {
                 console.log('🛡️ Projectile absorbé par le bouclier simple (ESPACE) !');
                 collisionDetected = true;

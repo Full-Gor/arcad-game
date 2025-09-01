@@ -463,3 +463,23 @@ export function resetWaves() {
     totalEnemiesKilledPostMiniBoss = 0;
     console.log('Vagues réinitialisées : recommence à enemy6');
 }
+
+// SPAWN TEST: ENEMY5 avec laser vert pulsant
+// ==============================
+let testEnemy5Spawned = false;
+
+export function spawnTestEnemy5WithPulsingLaser() {
+    if (!canvas || testEnemy5Spawned) return;
+    const enemy = {
+        width: 60,
+        height: 60,
+        type: 4, // ENEMY5 => enemy5.jpg
+        x: Math.max(20, Math.min(canvas.width - 80, canvas.width * 0.5 - 30)),
+        y: -60,
+        vx: 0,
+        vy: 1.2 * enemySpeedMultiplier
+    };
+    enemies.push(enemy);
+    testEnemy5Spawned = true;
+    console.log('🧪 Spawn ENEMY5 (enemy5.jpg) avec laser vert pulsant (test unique)');
+}

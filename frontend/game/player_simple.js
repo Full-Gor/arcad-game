@@ -37,10 +37,12 @@ export function getSelectedShip() {
 // Fonction pour créer un vaisseau simple
 function createStarship(x, y) {
     return {
+        id: 'player_starship',
         x: x,
         y: y,
         width: 50,
-        height: 50
+        height: 50,
+        isPlayer: true
     };
 }
 

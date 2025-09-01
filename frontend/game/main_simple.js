@@ -3,7 +3,7 @@ import { initializeCanvas, setupCanvasResize, canvas, ctx } from './globals_simp
 import { initializePlayer, drawPlayer, updateStarshipIntro, isIntroActive, starship } from './player_simple.js';
 import { initializeInput } from './input_simple.js';
 import { initializeBullets, handleShooting, drawBullets } from './bullets_simple.js';
-import { initializeEnemies, startEnemyGeneration, updateEnemies, drawEnemies, stopEnemyGeneration, areAllWavesCompleted } from './enemies_simple.js';
+import { initializeEnemies, startEnemyGeneration, updateEnemies, drawEnemies, stopEnemyGeneration, areAllWavesCompleted, spawnTestEnemy5WithPulsingLaser, enemies } from './enemies_simple.js';
 import { checkCollisions, updateExplosionParticles, drawExplosionParticles } from './collisions_simple.js';
 import { initializeAudio } from './audio_simple.js';
 import { startEnemyShooting, updateEnemyBullets, drawEnemyBullets, stopEnemyShooting } from './enemy_bullets_simple.js';
@@ -17,14 +17,36 @@ import { initPowerUpSystem } from './power_shield_common.js';
 import { updatePowerShield1, drawPowerShield1, spawnPowerShield1 } from './power_shield1.js';
 import { updatePowerShield2, drawPowerShield2, spawnPowerShield2 } from './power_shield2.js';
 import { updatePowerShield3, drawPowerShield3, spawnPowerShield3 } from './power_shield3.js';
-import { updateEnemyInfoDisplay, drawEnemyInfoDisplay } from './enemy_info_display.js';
+import { updateEnemyInfoDisplay, drawEnemyInfoDisplay, hideEnemyInfo } from './enemy_info_display.js';
 import { updateSimpleShield, drawSimpleShield, initShieldSystem } from './shield_simple.js';
+import { initializeSpecialEnemies, updateSpecialEnemies, drawSpecialEnemies, checkSpecialEnemyCollisions, deactivateSpecialEnemies } from './special_enemies_manager.js';
+import { updateSpecialBullets, drawSpecialBullets } from './special_bullets.js';
+import { activateNeonPowerUpsTest, updateNeonPowerUpsTest, drawNeonPowerUpsTest } from './powerups/neon/test_integration.js';
+import { initSpecialPowerUps, updateSpecialPowerUps, drawSpecialPowerUps } from './powerups/special_powerups.js';
+import { initPowerIcons, updatePowerIcons, drawPowerIcons } from './powerups/power_icons.js';
+import { initSpaceRiftSystem, updateSpaceRiftSystem, drawSpaceRiftSystem, forceCreateRiftPair } from './space_rift_system.js';
+import { initGoldenHoneycombShield, updateGoldenHoneycombShield, drawGoldenHoneycombShield, toggleGoldenShield, createGoldenShieldImpact, getReflectedProjectiles } from './golden_shield_system.js';
 
 // Variables du jeu
 let gameRunning = false;
 let animationId = null;
 let miniBossTriggered = false; // Flag pour éviter de déclencher le mini-boss plusieurs fois
 let bossTriggered = false; // NOUVEAU: Flag pour éviter de déclencher le boss plusieurs fois
+
+// NOUVEAU: Module de tir spécial du joueur (importé dynamiquement)
+let playerShootingModule = null;
+
+// Activation des power-ups pour tester les différents modes de tir
+const POWERUPS_DISABLED_FOR_TEST = false;
+// Désactiver les ennemis spéciaux pour ne montrer que ENEMY4.jpg
+const SPECIAL_ENEMIES_DISABLED_FOR_TEST = true;
+
+// Mode test strict: n'activer que le harness de test demandé
+const STRICT_TEST_MODE = true;
+// Couper boss/mini-boss pendant le test
+const DISABLE_BOSS_MINIBOSS_FOR_TEST = true;
+// Couper l'affichage d'infos ennemis pendant le test
+const INFO_DISPLAY_DISABLED_FOR_TEST = true;
 
 // Fonction d'initialisation du jeu
 function initGame() {
@@ -42,6 +64,20 @@ function initGame() {
     // Initialiser le joueur
     initializePlayer();
     
+    // NOUVEAU: Importer player_shooting_modes.js APRÈS l'initialisation du joueur
+    // pour que canvas, ctx et starship soient disponibles
+    import('./player_shooting_modes.js').then(module => {
+        playerShootingModule = module;
+        // Exposer le module globalement pour input_simple.js
+        window.playerShootingModule = module;
+        console.log('✅ player_shooting_modes.js importé avec succès après initialisation');
+        console.log('🔍 Canvas disponible:', !!canvas);
+        console.log('🔍 CTX disponible:', !!ctx);
+        console.log('🔍 Starship disponible:', !!starship);
+    }).catch(error => {
+        console.error('❌ Erreur import player_shooting_modes.js:', error);
+    });
+    
     // Initialiser les projectiles
     initializeBullets();
     
@@ -54,17 +90,23 @@ function initGame() {
     // Initialiser le système de score
     initializeScore();
     
-    // Initialiser le mini-boss
-    initializeMiniBoss();
-    
-    // Initialiser le boss principal
-    initializeBoss();
+    // Initialiser mini-boss / boss (désactivés en mode test strict)
+    if (!DISABLE_BOSS_MINIBOSS_FOR_TEST) {
+        initializeMiniBoss();
+        initializeBoss();
+    }
     
     // Initialiser les systèmes de bouclier
     initShieldSystem();        // NOUVEAU: Bouclier simple activé avec ESPACE
     initSphericalShield();     // NOUVEAU: Système sphérique v2 (code original)
     initShield3();             // NOUVEAU: Bouclier 3 (absorption + riposte)
-    initPowerUpSystem(canvas.width, canvas.height);
+    if (!POWERUPS_DISABLED_FOR_TEST) {
+        initPowerUpSystem(canvas.width, canvas.height);
+    }
+    
+    if (!SPECIAL_ENEMIES_DISABLED_FOR_TEST) {
+        initializeSpecialEnemies();
+    }
     
     // Initialiser les contrôles
     initializeInput();
@@ -73,12 +115,37 @@ function initGame() {
     window.spawnPowerShield1 = spawnPowerShield1;
     window.spawnPowerShield2 = spawnPowerShield2;
     window.spawnPowerShield3 = spawnPowerShield3;
-
-    // Démarrer la génération automatique d'ennemis
-    startEnemyGeneration();
     
-    // Démarrer le tir automatique des ennemis
+    // Démarrer la génération automatique d'ennemis (coupée en test strict)
+    if (!STRICT_TEST_MODE) {
+        startEnemyGeneration();
+    }
+    
+    // TEST: N'afficher qu'ENEMY5 avec laser vert pulsant
+    spawnTestEnemy5WithPulsingLaser();
+    if (INFO_DISPLAY_DISABLED_FOR_TEST) {
+        try { hideEnemyInfo(); } catch (e) {}
+    }
+    
+    // Démarrer le tir automatique des ennemis (activé pour voir enemy5 tirer)
     startEnemyShooting();
+    
+    // NOUVEAU: Activer les power-ups Néon pour test
+    setTimeout(() => {
+        activateNeonPowerUpsTest();
+    }, 2000);
+    
+    // NOUVEAU: Initialiser les power-ups spéciaux (Santé et IA)
+    initSpecialPowerUps(canvas.width, canvas.height);
+    
+    // NOUVEAU: Initialiser le système d'icônes de pouvoirs
+    initPowerIcons(canvas.width, canvas.height);
+    
+    // NOUVEAU: Initialiser le système de failles spatiales
+    initSpaceRiftSystem(canvas.width, canvas.height);
+    
+    // NOUVEAU: Initialiser le système de bouclier doré
+    initGoldenHoneycombShield(starship);
     
     // Démarrer la boucle de jeu
     gameRunning = true;
@@ -105,24 +172,61 @@ function gameLoop() {
         // Mettre à jour les ennemis (le setInterval gère la génération)
         updateEnemies();
         
-        // Mettre à jour le mini-boss
-        updateMiniBoss();
+        // Mettre à jour les ennemis spéciaux (désactivés pour ce test)
+        if (!SPECIAL_ENEMIES_DISABLED_FOR_TEST) {
+            updateSpecialEnemies(starship);
+        }
         
-        // Mettre à jour le boss principal
-        updateBoss();
+        // Mise à jour mini-boss / boss (coupés en test strict)
+        if (!DISABLE_BOSS_MINIBOSS_FOR_TEST) {
+            updateMiniBoss();
+            updateBoss();
+        }
         
         // Mettre à jour les projectiles des ennemis
         updateEnemyBullets();
+        // Mettre à jour les projectiles spéciaux (électrique / glitch) même sans ennemis spéciaux
+        updateSpecialBullets();
+        // NOUVEAU: Mettre à jour les projectiles spéciaux du joueur
+        if (playerShootingModule) {
+            playerShootingModule.updatePlayerSpecialBullets();
+        }
+        
+        // NOUVEAU: Mettre à jour les power-ups Néon
+        if (starship) {
+            updateNeonPowerUpsTest(starship.x, starship.y, starship.width, starship.height);
+        }
+        
+        // NOUVEAU: Mettre à jour les power-ups spéciaux (Santé et IA)
+        if (starship) {
+            updateSpecialPowerUps(starship.x, starship.y, starship.width, starship.height);
+        }
+        
+        // NOUVEAU: Mettre à jour le système d'icônes de pouvoirs
+        updatePowerIcons();
         
         // NOUVEAU: Mettre à jour les lasers entonnoir
         updateFunnelLasers();
         
-        // Mettre à jour l'affichage des informations sur les ennemis
-        updateEnemyInfoDisplay();
+        // NOUVEAU: Mettre à jour le système de failles spatiales (inclut les ennemis ET le joueur)
+        const allEntities = [...enemies, starship];
+        updateSpaceRiftSystem(allEntities);
+        
+        // NOUVEAU: Mettre à jour le système de bouclier doré
+        updateGoldenHoneycombShield();
+        
+        // Mettre à jour l'affichage des informations sur les ennemis (coupé en test)
+        if (!INFO_DISPLAY_DISABLED_FOR_TEST) {
+            updateEnemyInfoDisplay();
+        }
         
         // Gérer les tirs (seulement après l'animation d'entrée)
         if (!isIntroActive()) {
             handleShooting();
+            // NOUVEAU: Gérer les tirs spéciaux du joueur (appelé à chaque frame pour tir continu)
+            // shootPlayerSpecialBullet(); // DÉSACTIVÉ: Appelé seulement au clic, pas en continu
+        } else {
+            console.log('⏳ Animation d\'entrée active, tir spécial désactivé');
         }
         
         // Vérifier les collisions (seulement après l'animation d'entrée)
@@ -138,21 +242,23 @@ function gameLoop() {
         updateSphericalShield();   // NOUVEAU: Système sphérique v2 (code original)
         updateShield3();           // NOUVEAU: Bouclier 3 (absorption + riposte)
         // Power-ups
-        updatePowerShield1(starship);
-        updatePowerShield2(starship);
-        updatePowerShield3(starship);
-        
-        // NOUVEAU: Vérifier si le boss doit apparaître (priorité absolue)
-        if (shouldSpawnBossGlobal() && !bossTriggered && !isBossActive()) {
-            console.log('🔥 100 ENNEMIS TUÉS ! BOSS PRINCIPAL DÉCLENCHÉ !');
-            createBoss();
-            bossTriggered = true;
+        if (!POWERUPS_DISABLED_FOR_TEST) {
+            updatePowerShield1(starship);
+            updatePowerShield2(starship);
+            updatePowerShield3(starship);
         }
-        // Sinon, vérifier si toutes les vagues sont terminées pour déclencher le mini-boss
-        else if (areAllWavesCompleted() && !miniBossTriggered && !isMiniBossActive() && !bossTriggered) {
-            console.log('🎊 Toutes les vagues terminées ! Déclenchement du mini-boss...');
-            createMiniBoss();
-            miniBossTriggered = true;
+        
+        // NOUVEAU: Vérifier boss/mini-boss (coupé en test strict)
+        if (!DISABLE_BOSS_MINIBOSS_FOR_TEST) {
+            if (shouldSpawnBossGlobal() && !bossTriggered && !isBossActive()) {
+                console.log('🔥 100 ENNEMIS TUÉS ! BOSS PRINCIPAL DÉCLENCHÉ !');
+                createBoss();
+                bossTriggered = true;
+            } else if (areAllWavesCompleted() && !miniBossTriggered && !isMiniBossActive() && !bossTriggered) {
+                console.log('🎊 Toutes les vagues terminées ! Déclenchement du mini-boss...');
+                createMiniBoss();
+                miniBossTriggered = true;
+            }
         }
         
         // Dessiner les ennemis
@@ -160,11 +266,16 @@ function gameLoop() {
             drawEnemies();
         }
         
-        // Dessiner le mini-boss
-        drawMiniBoss();
+        // Dessiner les ennemis spéciaux (désactivés pour ce test)
+        if (!SPECIAL_ENEMIES_DISABLED_FOR_TEST) {
+            drawSpecialEnemies(ctx);
+        }
         
-        // Dessiner le boss principal
-        drawBoss();
+        // Dessiner mini-boss / boss (coupés en test strict)
+        if (!DISABLE_BOSS_MINIBOSS_FOR_TEST) {
+            drawMiniBoss();
+            drawBoss();
+        }
         
         // Dessiner le vaisseau
         drawPlayer();
@@ -177,23 +288,48 @@ function gameLoop() {
         drawSphericalShield(ctx);  // NOUVEAU: Système sphérique v2 (code original)
         drawShield3(ctx);          // NOUVEAU: Bouclier 3 (absorption + riposte)
         // Dessiner les power-ups
-        drawPowerShield1(ctx);
-        drawPowerShield2(ctx);
-        drawPowerShield3(ctx);
+        if (!POWERUPS_DISABLED_FOR_TEST) {
+            drawPowerShield1(ctx);
+            drawPowerShield2(ctx);
+            drawPowerShield3(ctx);
+        }
         
         // Dessiner les lasers entonnoir (derrière)
         drawFunnelLasers(ctx);
         
+        // NOUVEAU: Dessiner le système de failles spatiales
+        drawSpaceRiftSystem(ctx);
+        
+        // NOUVEAU: Dessiner le système de bouclier doré
+        drawGoldenHoneycombShield(ctx, starship);
+        
         // Dessiner les projectiles des ennemis
         drawEnemyBullets();
+        // Dessiner les projectiles spéciaux (électrique / glitch)
+        drawSpecialBullets(ctx);
+        
+        // NOUVEAU: Dessiner les power-ups Néon
+        drawNeonPowerUpsTest(ctx);
+        
+        // NOUVEAU: Dessiner les power-ups spéciaux (Santé et IA)
+        drawSpecialPowerUps(ctx);
+        
+        // NOUVEAU: Dessiner le système d'icônes de pouvoirs
+        drawPowerIcons(ctx);
         
         // Dessiner les projectiles (seulement après l'animation d'entrée)
         if (!isIntroActive()) {
             drawBullets();
+                    // NOUVEAU: Dessiner les projectiles spéciaux du joueur
+        if (playerShootingModule) {
+            playerShootingModule.drawPlayerSpecialBullets();
+        }
         }
         
-        // Dessiner l'affichage des informations sur les ennemis (toujours au-dessus)
-        drawEnemyInfoDisplay();
+        // Dessiner l'affichage des informations sur les ennemis (coupé en test)
+        if (!INFO_DISPLAY_DISABLED_FOR_TEST) {
+            drawEnemyInfoDisplay();
+        }
     }
     
     // Continuer la boucle

@@ -16,6 +16,8 @@ let growingBullets = [];
 let enemyShootTimers = new Map();
 let laserChargeEffects = new Map();       // Effets de charge pour lasers
 let enemyShootingInterval = null;
+const DEFAULT_SHOOTING_ENABLED = true; // Activer la logique de tir par défaut (mapping par type)
+const STRICT_TEST_MODE = false; // Démarrer l'intervalle auto pour enemy5
 
 // Configuration générale
 let enemyBulletSpeedMultiplier = 1;
@@ -168,7 +170,7 @@ export function shootEnemyBullets() {
 // ========================================
 
 // Créer un laser pulsant (pour ENEMY1 et ENEMY5)
-function createPulsingLaser(enemy, color, minWidth, height, speed, pulseDuration) {
+export function createPulsingLaser(enemy, color, minWidth, height, speed, pulseDuration) {
     const laser = {
         centerX: enemy.x + enemy.width / 2,  // Position centrale fixe
         x: enemy.x + enemy.width / 2 - minWidth / 2,
@@ -189,7 +191,7 @@ function createPulsingLaser(enemy, color, minWidth, height, speed, pulseDuration
 }
 
 // Créer un tir ondulant (pour ENEMY2 et ENEMY4)
-function createWaveBullet(enemy, color, size, speed, amplitude, frequency) {
+export function createWaveBullet(enemy, color, size, speed, amplitude, frequency) {
     waveBullets.push({
         x: enemy.x + enemy.width / 2 - size / 2,
         y: enemy.y + enemy.height,
@@ -207,7 +209,7 @@ function createWaveBullet(enemy, color, size, speed, amplitude, frequency) {
 }
 
 // Créer un laser qui suit l'ennemi à 7px (pour ENEMY3)
-function createFollowingLaser(enemy, color, width, height, speed) {
+export function createFollowingLaser(enemy, color, width, height, speed) {
     const followingLaser = {
         x: enemy.x + enemy.width / 2 - width / 2,
         y: enemy.y + enemy.height + 7,  // 7px du nez
@@ -227,7 +229,7 @@ function createFollowingLaser(enemy, color, width, height, speed) {
 }
 
 // Créer une onde sonique qui suit l'ennemi à 7px (pour ENEMY6)
-function createFollowingSonicWave(enemy) {
+export function createFollowingSonicWave(enemy) {
     const followingWave = {
         type: 'following_sonic_wave',
         x: enemy.x + enemy.width / 2,
@@ -266,7 +268,7 @@ export let waveBullets = [];
 // LASER PULSÉ AVANCÉ (pour ENEMY7-9)
 // ========================================
 
-function createPulseLaser(enemy) {
+export function createPulseLaser(enemy) {
     // Effet de charge avant le tir
     createLaserChargeEffect(enemy);
     
@@ -302,7 +304,7 @@ function createPulseLaser(enemy) {
 // TIR EN ONDE SINUSOÏDALE
 // ========================================
 
-function createWaveShot(enemy) {
+export function createWaveShot(enemy) {
     const wavePattern = {
         type: PROJECTILE_TYPES.WAVE_SHOT,
         originX: enemy.x + enemy.width / 2,
@@ -347,7 +349,7 @@ function createWaveShot(enemy) {
 // TIR EN SPIRALE
 // ========================================
 
-function createSpiralShot(enemy) {
+export function createSpiralShot(enemy) {
     const centerX = enemy.x + enemy.width / 2;
     const centerY = enemy.y + enemy.height;
     const spiralCount = 3;
@@ -388,7 +390,7 @@ function createSpiralShot(enemy) {
 // LASER BALAYANT
 // ========================================
 
-function createSweepingLaser(enemy) {
+export function createSweepingLaser(enemy) {
     // Effet de charge avec particules
     createChargeParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height);
     
@@ -422,7 +424,7 @@ function createSweepingLaser(enemy) {
 // ORBE DE PLASMA
 // ========================================
 
-function createPlasmaOrb(enemy) {
+export function createPlasmaOrb(enemy) {
     const orb = {
         type: PROJECTILE_TYPES.PLASMA_ORB,
         x: enemy.x + enemy.width / 2,
@@ -448,7 +450,7 @@ function createPlasmaOrb(enemy) {
 // ONDE SONIQUE EXPANSIVE
 // ========================================
 
-function createSonicWave(enemy) {
+export function createSonicWave(enemy) {
     const wave = {
         type: PROJECTILE_TYPES.SONIC_WAVE,
         x: enemy.x + enemy.width / 2,
@@ -487,7 +489,10 @@ export function updateEnemyBullets() {
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const bullet = enemyBullets[i];
         
-        switch(bullet.type) {
+        // NE PAS déplacer ici les projectiles gérés par special_bullets.js
+        if (bullet.type === 'electric' || bullet.type === 'glitch' || bullet.type === 'electric_laser_gen') {
+            // la mise à jour de la position/physique est faite dans special_bullets.js
+        } else switch(bullet.type) {
             case PROJECTILE_TYPES.SPIRAL_SHOT:
                 updateSpiralBullet(bullet, i);
                 break;
@@ -1358,6 +1363,10 @@ function createBlackHole(boss) {
 
 // Démarrer le tir automatique des ennemis
 export function startEnemyShooting() {
+    if (!DEFAULT_SHOOTING_ENABLED || STRICT_TEST_MODE) {
+        console.log('🎯 Tir par défaut désactivé (brancher des comportements manuellement)');
+        return;
+    }
     if (enemyShootingInterval) return; // Éviter les doublons
     
     // Appliquer les paramètres de difficulté
@@ -1383,6 +1392,11 @@ export function stopEnemyShooting() {
 // Fonction pour obtenir le nombre de projectiles ennemis
 export function getEnemyBulletCount() {
     return enemyBullets.length + enemyLasers.length;
+}
+
+// Permet d'ajouter un projectile depuis un autre module (ex: logique d'escadron dans enemies_simple)
+export function addExternalEnemyBullet(bullet) {
+    enemyBullets.push(bullet);
 }
 
 // Export des fonctions de nettoyage

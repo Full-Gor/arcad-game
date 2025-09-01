@@ -282,7 +282,7 @@ export function drawSphericalShield(ctx) {
 
 // Fonction de vérification (CODE ORIGINAL EXACT)
 export function isSphericalShieldActive() {
-    console.log('🔍 DEBUG: isSphericalShieldActive - starship:', !!starship, 'shield:', starship?.shield, 'visibility:', sphericalShield.visibility, 'isRevealing:', sphericalShield.isRevealing);
+    // Debug log coupé pendant les tests
     // NOUVEAU: Vérifier que c'est BIEN le bouclier sphérique qui est actif, pas le simple
     return starship && sphericalShield.active && (sphericalShield.visibility > 0 || sphericalShield.isRevealing);
 }
