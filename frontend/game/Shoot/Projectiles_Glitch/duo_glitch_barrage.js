@@ -40,3 +40,7 @@ function makeGlitchBullet(enemy, speed, intensity) {
 
 
 
+
+
+
+

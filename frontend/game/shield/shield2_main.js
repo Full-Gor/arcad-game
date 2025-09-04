@@ -1,6 +1,6 @@
 // shield2_main.js - Système de bouclier sphérique avec révélation progressive (CODE ORIGINAL)
-import { canvas, ctx } from './globals_simple.js';
-import { starship } from './player_simple.js';
+import { canvas, ctx } from '../globals_simple.js';
+import { starship } from '../player_simple.js';
 import { initSphericalGeometry } from './shield2_geometry.js';
 import { updateSphericalEffects } from './shield2_effects.js';
 import { createSphericalImpactEffect, updateImpactSystem } from './shield2_impacts.js';

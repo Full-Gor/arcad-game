@@ -1,6 +1,6 @@
 // shield3_main.js - Bouclier 3 (Absorption + Riposte) - module principal
-import { canvas, ctx } from './globals_simple.js';
-import { starship } from './player_simple.js';
+import { canvas, ctx } from '../globals_simple.js';
+import { starship } from '../player_simple.js';
 import { initShield3Geometry, activateShield3Segments, drawShield3Grid, updateShield3GridRotation } from './shield3_geometry.js';
 import { createShield3Shockwave, createShield3ResidualParticles, updateShield3Spheres, drawShield3Spheres, updateShield3Trails, drawShield3Trails, updateShield3Residuals, drawShield3Residuals, drawShield3EnergyBar } from './shield3_effects.js';
 import { fireShield3LaserRiposte, updateShield3Lasers, drawShield3Lasers, updateShield3Charging, drawShield3Charging } from './shield3_lasers.js';

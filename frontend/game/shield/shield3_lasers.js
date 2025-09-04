@@ -1,5 +1,5 @@
 // shield3_lasers.js - Laser de riposte vertical unique (suivi du bouclier)
-import { starship } from './player_simple.js';
+import { starship } from '../player_simple.js';
 
 export function fireShield3LaserRiposte(absorptionShield3, _direction, _originX, _originY) {
     if (!starship) return;

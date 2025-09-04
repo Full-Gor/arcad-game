@@ -1,6 +1,6 @@
 // ui.js - Interface utilisateur
 
-import { playerState, multiplayerConfig } from './globals.js';
+import { playerState, multiplayerConfig, waveState } from './globals.js';
 
 // Éléments de l'interface
 let livesCountElement = null;
@@ -12,6 +12,7 @@ let playerStatsElement = null;
 let bossHealthBar = null;
 let bossHealthFill = null;
 let stageTitle = null;
+let waveInfoElement = null;
 
 // Fonction d'initialisation des éléments UI
 export function initializeUI() {
@@ -24,10 +25,12 @@ export function initializeUI() {
     bossHealthBar = document.getElementById("bossHealthBar");
     bossHealthFill = document.getElementById("bossHealthFill");
     stageTitle = document.getElementById("stageTitle");
+    waveInfoElement = document.getElementById("waveInfo");
 
     // Configurer le mode de jeu
     updatePlayerModeDisplay();
     updatePlayerStats();
+    updateWaveInfo();
 }
 
 // Fonction pour mettre à jour l'affichage du mode de jeu
@@ -49,6 +52,17 @@ export function updatePlayerModeDisplay() {
     if (playerStatsElement) {
         playerStatsElement.style.display = multiplayerConfig.isMultiplayer ? "block" : "none";
     }
+}
+
+// Fonction pour mettre à jour l'affichage des informations de vague
+export function updateWaveInfo() {
+    if (!waveInfoElement) return;
+    
+    const enemyTypeName = `Enemy${waveState.currentEnemyType + 1}`;
+    waveInfoElement.textContent = `Vague ${waveState.currentWave} - ${enemyTypeName}`;
+    waveInfoElement.style.color = "#04fbac";
+    waveInfoElement.style.fontSize = "18px";
+    waveInfoElement.style.fontWeight = "bold";
 }
 
 // Fonction pour mettre à jour les statistiques des joueurs
@@ -74,6 +88,9 @@ export function updatePlayerStats() {
     if (multiplayerConfig.isMultiplayer) {
         updateMultiplayerStats();
     }
+    
+    // Mise à jour des informations de vague
+    updateWaveInfo();
 }
 
 // Fonction pour mettre à jour les statistiques multijoueur

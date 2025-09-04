@@ -37,6 +37,17 @@ export let stageState = {
     stage3EnemiesKilled: 0
 };
 
+// Variables du système de vagues
+export let waveState = {
+    currentWave: 1,
+    enemiesPerWave: 5,
+    currentEnemyType: 0, // 0-14 pour enemy1.jpg à enemy15.jpg
+    enemiesSpawnedInWave: 0,
+    waveInProgress: false,
+    waveComplete: false,
+    totalWaves: 15 // 15 types d'ennemis
+};
+
 // Variables du joueur
 export let playerState = {
     lives: 3,

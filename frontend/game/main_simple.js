@@ -11,21 +11,21 @@ import { updateFunnelLasers, drawFunnelLasers, clearFunnelLasers } from './funne
 import { initializeScore, shouldSpawnBossGlobal } from './score_simple.js';
 import { initializeMiniBoss, createMiniBoss, updateMiniBoss, drawMiniBoss, isMiniBossActive } from './miniboss_simple.js';
 import { initializeBoss, createBoss, updateBoss, drawBoss, isBossActive } from './boss_simple.js';
-import { initSphericalShield, updateSphericalShield, drawSphericalShield, revealFullShield, createSphericalImpact, isSphericalShieldActive } from './shield2_main.js';
-import { initShield3, updateShield3, drawShield3 } from './shield3_main.js';
-import { initPowerUpSystem } from './power_shield_common.js';
-import { updatePowerShield1, drawPowerShield1, spawnPowerShield1 } from './power_shield1.js';
-import { updatePowerShield2, drawPowerShield2, spawnPowerShield2 } from './power_shield2.js';
-import { updatePowerShield3, drawPowerShield3, spawnPowerShield3 } from './power_shield3.js';
+import { initSphericalShield, updateSphericalShield, drawSphericalShield, revealFullShield, createSphericalImpact, isSphericalShieldActive } from './shield/shield2_main.js';
+import { initShield3, updateShield3, drawShield3 } from './shield/shield3_main.js';
+import { initPowerUpSystem } from './powerups/power_shield_common.js';
+import { updatePowerShield1, drawPowerShield1, spawnPowerShield1 } from './powerups/power_shield1.js';
+import { updatePowerShield2, drawPowerShield2, spawnPowerShield2 } from './powerups/power_shield2.js';
+import { updatePowerShield3, drawPowerShield3, spawnPowerShield3 } from './powerups/power_shield3.js';
 import { updateEnemyInfoDisplay, drawEnemyInfoDisplay, hideEnemyInfo } from './enemy_info_display.js';
-import { updateSimpleShield, drawSimpleShield, initShieldSystem } from './shield_simple.js';
+import { updateSimpleShield, drawSimpleShield, initShieldSystem } from './shield/shield_simple.js';
 import { initializeSpecialEnemies, updateSpecialEnemies, drawSpecialEnemies, checkSpecialEnemyCollisions, deactivateSpecialEnemies } from './special_enemies_manager.js';
 import { updateSpecialBullets, drawSpecialBullets } from './special_bullets.js';
 import { activateNeonPowerUpsTest, updateNeonPowerUpsTest, drawNeonPowerUpsTest } from './powerups/neon/test_integration.js';
-import { initSpecialPowerUps, updateSpecialPowerUps, drawSpecialPowerUps } from './powerups/special_powerups.js';
+// import { initSpecialPowerUps, updateSpecialPowerUps, drawSpecialPowerUps } from './powerups/special_powerups.js';
 import { initPowerIcons, updatePowerIcons, drawPowerIcons } from './powerups/power_icons.js';
-import { initSpaceRiftSystem, updateSpaceRiftSystem, drawSpaceRiftSystem, forceCreateRiftPair } from './space_rift_system.js';
-import { initGoldenHoneycombShield, updateGoldenHoneycombShield, drawGoldenHoneycombShield, toggleGoldenShield, createGoldenShieldImpact, getReflectedProjectiles } from './golden_shield_system.js';
+// import { initSpaceRiftSystem, updateSpaceRiftSystem, drawSpaceRiftSystem, forceCreateRiftPair } from './space_rift_system.js';
+import { initGoldenHoneycombShield, updateGoldenHoneycombShield, drawGoldenHoneycombShield, toggleGoldenShield, createGoldenShieldImpact, getReflectedProjectiles } from './shield/golden_shield_system.js';
 
 // Variables du jeu
 let gameRunning = false;
@@ -121,28 +121,28 @@ function initGame() {
         startEnemyGeneration();
     }
     
-    // TEST: N'afficher qu'ENEMY5 avec laser vert pulsant
-    spawnTestEnemy5WithPulsingLaser();
+    // TEST: N'afficher qu'ENEMY5 avec laser vert pulsant - TEMPORAIREMENT DÉSACTIVÉ
+    // spawnTestEnemy5WithPulsingLaser();
     if (INFO_DISPLAY_DISABLED_FOR_TEST) {
         try { hideEnemyInfo(); } catch (e) {}
     }
     
-    // Démarrer le tir automatique des ennemis (activé pour voir enemy5 tirer)
-    startEnemyShooting();
+    // Démarrer le tir automatique des ennemis (activé pour voir enemy5 tirer) - TEMPORAIREMENT DÉSACTIVÉ
+    // startEnemyShooting();
     
     // NOUVEAU: Activer les power-ups Néon pour test
     setTimeout(() => {
         activateNeonPowerUpsTest();
     }, 2000);
     
-    // NOUVEAU: Initialiser les power-ups spéciaux (Santé et IA)
-    initSpecialPowerUps(canvas.width, canvas.height);
+    // NOUVEAU: Initialiser les power-ups spéciaux (Santé et IA) - DÉSACTIVÉ
+    // initSpecialPowerUps(canvas.width, canvas.height);
     
     // NOUVEAU: Initialiser le système d'icônes de pouvoirs
     initPowerIcons(canvas.width, canvas.height);
     
-    // NOUVEAU: Initialiser le système de failles spatiales
-    initSpaceRiftSystem(canvas.width, canvas.height);
+    // NOUVEAU: Initialiser le système de failles spatiales - DÉSACTIVÉ
+    // initSpaceRiftSystem(canvas.width, canvas.height);
     
     // NOUVEAU: Initialiser le système de bouclier doré
     initGoldenHoneycombShield(starship);
@@ -197,10 +197,10 @@ function gameLoop() {
             updateNeonPowerUpsTest(starship.x, starship.y, starship.width, starship.height);
         }
         
-        // NOUVEAU: Mettre à jour les power-ups spéciaux (Santé et IA)
-        if (starship) {
-            updateSpecialPowerUps(starship.x, starship.y, starship.width, starship.height);
-        }
+        // NOUVEAU: Mettre à jour les power-ups spéciaux (Santé et IA) - DÉSACTIVÉ
+        // if (starship) {
+        //     updateSpecialPowerUps(starship.x, starship.y, starship.width, starship.height);
+        // }
         
         // NOUVEAU: Mettre à jour le système d'icônes de pouvoirs
         updatePowerIcons();
@@ -208,9 +208,9 @@ function gameLoop() {
         // NOUVEAU: Mettre à jour les lasers entonnoir
         updateFunnelLasers();
         
-        // NOUVEAU: Mettre à jour le système de failles spatiales (inclut les ennemis ET le joueur)
-        const allEntities = [...enemies, starship];
-        updateSpaceRiftSystem(allEntities);
+        // NOUVEAU: Mettre à jour le système de failles spatiales (inclut les ennemis ET le joueur) - DÉSACTIVÉ
+        // const allEntities = [...enemies, starship];
+        // updateSpaceRiftSystem(allEntities);
         
         // NOUVEAU: Mettre à jour le système de bouclier doré
         updateGoldenHoneycombShield();
@@ -261,10 +261,10 @@ function gameLoop() {
             }
         }
         
-        // Dessiner les ennemis
-        if (!isIntroActive()) {
-            drawEnemies();
-        }
+        // Dessiner les ennemis - TEMPORAIREMENT DÉSACTIVÉ
+        // if (!isIntroActive()) {
+        //     drawEnemies();
+        // }
         
         // Dessiner les ennemis spéciaux (désactivés pour ce test)
         if (!SPECIAL_ENEMIES_DISABLED_FOR_TEST) {
@@ -297,8 +297,8 @@ function gameLoop() {
         // Dessiner les lasers entonnoir (derrière)
         drawFunnelLasers(ctx);
         
-        // NOUVEAU: Dessiner le système de failles spatiales
-        drawSpaceRiftSystem(ctx);
+        // NOUVEAU: Dessiner le système de failles spatiales - DÉSACTIVÉ
+        // drawSpaceRiftSystem(ctx);
         
         // NOUVEAU: Dessiner le système de bouclier doré
         drawGoldenHoneycombShield(ctx, starship);
@@ -311,8 +311,8 @@ function gameLoop() {
         // NOUVEAU: Dessiner les power-ups Néon
         drawNeonPowerUpsTest(ctx);
         
-        // NOUVEAU: Dessiner les power-ups spéciaux (Santé et IA)
-        drawSpecialPowerUps(ctx);
+        // NOUVEAU: Dessiner les power-ups spéciaux (Santé et IA) - DÉSACTIVÉ
+        // drawSpecialPowerUps(ctx);
         
         // NOUVEAU: Dessiner le système d'icônes de pouvoirs
         drawPowerIcons(ctx);

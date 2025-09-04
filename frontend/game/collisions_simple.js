@@ -1,6 +1,6 @@
 // collisions_simple.js - Gestion des collisions de façon modulaire
 import { canvas, ctx } from './globals_simple.js';
-import { createGoldenShieldImpact, getReflectedProjectiles } from './golden_shield_system.js';
+import { createGoldenShieldImpact, getReflectedProjectiles } from './shield/golden_shield_system.js';
 import { starship } from './player_simple.js';
 import { bullets } from './bullets_simple.js';
 import { enemies, progressEnemyType, incrementPostMiniBossKills, activatePostMiniBossPhase } from './enemies_simple.js';
@@ -9,9 +9,9 @@ import { handleKill } from './score_simple.js';
 import { isMiniBossActive, getMiniBosses, damageMiniBoss, createMiniBoss } from './miniboss_simple.js';
 import { isBossActive, getBoss, damageBoss, createBoss } from './boss_simple.js';
 
-import { revealFullShield, isSphericalShieldActive, createSphericalImpact } from './shield2_main.js';
-import { isSimpleShieldActive, absorbProjectile } from './shield_simple.js';
-import { isShield3Active, createShield3AbsorptionImpact } from './shield3_main.js';
+import { revealFullShield, isSphericalShieldActive, createSphericalImpact } from './shield/shield2_main.js';
+import { isSimpleShieldActive, absorbProjectile } from './shield/shield_simple.js';
+import { isShield3Active, createShield3AbsorptionImpact } from './shield/shield3_main.js';
 import { enemyBullets, enemyLasers, pulsingLasers, waveBullets } from './enemy_bullets_simple.js';
 import { checkLaserCollision } from './funnel_laser_simple.js';
 

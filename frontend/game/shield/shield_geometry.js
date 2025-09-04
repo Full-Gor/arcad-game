@@ -1,5 +1,5 @@
 // shield_geometry.js - Géométrie du bouclier simple
-import { starship } from './player_simple.js';
+import { starship } from '../player_simple.js';
 import { shieldSystem } from './shield_simple.js';
 import { isSimpleShieldActive } from './shield_simple.js';
 

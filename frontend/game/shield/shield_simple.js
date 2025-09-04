@@ -1,6 +1,6 @@
 // shield_simple.js - Premier bouclier simple activé avec ESPACE
-import { canvas, ctx } from './globals_simple.js';
-import { starship } from './player_simple.js';
+import { canvas, ctx } from '../globals_simple.js';
+import { starship } from '../player_simple.js';
 import { createSimpleShieldImpact } from './shield_effects.js';
 
 // Variables pour le système de bouclier avancé

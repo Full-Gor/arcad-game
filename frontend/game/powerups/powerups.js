@@ -167,8 +167,8 @@ export class BonusManager {
                 type => activatePowerUp(player, type),
                 () => {
                     player.lives++;
-                    updatePlayerStats();
                     playSound(soundEffects.perfect);
+                    console.log(`Joueur ${player.player} a gagné une vie!`);
                 }
             );
         });

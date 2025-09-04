@@ -1,5 +1,5 @@
 // golden_shield_system.js - Système de bouclier sphérique doré alvéolaire avec réflexion
-import { canvas, ctx } from './globals_simple.js';
+import { canvas, ctx } from '../globals_simple.js';
 
 // Système de bouclier sphérique doré alvéolaire avec réflexion
 let goldenHoneycombShield = {

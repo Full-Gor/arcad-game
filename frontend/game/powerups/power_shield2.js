@@ -1,8 +1,8 @@
 // power_shield2.js - Power-up pour shield2 (sphérique)
 import { shieldPowerUps, spawnPowerUpBase, updatePowerUpsBase, drawPowerUpsBase } from './power_shield_common.js';
-import { initSphericalShield, revealFullShield, deactivateSphericalShield } from './shield2_main.js';
-import { deactivateShield3 } from './shield3_main.js';
-import { deactivateSimpleShield } from './shield_simple.js';
+import { initSphericalShield, revealFullShield, deactivateSphericalShield } from '../shield/shield2_main.js';
+import { deactivateShield3 } from '../shield/shield3_main.js';
+import { deactivateSimpleShield } from '../shield/shield_simple.js';
 
 const cfg = {
     id: 'spherical',

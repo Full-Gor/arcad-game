@@ -2,7 +2,7 @@
 
 import { gameEntities, playerState } from './globals.js';
 import { playSound, soundEffects } from './audio.js';
-import { getActivePlayers, stunPlayer, playerDeath } from './player.js';
+import { getActivePlayers, stunPlayer, playerDeath, activateShield } from './player.js';
 import { removeEnemy, removeEnemyBullet } from './enemies.js';
 import { createExplosion, createHitEffect, createCollectibleRedPoint } from './particles.js';
 import { incrementEnemiesKilled, updateRedPoints } from './ui.js';
@@ -163,6 +163,7 @@ export function checkPlayerRedPointCollisions() {
                 
                 // Vérifier si le joueur a collecté 100 points rouges
                 if (player.redPointsCollected >= 100) {
+                    // Activer le bouclier comme prévu à l'origine
                     activateShield(player);
                     player.redPointsCollected = 0;
                     updateRedPoints(playerState.redPointsTotal);
@@ -308,8 +309,4 @@ export function getCollisionRect(obj) {
     };
 }
 
-// Fonction pour activer le bouclier (sera importée depuis player.js)
-function activateShield(player) {
-    // Cette fonction sera importée depuis player.js
-    console.log("Activation du bouclier pour le joueur", player.player);
-}
+// (activateShield est importée depuis player.js)

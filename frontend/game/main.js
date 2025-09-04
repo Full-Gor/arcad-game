@@ -4,7 +4,7 @@ import { initializeGlobals, resizeCanvas } from './globals.js';
 import { initializeUI } from './ui.js';
 import { initializeControls } from './input.js';
 import { initializePlayers } from './player.js';
-import { BonusManager } from './powerups.js';
+import { BonusManager } from './powerups/powerups.js';
 import { startGameLoop, setupGameIntervals } from './gameLoop.js';
 import { initializeStars } from './particles.js';
 

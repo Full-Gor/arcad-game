@@ -1,29 +1,29 @@
-// power_shield1.js - Power-up pour shield1 (simple)
+// power_shield3.js - Power-up pour shield3 (absorption)
 import { shieldPowerUps, spawnPowerUpBase, updatePowerUpsBase, drawPowerUpsBase } from './power_shield_common.js';
-import { activateSimpleShield, deactivateSimpleShield } from './shield_simple.js';
-import { deactivateSphericalShield } from './shield2_main.js';
-import { deactivateShield3 } from './shield3_main.js';
+import { activateShield3 } from '../shield/shield3_main.js';
+import { deactivateSphericalShield } from '../shield/shield2_main.js';
+import { deactivateSimpleShield } from '../shield/shield_simple.js';
 
 const cfg = {
-    id: 'holographic',
-    color: { r: 0, g: 255, b: 200 },
-    glowColor: '#00ffcc',
-    name: 'Holographic Shield',
-    gridColor: 'rgba(0, 255, 255, 0.8)',
-    coreColor: 'rgba(100, 255, 255, 0.9)'
+    id: 'absorption',
+    color: { r: 255, g: 0, b: 255 },
+    glowColor: '#ff00ff',
+    name: 'Absorption Shield',
+    gridColor: 'rgba(255, 0, 255, 0.8)',
+    coreColor: 'rgba(255, 100, 255, 0.9)'
 };
 
-export function spawnPowerShield1() { return spawnPowerUpBase(cfg.id, cfg); }
+export function spawnPowerShield3() { return spawnPowerUpBase(cfg.id, cfg); }
 
-export function updatePowerShield1(playerRect) {
+export function updatePowerShield3(playerRect) {
     updatePowerUpsBase(playerRect, () => {
         try { deactivateSphericalShield(); } catch (_) {}
-        try { deactivateShield3(); } catch (_) {}
-        activateSimpleShield();
+        try { deactivateSimpleShield(); } catch (_) {}
+        activateShield3();
     });
 }
 
-export function drawPowerShield1(ctx) {
+export function drawPowerShield3(ctx) {
     drawPowerUpsBase(ctx, drawGrid, () => shieldPowerUps.time);
 }
 

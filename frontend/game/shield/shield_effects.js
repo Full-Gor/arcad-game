@@ -1,5 +1,5 @@
 // shield_effects.js - Effets visuels du bouclier simple
-import { starship } from './player_simple.js';
+import { starship } from '../player_simple.js';
 import { shieldSystem } from './shield_simple.js';
 
 // Créer un impact amélioré pour le bouclier simple

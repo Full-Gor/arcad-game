@@ -91,13 +91,13 @@ function gameLoop(currentTime = 0) {
 
         // 2. Mettre à jour les entités du jeu
         updateBullets();
-        updateEnemies();
-        updateBoss();
+        // updateEnemies(); // TEMPORAIREMENT DÉSACTIVÉ
+        // updateBoss(); // TEMPORAIREMENT DÉSACTIVÉ
 
         // 3. Générer les tirs ennemis périodiquement
-        if (Math.random() < 0.02) { // 2% de chance à chaque frame
-            shootEnemyBullets();
-        }
+        // if (Math.random() < 0.02) { // 2% de chance à chaque frame
+        //     shootEnemyBullets(); // TEMPORAIREMENT DÉSACTIVÉ
+        // }
 
         // 4. Vérifier les collisions
         const gameOverResult = checkAllCollisions();
@@ -107,17 +107,17 @@ function gameLoop(currentTime = 0) {
         }
 
         // 5. Vérifier l'apparition des boss
-        checkBossSpawn();
+        // checkBossSpawn(); // TEMPORAIREMENT DÉSACTIVÉ
 
         // 6. Vérifier les collisions avec les boss
-        checkBossCollisions();
+        // checkBossCollisions(); // TEMPORAIREMENT DÉSACTIVÉ
 
         // 7. Dessiner tous les éléments
-        drawAllParticleEffects(); // Étoiles et particules de fond
+        // drawAllParticleEffects(); // Étoiles et particules de fond - TEMPORAIREMENT DÉSACTIVÉ
         drawStarship(); // Vaisseaux des joueurs
-        drawEnemies(); // Ennemis
-        drawEnemyBullets(); // Balles ennemies
-        drawBoss(); // Boss si actif
+        // drawEnemies(); // Ennemis - TEMPORAIREMENT DÉSACTIVÉ
+        // drawEnemyBullets(); // Balles ennemies - TEMPORAIREMENT DÉSACTIVÉ
+        // drawBoss(); // Boss si actif - TEMPORAIREMENT DÉSACTIVÉ
 
         // 8. Gérer les power-ups
         if (window.bonusManager) {
@@ -220,27 +220,27 @@ export function getGameManager() {
 // Fonction pour configurer les intervalles de jeu
 export function setupGameIntervals() {
     const intervals = [
-        // Génération d'ennemis
-        setInterval(() => {
-            if (!gameManager || !gameManager.isPaused) {
-                updateEnemies();
-            }
-        }, 2000),
+        // Génération d'ennemis - TEMPORAIREMENT DÉSACTIVÉ
+        // setInterval(() => {
+        //     if (!gameManager || !gameManager.isPaused) {
+        //         updateEnemies();
+        //     }
+        // }, 2000),
         
-        // Tirs ennemis
-        setInterval(() => {
-            if (!gameManager || !gameManager.isPaused) {
-                shootEnemyBullets();
-            }
-        }, 1000),
+        // Tirs ennemis - TEMPORAIREMENT DÉSACTIVÉ
+        // setInterval(() => {
+        //     if (!gameManager || !gameManager.isPaused) {
+        //         shootEnemyBullets();
+        //     }
+        // }, 1000),
         
-        // Tirs spéciaux des ennemis de type 1
-        setInterval(() => {
-            if (!gameManager || !gameManager.isPaused) {
-                // Logique pour les tirs spéciaux
-                shootEnemyBullets();
-            }
-        }, 500)
+        // Tirs spéciaux des ennemis de type 1 - TEMPORAIREMENT DÉSACTIVÉ
+        // setInterval(() => {
+        //     if (!gameManager || !gameManager.isPaused) {
+        //         // Logique pour les tirs spéciaux
+        //         shootEnemyBullets();
+        //     }
+        // }, 500)
     ];
 
     // Nettoyer les intervalles quand la page se ferme

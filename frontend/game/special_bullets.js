@@ -1,8 +1,8 @@
 // special_bullets.js - Gestion des projectiles spéciaux (électriques et glitch)
 import { canvas, ctx } from './globals_simple.js';
 import { enemyBullets } from './enemy_bullets_simple.js';
-import { updateDuoLavaOrb, drawDuoLavaOrb } from './bullets/types/duo_lava_orb.js';
-import { updateElectricLaser as updateElectricLaserGen, drawElectricLaser as drawElectricLaserGen } from './bullets/types/electric_laser_serpentine.js';
+import { updateDuoLavaOrb, drawDuoLavaOrb } from './Shoot/Orbe_de_Lave_Duo/duo_lava_orb.js';
+import { updateElectricLaser as updateElectricLaserGen, drawElectricLaser as drawElectricLaserGen } from './Shoot/Laser_Electrique_Serpentin/electric_laser_serpentine.js';
 
 // ========================================
 // MISE À JOUR DES PROJECTILES SPÉCIAUX

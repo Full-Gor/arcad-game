@@ -604,3 +604,8 @@ function drawAIPowerUp(ctx, powerup) {
     ctx.globalAlpha = 1;
 }
 
+
+
+
+
+

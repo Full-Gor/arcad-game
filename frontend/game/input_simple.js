@@ -5,10 +5,10 @@ import { startShooting, stopShooting } from './bullets_simple.js';
 // Import dynamique géré par main_simple.js
 import { createPlayerFunnelLaser } from './funnel_laser_simple.js';
 import { startShootSound, stopShootSound } from './audio_simple.js';
-import { activateSimpleShield, deactivateSimpleShield } from './shield_simple.js';
-import { activateShield3, deactivateShield3, isShield3Active } from './shield3_main.js';
-import { forceCreateRiftPair } from './space_rift_system.js';
-import { toggleGoldenShield } from './golden_shield_system.js';
+import { activateSimpleShield, deactivateSimpleShield } from './shield/shield_simple.js';
+import { activateShield3, deactivateShield3, isShield3Active } from './shield/shield3_main.js';
+// import { forceCreateRiftPair } from './space_rift_system.js';
+import { toggleGoldenShield } from './shield/golden_shield_system.js';
 
 // Variables pour gérer l'état des contrôles
 let inputInitialized = false;
@@ -84,8 +84,8 @@ function handleKeyDown(event) {
         const entryY = 200 + Math.random() * (canvas.height - 400);
         const exitX = 200 + Math.random() * (canvas.width - 400);
         const exitY = 200 + Math.random() * (canvas.height - 400);
-                     forceCreateRiftPair(entryX, entryY, exitX, exitY);
-             console.log('🌀 Failles spatiales activées avec ESPACE');
+                     // forceCreateRiftPair(entryX, entryY, exitX, exitY);
+             console.log('🌀 Failles spatiales désactivées avec ESPACE');
          } else if (event.code === 'KeyV') { // V pour Bouclier doré (toggle)
              event.preventDefault();
              // Toggle du bouclier doré

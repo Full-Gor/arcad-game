@@ -111,19 +111,19 @@ function onNeonPowerUpCollected(powerup) {
     // Activer les power-ups dans les modules de lasers
     try {
         // Importer et activer les power-ups dans les modules de lasers
-        import('../../bullets/types/lasers.js').then(lasersModule => {
+        import('../../Shoot/ENEMY7_Laser_Pulse_Avance/lasers.js').then(lasersModule => {
             if (lasersModule.activateNeonPowerUp) {
                 lasersModule.activateNeonPowerUp(powerup.config.effect, powerup.config.value);
             }
         });
         
-        import('../../bullets/types/laser_beam.js').then(laserBeamModule => {
+        import('../../Shoot/ENEMY5_Laser_Vert_Pulsant/laser_beam.js').then(laserBeamModule => {
             if (laserBeamModule.activateNeonPowerUp) {
                 laserBeamModule.activateNeonPowerUp(powerup.config.effect, powerup.config.value);
             }
         });
         
-        import('../../bullets/types/electric_laser_serpentine.js').then(electricLaserModule => {
+        import('../../Shoot/Laser_Electrique_Serpentin/electric_laser_serpentine.js').then(electricLaserModule => {
             if (electricLaserModule.activateNeonPowerUp) {
                 electricLaserModule.activateNeonPowerUp(powerup.config.effect, powerup.config.value);
             }

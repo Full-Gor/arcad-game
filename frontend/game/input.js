@@ -158,24 +158,32 @@ function handleKeyUp(key) {
 
 // Configuration des contrôles souris
 function setupMouseControls() {
-    window.addEventListener("mousedown", (e) => {
+    if (!canvas) {
+        console.error("Canvas non trouvé pour les contrôles souris");
+        return;
+    }
+
+    canvas.addEventListener("mousedown", (e) => {
         if (e.button === 0) { // Clic gauche
-            controlState.shooting = true;
-            updateStarshipPosition(e.clientX, e.clientY);
+            // Tir de base au clic
+            if (window.starship && window.starship.isActive) {
+                shootBullet(window.starship);
+            }
         }
     });
 
-    window.addEventListener("mouseup", (e) => {
+    canvas.addEventListener("mouseup", (e) => {
         if (e.button === 0) {
-            controlState.shooting = false;
+            // Pas de changement nécessaire pour le tir de base
         }
     });
 
-    window.addEventListener("mousemove", (e) => {
-        if (controlState.shooting) {
-            updateStarshipPosition(e.clientX, e.clientY);
-        }
+    canvas.addEventListener("mousemove", (e) => {
+        // Le vaisseau suit la souris en permanence
+        updateStarshipPosition(e.clientX, e.clientY);
     });
+
+    console.log("Contrôles souris initialisés sur le canvas");
 }
 
 // Configuration des contrôles tactiles
@@ -311,10 +319,8 @@ export function updateMultiplayerControls() {
         }
     });
 
-    // Tir automatique pour le joueur 1 si contrôle souris/tactile
-    if (controlState.shooting && window.starship) {
-        shootBullet(window.starship);
-    }
+    // Le tir souris est maintenant géré directement dans les événements mousedown
+    // Pas besoin de tir automatique continu
 }
 
 // Fonction pour mettre à jour les contrôles de manette
