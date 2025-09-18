@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bouclier Géodésique - Version Beta</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(ellipse at center, #000033 0%, #000000 100%);
+            font-family: 'Courier New', monospace;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff, 0 0 40px #0088ff;
+            font-size: 11px;
+            user-select: none;
+            opacity: 0.9;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #00ffff;
+            font-size: 12px;
+            z-index: 100;
+        }
+
+        button {
+            background: rgba(0, 255, 255, 0.2);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            padding: 5px 10px;
+            margin: 2px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        button:hover {
+            background: rgba(0, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        BOUCLIER GÉODÉSIQUE<br>
+        STRUCTURE ALVÉOLAIRE<br>
+        VERSION BETA
+    </div>
+
+    <div id="controls">
+        <button onclick="toggleShield()">Activer/Désactiver</button>
+        <button onclick="resetPosition()">Reset Position</button>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script type="module">
+        import { GeodesicShield } from '../frontend/game/Effects/GeodesicShield.js';
+
+        // Configuration de la scène
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x000011, 5, 50);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 2, 5);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0x000000, 0.9);
+        document.body.appendChild(renderer.domElement);
+        
+        // Contrôles OrbitControls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 3;
+        controls.maxDistance = 15;
+        controls.maxPolarAngle = Math.PI;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.3;
+        
+        // Lumières
+        const ambientLight = new THREE.AmbientLight(0x001155, 0.4);
+        scene.add(ambientLight);
+        
+        const coreLight = new THREE.PointLight(0x00ddff, 3, 10);
+        coreLight.position.set(0, 0, 0);
+        scene.add(coreLight);
+        
+        const rimLight = new THREE.DirectionalLight(0x00ffff, 0.5);
+        rimLight.position.set(5, 5, 5);
+        scene.add(rimLight);
+        
+        // Créer le bouclier géodésique
+        const shield = new GeodesicShield(scene, camera, renderer);
+        shield.activate();
+        
+        // Variables d'animation
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const elapsedTime = clock.getElapsedTime();
+            
+            // Mise à jour des contrôles
+            controls.update();
+            
+            // Mise à jour du bouclier
+            shield.update();
+            
+            // Variation de l'intensité lumineuse
+            coreLight.intensity = 3 + Math.sin(elapsedTime * 4) * 0.5;
+            rimLight.intensity = 0.5 + Math.sin(elapsedTime * 3) * 0.2;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Gestion du redimensionnement
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Fonctions de contrôle globales
+        window.toggleShield = function() {
+            if (shield.isActive) {
+                shield.deactivate();
+            } else {
+                shield.activate();
+            }
+        };
+
+        window.resetPosition = function() {
+            shield.setPosition(0, 0, 0);
+            camera.position.set(5, 2, 5);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        };
+    </script>
+</body>
+</html>
